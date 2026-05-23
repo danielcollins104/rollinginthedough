@@ -1,0 +1,59 @@
+{
+  "query": "SELECT id, displayName, coins, bonus, priceUsd FROM coinPackages ORDER BY priceUsd;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2ur97AQeE2BDwXc.1783fa6c90cd --database ayNoVaN9cNAqmUHUzZ966J --execute SELECT id, displayName, coins, bonus, priceUsd FROM coinPackages ORDER BY priceUsd;",
+  "rows": [
+    {
+      "id": "1",
+      "displayName": "Starter Pack",
+      "coins": "1000",
+      "bonus": "100",
+      "priceUsd": "499"
+    },
+    {
+      "id": "2",
+      "displayName": "Popular Pack",
+      "coins": "5000",
+      "bonus": "500",
+      "priceUsd": "1999"
+    },
+    {
+      "id": "3",
+      "displayName": "Mega Pack",
+      "coins": "10000",
+      "bonus": "1500",
+      "priceUsd": "3999"
+    },
+    {
+      "id": "4",
+      "displayName": "Ultimate Pack",
+      "coins": "15000",
+      "bonus": "3000",
+      "priceUsd": "4999"
+    },
+    {
+      "id": "5",
+      "displayName": "VIP Pack",
+      "coins": "25000",
+      "bonus": "5000",
+      "priceUsd": "7999"
+    },
+    {
+      "id": "30001",
+      "displayName": "High Roller Pack",
+      "coins": "100000",
+      "bonus": "20000",
+      "priceUsd": "9999"
+    },
+    {
+      "id": "30002",
+      "displayName": "Whale Pack",
+      "coins": "1100000",
+      "bonus": "250000",
+      "priceUsd": "99999"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tdisplayName\tcoins\tbonus\tpriceUsd\n1\tStarter Pack\t1000\t100\t499\n2\tPopular Pack\t5000\t500\t1999\n3\tMega Pack\t10000\t1500\t3999\n4\tUltimate Pack\t15000\t3000\t4999\n5\tVIP Pack\t25000\t5000\t7999\n30001\tHigh Roller Pack\t100000\t20000\t9999\n30002\tWhale Pack\t1100000\t250000\t99999\n",
+  "stderr": "",
+  "execution_time_ms": 396
+}

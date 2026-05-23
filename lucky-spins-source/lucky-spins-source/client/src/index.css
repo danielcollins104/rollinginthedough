@@ -1,0 +1,578 @@
+/* ============================================================
+   ROLLING IN THE DOUGH — Art Deco Opulence Theme
+   Design Philosophy: Gilded Bakery
+   Colors: Midnight Navy (#0a0a1a), Rich Gold (#D4AF37), Amber (#C8860A), Cream (#F5E6C8)
+   Typography: Playfair Display (display), Oswald (numbers), Cormorant Garamond (body)
+   ============================================================ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Oswald:wght@400;600;700&family=Cormorant+Garamond:wght@400;600&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Art Deco custom colors */
+  --color-gold: oklch(0.78 0.12 75);
+  --color-gold-bright: oklch(0.88 0.15 80);
+  --color-gold-dark: oklch(0.55 0.10 70);
+  --color-navy: oklch(0.12 0.04 260);
+  --color-navy-mid: oklch(0.18 0.05 260);
+  --color-amber: oklch(0.65 0.14 65);
+  --color-cream: oklch(0.93 0.04 80);
+  --color-burgundy: oklch(0.35 0.12 15);
+}
+
+:root {
+  --radius: 0.3rem;
+  --background: oklch(0.10 0.04 260);
+  --foreground: oklch(0.93 0.04 80);
+  --card: oklch(0.14 0.04 260);
+  --card-foreground: oklch(0.93 0.04 80);
+  --popover: oklch(0.14 0.04 260);
+  --popover-foreground: oklch(0.93 0.04 80);
+  --primary: oklch(0.78 0.12 75);
+  --primary-foreground: oklch(0.10 0.04 260);
+  --secondary: oklch(0.18 0.05 260);
+  --secondary-foreground: oklch(0.93 0.04 80);
+  --muted: oklch(0.18 0.05 260);
+  --muted-foreground: oklch(0.65 0.06 80);
+  --accent: oklch(0.65 0.14 65);
+  --accent-foreground: oklch(0.10 0.04 260);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.78 0.12 75 / 30%);
+  --input: oklch(0.18 0.05 260);
+  --ring: oklch(0.78 0.12 75);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    overflow-x: hidden;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+/* ============================================================
+   ART DECO UTILITY CLASSES
+   ============================================================ */
+
+.font-display {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-numbers {
+  font-family: 'Oswald', sans-serif;
+}
+
+.font-body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+/* Gold gradient text */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #C8860A 0%, #D4AF37 30%, #F5E6C8 50%, #D4AF37 70%, #C8860A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gold border glow */
+.border-gold-glow {
+  border: 1px solid #D4AF37;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.4), inset 0 0 8px rgba(212, 175, 55, 0.1);
+}
+
+/* Art Deco geometric border */
+.deco-border {
+  position: relative;
+  border: 2px solid #D4AF37;
+}
+.deco-border::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  pointer-events: none;
+}
+
+/* Slot machine reel styles */
+.reel-container {
+  background: linear-gradient(180deg, #050510 0%, #0a0a1a 50%, #050510 100%);
+  border: 2px solid #D4AF37;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.3);
+  overflow: hidden;
+  position: relative;
+}
+
+.reel-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30%;
+  background: linear-gradient(180deg, rgba(5,5,16,0.95) 0%, transparent 100%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.reel-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30%;
+  background: linear-gradient(0deg, rgba(5,5,16,0.95) 0%, transparent 100%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Win line highlight */
+.win-line-active {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.9), 0 0 40px rgba(212, 175, 55, 0.5), inset 0 0 15px rgba(212, 175, 55, 0.2);
+  border-color: #F5E6C8 !important;
+}
+
+/* Spin button */
+.spin-btn {
+  background: linear-gradient(135deg, #8B5E0A 0%, #C8860A 30%, #D4AF37 50%, #C8860A 70%, #8B5E0A 100%);
+  border: 2px solid #F5E6C8;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.5), 0 0 30px rgba(212, 175, 55, 0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+  transition: all 0.15s ease;
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0a0a1a;
+}
+
+.spin-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 30px rgba(212, 175, 55, 0.7), 0 0 50px rgba(212, 175, 55, 0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+  transform: translateY(-2px);
+}
+
+.spin-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.4), inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.spin-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Coin counter */
+.coin-display {
+  background: linear-gradient(135deg, #050510 0%, #0d0d20 100%);
+  border: 1px solid #D4AF37;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2), inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+/* Win message */
+.win-message {
+  font-family: 'Playfair Display', serif;
+  background: linear-gradient(135deg, #C8860A 0%, #D4AF37 30%, #F5E6C8 50%, #D4AF37 70%, #C8860A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
+/* Jackpot overlay */
+.jackpot-overlay {
+  background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.15) 0%, rgba(5,5,16,0.95) 70%);
+}
+
+/* Particle coin */
+.coin-particle {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #F5E6C8, #D4AF37, #8B5E0A);
+  border: 1px solid #F5E6C8;
+  pointer-events: none;
+  z-index: 1000;
+  animation: coinFall linear forwards;
+}
+
+@keyframes coinFall {
+  0% { transform: translateY(0) rotateY(0deg) rotateX(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotateY(720deg) rotateX(180deg); opacity: 0; }
+}
+
+/* Reel spin animation */
+@keyframes reelSpin {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-100%); }
+}
+
+/* Symbol bounce on win */
+@keyframes symbolBounce {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.15) rotate(-3deg); }
+  75% { transform: scale(1.15) rotate(3deg); }
+}
+
+.symbol-win {
+  animation: symbolBounce 0.5s ease-in-out infinite;
+}
+
+/* Glow pulse for win cells */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.5); }
+  50% { box-shadow: 0 0 30px rgba(212, 175, 55, 1), 0 0 60px rgba(212, 175, 55, 0.5); }
+}
+
+.cell-win-glow {
+  animation: glowPulse 0.8s ease-in-out infinite;
+}
+
+/* Art Deco divider */
+.deco-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.deco-divider::before,
+.deco-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0a1a; }
+::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 3px; }
+
+/* Marquee */
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.marquee-text {
+  animation: marquee 20s linear infinite;
+  white-space: nowrap;
+}
+
+/* Number counter animation */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.count-animate {
+  animation: countUp 0.3s ease-out;
+}
+
+/* Bet button styles */
+.bet-btn {
+  background: linear-gradient(135deg, #0d0d20, #1a1a35);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: #D4AF37;
+  font-family: 'Oswald', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.bet-btn:hover:not(:disabled) {
+  border-color: #D4AF37;
+  background: linear-gradient(135deg, #1a1a35, #252545);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+.bet-btn.active {
+  background: linear-gradient(135deg, #C8860A, #D4AF37);
+  border-color: #F5E6C8;
+  color: #0a0a1a;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+}
+
+/* Paytable row */
+.paytable-row {
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  transition: background 0.2s ease;
+}
+.paytable-row:hover {
+  background: rgba(212, 175, 55, 0.05);
+}
+
+/* Free spins badge */
+.free-spins-badge {
+  background: linear-gradient(135deg, #1a3a1a, #2a5a2a);
+  border: 1px solid #4CAF50;
+  color: #90EE90;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+/* Level progress bar */
+.level-bar {
+  background: linear-gradient(90deg, #C8860A, #D4AF37, #F5E6C8);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+}
+
+/* Toast notification */
+.win-toast {
+  background: linear-gradient(135deg, #0d0d20, #1a1a35);
+  border: 1px solid #D4AF37;
+  color: #F5E6C8;
+  font-family: 'Playfair Display', serif;
+}
+
+/* Autoplay indicator */
+@keyframes pulseGreen {
+  0%, 100% { box-shadow: 0 0 5px rgba(76, 175, 80, 0.5); }
+  50% { box-shadow: 0 0 15px rgba(76, 175, 80, 0.9); }
+}
+.autoplay-active {
+  animation: pulseGreen 1s ease-in-out infinite;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .spin-btn { font-size: 1rem; padding: 0.75rem 1.5rem; }
+}
+
+/* ============================================================
+   PROFESSIONAL CASINO POLISH ANIMATIONS
+   ============================================================ */
+
+/* Reel stop thud effect */
+@keyframes reelThud {
+  0% { transform: translateY(-4px); }
+  40% { transform: translateY(2px); }
+  70% { transform: translateY(-1px); }
+  100% { transform: translateY(0); }
+}
+
+.reel-stop {
+  animation: reelThud 0.25s ease-out;
+}
+
+/* Jackpot meter glow sweep */
+@keyframes jackpotSweep {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.jackpot-sweep {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.4) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: jackpotSweep 2s linear infinite;
+}
+
+/* Win amount pop-in */
+@keyframes winAmountPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.win-amount-pop {
+  animation: winAmountPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Coin rain particle */
+@keyframes coinRain {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+/* Huntress symbol slam */
+@keyframes huntressSlamIn {
+  0% { transform: scale(1.5) rotate(-10deg); filter: brightness(2); }
+  50% { transform: scale(0.9) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+}
+
+.huntress-slam {
+  animation: huntressSlamIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Screen flash on jackpot */
+@keyframes jackpotFlash {
+  0%, 100% { background: transparent; }
+  10%, 30%, 50% { background: rgba(255,215,0,0.15); }
+  20%, 40% { background: transparent; }
+}
+
+.jackpot-screen-flash {
+  animation: jackpotFlash 1.5s ease-in-out;
+}
+
+/* Reel container win border pulse */
+@keyframes reelWinBorder {
+  0%, 100% { border-color: #D4AF37; box-shadow: 0 0 15px rgba(212,175,55,0.5); }
+  50% { border-color: #FFD700; box-shadow: 0 0 30px rgba(255,215,0,0.9), 0 0 60px rgba(255,215,0,0.4); }
+}
+
+.reel-win {
+  animation: reelWinBorder 0.6s ease-in-out infinite;
+}
+
+/* Spin button idle pulse (attention-grabbing) */
+@keyframes spinIdlePulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255,215,0,0.5), 0 0 40px rgba(255,215,0,0.2), 0 4px 15px rgba(0,0,0,0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(255,215,0,0.9), 0 0 70px rgba(255,215,0,0.5), 0 6px 20px rgba(0,0,0,0.5);
+    transform: scale(1.02);
+  }
+}
+
+.spin-idle-pulse {
+  animation: spinIdlePulse 2s ease-in-out infinite;
+}
+
+/* Floating coin sparkle */
+@keyframes sparkleFloat {
+  0% { transform: translateY(0) scale(0); opacity: 0; }
+  30% { opacity: 1; transform: scale(1); }
+  100% { transform: translateY(-60px) scale(0.5); opacity: 0; }
+}
+
+.sparkle {
+  animation: sparkleFloat 1.5s ease-out forwards;
+}
+
+/* Win line draw animation */
+@keyframes winLineDraw {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0% 0 0); }
+}
+
+.win-line-draw {
+  animation: winLineDraw 0.4s ease-out forwards;
+}
+
+/* Bonus round alert pulse */
+@keyframes bonusAlertPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,107,107,0.5); }
+  50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(255,107,107,0.9); }
+}
+
+.bonus-alert {
+  animation: bonusAlertPulse 0.8s ease-in-out infinite;
+}
+
+
+/* Multi-win celebration animations */
+@keyframes multiWinFlash {
+  0%, 100% { background: rgba(212, 175, 55, 0.1); }
+  50% { background: rgba(212, 175, 55, 0.3); }
+}
+
+.multi-win-flash {
+  animation: multiWinFlash 0.4s ease-in-out 3;
+}
+
+@keyframes multiWinPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.multi-win-pulse {
+  animation: multiWinPulse 0.5s ease-in-out;
+}
+
+/* Payline pulse animation */
+@keyframes paylinePulse {
+  0% {
+    stroke-width: 4;
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+  }
+  50% {
+    stroke-width: 3;
+    opacity: 0.8;
+    filter: drop-shadow(0 0 12px rgba(255, 215, 0, 1));
+  }
+  100% {
+    stroke-width: 2;
+    opacity: 0;
+    filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0));
+  }
+}
+
+/* Cascade celebration */
+@keyframes cascadeBurst {
+  0% { transform: scale(0.8) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1.5) rotate(360deg); opacity: 0; }
+}
+
+.cascade-burst {
+  animation: cascadeBurst 0.6s ease-out;
+}
+
+/* Win counter glow */
+@keyframes winCounterGlow {
+  0%, 100% { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+  50% { text-shadow: 0 0 20px rgba(255, 215, 0, 1), 0 0 40px rgba(255, 215, 0, 0.6); }
+}
+
+.win-counter-glow {
+  animation: winCounterGlow 0.6s ease-in-out;
+}
+
+/* Reel glow on multiple wins */
+@keyframes reelMultiWinGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+  50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 50px rgba(255, 215, 0, 0.4); }
+}
+
+.reel-multi-win-glow {
+  animation: reelMultiWinGlow 0.8s ease-in-out;
+}

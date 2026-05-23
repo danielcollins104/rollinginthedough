@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO coinPackages (coins, bonus, priceUsd, displayName, isPopular) VALUES (100000, 20000, 9999, 'High Roller Pack', 0), (1100000, 250000, 99999, 'Whale Pack', 0);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2ur97AQeE2BDwXc.1783fa6c90cd --database ayNoVaN9cNAqmUHUzZ966J --execute INSERT INTO coinPackages (coins, bonus, priceUsd, displayName, isPopular) VALUES (100000, 20000, 9999, 'High Roller Pack', 0), (1100000, 250000, 99999, 'Whale Pack', 0);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 369
+}

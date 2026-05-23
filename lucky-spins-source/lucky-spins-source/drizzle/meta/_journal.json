@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1772944533717,
+      "tag": "0000_dashing_surge",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1772944604191,
+      "tag": "0001_cuddly_yellow_claw",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1773190559704,
+      "tag": "0002_whole_bastion",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1773190991239,
+      "tag": "0003_nervous_whistler",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1773204249898,
+      "tag": "0004_worried_gladiator",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1773446200108,
+      "tag": "0005_lucky_phantom_reporter",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1774277353391,
+      "tag": "0006_normal_albert_cleary",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1774347448928,
+      "tag": "0007_mixed_wildside",
+      "breakpoints": true
+    }
+  ]
+}

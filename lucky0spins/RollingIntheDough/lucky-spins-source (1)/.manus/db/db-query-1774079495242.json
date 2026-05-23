@@ -1,0 +1,55 @@
+{
+  "query": "SELECT * FROM coinPackages ORDER BY priceUsd;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2ur97AQeE2BDwXc.1783fa6c90cd --database ayNoVaN9cNAqmUHUzZ966J --execute SELECT * FROM coinPackages ORDER BY priceUsd;",
+  "rows": [
+    {
+      "id": "1",
+      "coins": "1000",
+      "priceUsd": "499",
+      "bonus": "100",
+      "displayName": "Starter Pack",
+      "isPopular": "0",
+      "createdAt": "2026-03-10 23:54:09"
+    },
+    {
+      "id": "2",
+      "coins": "5000",
+      "priceUsd": "1999",
+      "bonus": "500",
+      "displayName": "Popular Pack",
+      "isPopular": "1",
+      "createdAt": "2026-03-10 23:54:09"
+    },
+    {
+      "id": "3",
+      "coins": "10000",
+      "priceUsd": "3999",
+      "bonus": "1500",
+      "displayName": "Mega Pack",
+      "isPopular": "0",
+      "createdAt": "2026-03-10 23:54:09"
+    },
+    {
+      "id": "4",
+      "coins": "15000",
+      "priceUsd": "4999",
+      "bonus": "3000",
+      "displayName": "Ultimate Pack",
+      "isPopular": "0",
+      "createdAt": "2026-03-10 23:54:09"
+    },
+    {
+      "id": "5",
+      "coins": "25000",
+      "priceUsd": "7999",
+      "bonus": "5000",
+      "displayName": "VIP Pack",
+      "isPopular": "0",
+      "createdAt": "2026-03-10 23:54:09"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcoins\tpriceUsd\tbonus\tdisplayName\tisPopular\tcreatedAt\n1\t1000\t499\t100\tStarter Pack\t0\t2026-03-10 23:54:09\n2\t5000\t1999\t500\tPopular Pack\t1\t2026-03-10 23:54:09\n3\t10000\t3999\t1500\tMega Pack\t0\t2026-03-10 23:54:09\n4\t15000\t4999\t3000\tUltimate Pack\t0\t2026-03-10 23:54:09\n5\t25000\t7999\t5000\tVIP Pack\t0\t2026-03-10 23:54:09\n",
+  "stderr": "",
+  "execution_time_ms": 435
+}

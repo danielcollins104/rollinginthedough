@@ -1,0 +1,39 @@
+# OS junk
+*.Zone.Identifier
+.DS_Store
+Thumbs.db
+
+# Keys
+sshKey
+sshKey.pub
+
+# OpenClaw
+.openclaw/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS folders
+desktop.ini
+
+# Embedded repos (don't commit repos inside repos)
+.lucky-spins-source*/
