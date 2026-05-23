@@ -1,0 +1,57 @@
+{
+  "version": "8",
+  "dialect": "mysql",
+  "id": "referral_system_migration",
+  "prevId": "0007_mixed_wildside",
+  "tables": {
+    "referralCodes": {
+      "name": "referralCodes",
+      "columns": {
+        "id": { "name": "id", "type": "int", "autoincrement": true, "primaryKey": true },
+        "userId": { "name": "userId", "type": "int", "notNull": true },
+        "code": { "name": "code", "type": "varchar(16)", "notNull": true },
+        "createdAt": { "name": "createdAt", "type": "timestamp", "default": "CURRENT_TIMESTAMP", "notNull": true }
+      },
+      "indexes": {
+        "userId": { "name": "userId", "columns": ["userId"], "isUnique": true },
+        "code": { "name": "code", "columns": ["code"], "isUnique": true }
+      }
+    },
+    "referrals": {
+      "name": "referrals",
+      "columns": {
+        "id": { "name": "id", "type": "int", "autoincrement": true, "primaryKey": true },
+        "referrerId": { "name": "referrerId", "type": "int", "notNull": true },
+        "refereeId": { "name": "refereeId", "type": "int", "notNull": true },
+        "codeUsed": { "name": "codeUsed", "type": "varchar(16)", "notNull": true },
+        "status": { "name": "status", "type": "enum('signed_up','earned_rewards')", "default": "'signed_up'", "notNull": true },
+        "createdAt": { "name": "createdAt", "type": "timestamp", "default": "CURRENT_TIMESTAMP", "notNull": true }
+      }
+    },
+    "referralRewards": {
+      "name": "referralRewards",
+      "columns": {
+        "id": { "name": "id", "type": "int", "autoincrement": true, "primaryKey": true },
+        "referrerId": { "name": "referrerId", "type": "int", "notNull": true },
+        "refereeId": { "name": "refereeId", "type": "int", "notNull": true },
+        "referralId": { "name": "referralId", "type": "int", "notNull": true },
+        "rewardType": { "name": "rewardType", "type": "enum('signup_bonus','first_1000_coins','first_purchase','active_30_days')", "notNull": true },
+        "coinsAwarded": { "name": "coinsAwarded", "type": "int", "notNull": true },
+        "status": { "name": "status", "type": "enum('pending','claimed')", "default": "'pending'", "notNull": true },
+        "createdAt": { "name": "createdAt", "type": "timestamp", "default": "CURRENT_TIMESTAMP", "notNull": true },
+        "claimedAt": { "name": "claimedAt", "type": "timestamp", "nullable": true }
+      }
+    },
+    "referralMilestones": {
+      "name": "referralMilestones",
+      "columns": {
+        "id": { "name": "id", "type": "int", "autoincrement": true, "primaryKey": true },
+        "referralId": { "name": "referralId", "type": "int", "notNull": true, "unique": true },
+        "earned1000Coins": { "name": "earned1000Coins", "type": "int", "default": 0, "notNull": true },
+        "madeFirstPurchase": { "name": "madeFirstPurchase", "type": "int", "default": 0, "notNull": true },
+        "active30Days": { "name": "active30Days", "type": "int", "default": 0, "notNull": true },
+        "createdAt": { "name": "createdAt", "type": "timestamp", "default": "CURRENT_TIMESTAMP", "notNull": true }
+      }
+    }
+  }
+}

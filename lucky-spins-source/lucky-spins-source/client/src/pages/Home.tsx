@@ -27,6 +27,7 @@ import { DailyStreakDisplay } from "@/components/DailyStreakDisplay";
 import { LevelUp } from "@/components/LevelUp";
 import { Missions } from "@/components/Missions";
 import { SessionTimeReward } from "@/components/SessionTimeReward";
+import ReferralScreen, { FloatingReferralBadge } from "@/components/ReferralScreen";
 
 export default function Home() {
   const {
@@ -97,6 +98,7 @@ export default function Home() {
   const [showDailyLoginBonus, setShowDailyLoginBonus] = useState(false);
   const [showMissions, setShowMissions] = useState(false);
   const [showSessionReward, setShowSessionReward] = useState(false);
+  const [showReferral, setShowReferral] = useState(false);
 
   const handleCurrencyChange = (currency: CurrencyType) => {
     // If switching to green (Sweeps), check if user is authenticated
@@ -373,6 +375,8 @@ export default function Home() {
           onDismiss={() => setShowSessionReward(false)}
         />
       )}
+      
+      <ReferralScreen isOpen={showReferral} onClose={() => setShowReferral(false)} />
       <LoginPromptModal isOpen={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
       {bonusGameType && (
         <BonusGameOverlay
@@ -407,9 +411,13 @@ export default function Home() {
         onDeals={() => setExternalShowDeals(true)}
         onScratch={() => setExternalShowScratch(true)}
         onMissions={() => setShowMissions(true)}
+        onReferrals={() => setShowReferral(true)}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
       />
+      
+      {/* Floating referral badge - shows when user has referrals */}
+      <FloatingReferralBadge referralCount={0} onClick={() => setShowReferral(true)} />
       
       {/* Streak display panel - accessible from game area */}
       <div className="absolute top-20 right-2 z-20 w-40">

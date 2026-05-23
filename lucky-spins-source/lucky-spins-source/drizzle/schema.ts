@@ -145,3 +145,66 @@ export const achievements = mysqlTable("achievements", {
 
 export type Achievement = typeof achievements.$inferSelect;
 export type InsertAchievement = typeof achievements.$inferInsert;
+
+// ============================================
+// REFERRAL SYSTEM
+// ============================================
+
+// Referral codes (one per user)
+export const referralCodes = mysqlTable("referralCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  code: varchar("code", { length: 16 }).notNull().unique(), // 8-char uppercase alphanumeric
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ReferralCode = typeof referralCodes.$inferSelect;
+export type InsertReferralCode = typeof referralCodes.$inferInsert;
+
+// Referral relationships
+// Created when referee signs up with a referral code
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrerId").notNull(), // user who shared the code
+  refereeId: int("refereeId").notNull(),    // new user who signed up
+  codeUsed: varchar("codeUsed", { length: 16 }).notNull(), // the referral code they used
+  status: mysqlEnum("status", ["signed_up", "earned_rewards"]).default("signed_up").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
+
+// Referral rewards earned by referrer (pending or claimed)
+export const referralRewards = mysqlTable("referralRewards", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrerId").notNull(),
+  refereeId: int("refereeId").notNull(),
+  referralId: int("referralId").notNull(),
+  rewardType: mysqlEnum("rewardType", [
+    "signup_bonus",        // 100 coins when referee signs up
+    "first_1000_coins",    // 200 coins when referee earns 1000
+    "first_purchase",      // 10% of purchase as coins
+    "active_30_days",     // 500 coins when referee active 30 days
+  ]).notNull(),
+  coinsAwarded: int("coinsAwarded").notNull(),
+  status: mysqlEnum("status", ["pending", "claimed"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  claimedAt: timestamp("claimedAt"),
+});
+
+export type ReferralReward = typeof referralRewards.$inferSelect;
+export type InsertReferralReward = typeof referralRewards.$inferInsert;
+
+// Track referee milestones for reward triggering
+export const referralMilestones = mysqlTable("referralMilestones", {
+  id: int("id").autoincrement().primaryKey(),
+  referralId: int("referralId").notNull().unique(),
+  earned1000Coins: int("earned1000Coins").default(0).notNull(), // timestamp when earned 1000 coins
+  madeFirstPurchase: int("madeFirstPurchase").default(0).notNull(), // timestamp when made first purchase
+  active30Days: int("active30Days").default(0).notNull(), // timestamp when active 30 days
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ReferralMilestone = typeof referralMilestones.$inferSelect;
+export type InsertReferralMilestone = typeof referralMilestones.$inferInsert;

@@ -1,5 +1,5 @@
 {
-  "version": "7",
+  "version": "8",
   "dialect": "mysql",
   "entries": [
     {
@@ -56,6 +56,13 @@
       "version": "5",
       "when": 1774347448928,
       "tag": "0007_mixed_wildside",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1748033520000,
+      "tag": "0008_referral_system",
       "breakpoints": true
     }
   ]

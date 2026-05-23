@@ -14,6 +14,16 @@ import { verifySquarePayment, logPaymentVerification } from "./paymentVerificati
 import { validateSpinRequest, validateGameResult, validateCashoutRequest, detectCheatPattern } from "./antiCheatValidation";
 import { registerUser, loginUser, verifySession } from "./auth";
 import { sessionSecurity } from "./_core/security";
+import {
+  getOrCreateReferralCode,
+  getUserReferralCode,
+  getUserIdByReferralCode,
+  processReferralSignup,
+  getReferralStats,
+  getUserReferrals,
+  claimReferralRewards,
+} from "./referral";
+import { checkAndAwardReferralMilestones } from "./referral";
 
 // Square production environment configuration
 const squareClient = ENV.squareAccessToken
@@ -55,6 +65,7 @@ export const appRouter = router({
         email: z.string().email(),
         password: z.string().min(8),
         name: z.string().min(1),
+        referralCode: z.string().optional(), // optional referral code from new user
       }))
       .mutation(async ({ input, ctx }) => {
         const user = await registerUser(input.email, input.password, input.name);
@@ -67,6 +78,12 @@ export const appRouter = router({
           ...cookieOptions,
           maxAge: 30 * 60 * 1000,
         });
+
+        // Process referral if code was provided
+        if (input.referralCode) {
+          await processReferralSignup(user.id, input.referralCode.trim().toUpperCase());
+        }
+
         return { success: true, user };
       }),
   }),
@@ -243,6 +260,9 @@ export const appRouter = router({
         // Mark as completed and credit coins
         await updateCoinPurchaseStatus(purchase.paymentId, "completed", purchase.coinsAdded);
 
+        // Award referrer 10% of purchase as coins (if referee has a referrer)
+        await checkAndAwardReferralMilestones(ctx.user.id, "purchase", purchase.coinsAdded);
+
         return {
           success: true,
           coinsAdded: purchase.coinsAdded,
@@ -335,6 +355,16 @@ export const appRouter = router({
           })
           .where(eq(playerStats.userId, ctx.user.id));
 
+        // Check referral milestones for coin earnings
+        // This is a simplified trigger - game logic should call checkAndAwardReferralMilestones directly for precise tracking
+        if (input.totalSpins !== undefined || input.totalWins !== undefined) {
+          // Get current stats to check coin threshold
+          const stats = await getOrCreatePlayerStats(ctx.user.id);
+          if (stats) {
+            await checkAndAwardReferralMilestones(ctx.user.id, "coins_earned");
+          }
+        }
+
         return { success: true };
       }),
 
@@ -407,6 +437,44 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         return cancelCashOutRequest(input.requestId);
       }),
+  }),
+
+  referral: router({
+    // Get current user's referral code
+    getCode: protectedProcedure.query(async ({ ctx }) => {
+      const code = await getOrCreateReferralCode(ctx.user.id);
+      return { code };
+    }),
+
+    // Claim a referral code during sign-up
+    claim: protectedProcedure
+      .input(z.object({
+        referralCode: z.string().min(1),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const code = input.referralCode.trim().toUpperCase();
+        const result = await processReferralSignup(ctx.user.id, code);
+        if (!result.success) {
+          throw new Error(result.error || "Failed to process referral");
+        }
+        return { success: true };
+      }),
+
+    // Get referral stats
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      return getReferralStats(ctx.user.id);
+    }),
+
+    // List user's referrals
+    getReferrals: protectedProcedure.query(async ({ ctx }) => {
+      return getUserReferrals(ctx.user.id);
+    }),
+
+    // Claim pending referral rewards
+    claimRewards: protectedProcedure.mutation(async ({ ctx }) => {
+      const totalClaimed = await claimReferralRewards(ctx.user.id);
+      return { totalClaimed };
+    }),
   }),
 });
 

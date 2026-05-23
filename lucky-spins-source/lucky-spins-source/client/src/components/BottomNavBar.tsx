@@ -11,6 +11,7 @@ interface Props {
   onDeals: () => void;
   onScratch: () => void;
   onMissions: () => void;
+  onReferrals: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
 }
@@ -29,6 +30,7 @@ export default function BottomNavBar({
   onDeals,
   onScratch,
   onMissions,
+  onReferrals,
   soundEnabled,
   onToggleSound,
 }: Props) {
@@ -61,14 +63,14 @@ export default function BottomNavBar({
       onClick: onScratch,
     },
     {
+      icon: "👥",
+      label: "Refer",
+      onClick: onReferrals,
+    },
+    {
       icon: soundEnabled ? "🔊" : "🔇",
       label: soundEnabled ? "Sound" : "Muted",
       onClick: onToggleSound,
-    },
-    {
-      icon: "📖",
-      label: "Rules",
-      onClick: onRules,
     },
   ];
 
