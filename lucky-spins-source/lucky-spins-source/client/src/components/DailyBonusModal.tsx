@@ -5,7 +5,6 @@
  */
 
 import { useState, useEffect } from "react";
-import { CoinSparkle } from "./WinParticles";
 
 interface DailyBonusProps {
   streak: number; // 1-7 day streak

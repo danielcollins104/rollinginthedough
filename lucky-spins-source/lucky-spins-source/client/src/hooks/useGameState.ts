@@ -19,6 +19,7 @@ export type SymbolId =
   | "bun"        // 🫓 Sweet Bun — high value (wild)
   | "huntress"   // 👑 Bakery Queen — bonus trigger (scatter)
   | "dough"      // 🍞 Rolling in the Dough — JACKPOT (scatter)
+  | "empty"      // Empty cell for cascade system
 
 export interface Symbol {
   id: SymbolId;
@@ -144,6 +145,7 @@ export interface WinLine {
   symbols: SymbolId[];
   amount: number;
   count: number;
+  cells?: { reelIdx: number; rowIdx: number }[]; // Optional cell positions for highlights
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────

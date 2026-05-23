@@ -16,6 +16,7 @@ import DealsModal from "./DealsModal";
 import BigWinOverlay from "./BigWinOverlay";
 import JackpotMeters from "./JackpotMeters";
 import WinLineHighlight from "./WinLineHighlight";
+import SymbolIcon from "./SymbolIcon";
 import FreeSpinsDisplay from "./FreeSpinsDisplay";
 import IdleAnimations from "./IdleAnimations";
 import PaylineHighlight from "./PaylineHighlight";
@@ -162,7 +163,7 @@ function findNearMiss(reels: SymbolId[][], winLines: WinLine[]): { reelIdx: numb
 }
 
 // Spinning reel strip with blur effect
-function ReelStrip({ symbols, spinning, done }: { symbols: SymbolId[]; spinning: boolean; done: boolean }) {
+function ReelStrip({ symbols, spinning, done, size = 36 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number }) {
   const [blurSymbols, setBlurSymbols] = useState<SymbolId[]>([]);
 
   useEffect(() => {
@@ -187,7 +188,7 @@ function ReelStrip({ symbols, spinning, done }: { symbols: SymbolId[]; spinning:
               className="flex-1 flex items-center justify-center"
               style={{ filter: "blur(2px)", opacity: 0.5 }}
             >
-              <span style={{ fontSize: "clamp(1.2rem, 3vw, 2rem)" }}>{sym.emoji}</span>
+              <SymbolIcon symbolId={sym.id} size={Math.floor(size * 0.55)} />
             </div>
           );
         })}
@@ -345,6 +346,7 @@ export default function SlotMachine({
   const [showBigWin, setShowBigWin] = useState(false);
   const [lastSpinTime, setLastSpinTime] = useState(Date.now());
   const [spinButtonPulse, setSpinButtonPulse] = useState(false);
+  const [shakeIntensity, setShakeIntensity] = useState<'none' | 'light' | 'medium' | 'heavy'>('none');
   const prevSpinCount = useRef(spinCount);
   const prevSpinning = useRef(false);
 
@@ -509,11 +511,11 @@ export default function SlotMachine({
         if (isWildSymbol(second.symId) || cells.every(c => 
           c.symId === first.symId || isWildSymbol(c.symId))) {
           // All match or are wild
-          allWinLines.push({ row: lineIdx, cells: cells.map(c => c.symId) });
+          allWinLines.push({ row: lineIdx, cells: cells.map(c => ({ reelIdx: c.reelIdx, rowIdx: c.rowIdx })), symbols: cells.map(c => c.symId), amount: 0, count: cells.length });
         }
       } else if (cells.every(c => c.symId === first.symId || isWildSymbol(c.symId))) {
         // All match
-        allWinLines.push({ row: lineIdx, cells: cells.map(c => c.symId) });
+        allWinLines.push({ row: lineIdx, cells: cells.map(c => ({ reelIdx: c.reelIdx, rowIdx: c.rowIdx })), symbols: cells.map(c => c.symId), amount: 0, count: cells.length });
       }
     }
     
@@ -732,6 +734,19 @@ export default function SlotMachine({
           setTimeout(() => setWinFlash(false), 2500);
           setTimeout(() => setShowCoinShower(false), 3000);
 
+          // Screen shake based on win tier
+          const shakeMap: Record<string, 'light' | 'medium' | 'heavy'> = {
+            JACKPOT: 'heavy',
+            MEGA_WIN: 'heavy',
+            BIG_WIN: 'medium',
+            SMALL_WIN: 'light',
+            HUNTRESS_BONUS: 'medium',
+          };
+          const shake = lastWinType ? (shakeMap[lastWinType] || 'light') : 'none';
+          setShakeIntensity(shake);
+          const shakeDuration = shake === 'heavy' ? 800 : shake === 'medium' ? 500 : 300;
+          setTimeout(() => setShakeIntensity('none'), shakeDuration);
+
           // Show big win overlay for significant wins
           if (lastWinType === "BIG_WIN" || lastWinType === "MEGA_WIN" || lastWinType === "JACKPOT") {
             setTimeout(() => setShowBigWin(true), 600);
@@ -811,7 +826,7 @@ export default function SlotMachine({
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-14 sm:pb-0">
+    <div className={`w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-14 sm:pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''}`}>
       {/* Win Particle Animations */}
       <WinParticles trigger={particleTrigger} winAmount={winAmount} isJackpot={lastWinType === "JACKPOT"} />
 
@@ -1097,25 +1112,21 @@ export default function SlotMachine({
                       />
                     )}
                     {symId !== 'empty' && (
-                      <span
-                        className={isWin ? "symbol-win-pop" : ""}
-                        style={{
-                          fontSize: "clamp(1.4rem, 3.8vw, 2.3rem)",
-                          filter: isWin
-                            ? `drop-shadow(0 0 8px ${sym.color}) drop-shadow(0 0 16px ${sym.color}88) brightness(1.5)`
-                            : isStickyWild
-                            ? `drop-shadow(0 0 12px #90EE90) drop-shadow(0 0 24px #90EE90)`
-                            : isNearMiss && nearMissAnimating
-                            ? `drop-shadow(0 0 10px #FFD700) brightness(1.3)`
-                            : "none",
-                          transition: "filter 0.3s ease",
-                          position: "relative",
-                          zIndex: 1,
-                          animation: isWin ? "none" : undefined,
-                        }}
-                      >
-                        {sym.emoji}
-                      </span>
+                      <SymbolIcon
+                          symbolId={symId}
+                          size={32}
+                          className={`${isWin ? 'symbol-win-pop symbol-bounce' : ''}`}
+                          style={{
+                            filter: isWin
+                              ? `drop-shadow(0 0 8px ${sym.color}) drop-shadow(0 0 16px ${sym.color}88) brightness(1.5)`
+                              : isStickyWild
+                              ? `drop-shadow(0 0 12px #90EE90) drop-shadow(0 0 24px #90EE90)`
+                              : isNearMiss && nearMissAnimating
+                              ? `drop-shadow(0 0 10px #FFD700) brightness(1.3)`
+                              : 'none',
+                            transition: 'filter 0.3s ease',
+                          }}
+                        />
                     )}
                   </div>
                 );
@@ -1528,7 +1539,13 @@ export default function SlotMachine({
           0%, 100% { filter: brightness(1); }
           50% { filter: brightness(2.5) saturate(1.5); }
         }
-        @keyframes screenShake {
+        @keyframes screenShakeLight {
+          0%, 100% { transform: translate(0, 0); }
+          25% { transform: translate(-2px, -1px); }
+          50% { transform: translate(2px, 1px); }
+          75% { transform: translate(-1px, 2px); }
+        }
+        @keyframes screenShakeMedium {
           0%, 100% { transform: translate(0, 0); }
           10% { transform: translate(-4px, -3px); }
           20% { transform: translate(4px, 3px); }
@@ -1540,6 +1557,31 @@ export default function SlotMachine({
           80% { transform: translate(2px, -3px); }
           90% { transform: translate(-1px, 1px); }
         }
+        @keyframes screenShakeHeavy {
+          0%, 100% { transform: translate(0, 0); }
+          5% { transform: translate(-8px, -6px) rotate(-1deg); }
+          10% { transform: translate(8px, 6px) rotate(1deg); }
+          15% { transform: translate(-8px, 4px) rotate(-0.5deg); }
+          20% { transform: translate(8px, -4px) rotate(0.5deg); }
+          25% { transform: translate(-6px, -5px); }
+          30% { transform: translate(6px, 5px); }
+          35% { transform: translate(-5px, 3px); }
+          40% { transform: translate(5px, -3px); }
+          45% { transform: translate(-4px, 4px); }
+          50% { transform: translate(4px, -4px); }
+          55% { transform: translate(-3px, 2px); }
+          60% { transform: translate(3px, -2px); }
+          65% { transform: translate(-2px, 3px); }
+          70% { transform: translate(2px, -3px); }
+          75% { transform: translate(-2px, 2px); }
+          80% { transform: translate(2px, -2px); }
+          85% { transform: translate(-1px, 1px); }
+          90% { transform: translate(1px, -1px); }
+        }
+        .screen-shake-light { animation: screenShakeLight 0.3s ease-in-out; }
+        .screen-shake-medium { animation: screenShakeMedium 0.5s ease-in-out; }
+        .screen-shake-heavy { animation: screenShakeHeavy 0.8s ease-in-out; }
+        .screen-shake-heavy svg { transform-origin: center; }
         @keyframes winBanner {
           0% { opacity: 0; transform: scale(0.5) translateY(-20px); }
           40% { opacity: 1; transform: scale(1.15) translateY(0); }
@@ -1577,6 +1619,26 @@ export default function SlotMachine({
         }
         .symbol-win-pop {
           animation: symbolPopWin 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
+        }
+        @keyframes symbolBounce {
+          0% { transform: scale(1); }
+          15% { transform: scale(1.3); }
+          30% { transform: scale(0.9); }
+          45% { transform: scale(1.15); }
+          60% { transform: scale(0.95); }
+          75% { transform: scale(1.05); }
+          100% { transform: scale(1); }
+        }
+        .symbol-bounce {
+          animation: symbolBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+        }
+        @keyframes symbolFlash {
+          0% { filter: brightness(1) saturate(1); }
+          30% { filter: brightness(3) saturate(0); }
+          100% { filter: brightness(1) saturate(1); }
+        }
+        .symbol-flash {
+          animation: symbolFlash 0.4s ease-out;
         }
         @keyframes reelWinGlow {
           0%, 100% { box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 10px rgba(212,175,55,0.2); }
@@ -1797,7 +1859,7 @@ function PayTable() {
                   key={sym.id}
                   className="paytable-row flex items-center gap-3 py-2 px-3 rounded"
                 >
-                  <span className="text-xl w-8 text-center">{sym.emoji}</span>
+                  <SymbolIcon symbolId={sym.id} size={22} />
                   <div className="flex-1">
                     <div className="text-xs font-numbers font-bold" style={{ color: sym.color }}>
                       {sym.name}

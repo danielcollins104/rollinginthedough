@@ -129,7 +129,17 @@ export type SoundName =
   | "huntress_slam_3"
   | "huntress_slam_4"
   | "huntress_slam_5"
-  | "multi_win";
+  | "multi_win"
+  | "scatter_win"
+  | "scatter_land"
+  | "wild_land"
+  | "wild_lock"
+  | "near_miss"
+  | "cascade_1"
+  | "cascade_2"
+  | "cascade_3"
+  | "cascade_4"
+  | "cascade_5";
 
 let soundEnabled = true;
 
@@ -365,6 +375,59 @@ export function playSound(name: SoundName) {
       playChord([440, 660, 880, 1100], 0.25, "sine", 0.3, 0.05); // Rich harmony
       playTone(1320, 0.2, "sine", 0.35, 0.15);   // High peak
       playTone(1760, 0.15, "sine", 0.25, 0.2);   // Ultra-high sparkle
+      break;
+
+    case "scatter_win":
+      // 3+ scatters trigger - triumphant fanfare
+      playTone(523, 0.3, "sine", 0.35); // C5 - opening chord
+      playTone(659, 0.25, "sine", 0.3, 0.1); // E5
+      playTone(784, 0.25, "sine", 0.3, 0.2); // G5
+      playTone(1047, 0.4, "sine", 0.4, 0.35); // C6 - peak
+      playNoise(0.3, 0.15, 0.4, 6000);
+      break;
+
+    case "scatter_land":
+      // Scatter lands on reel - suspenseful click
+      playTone(800, 0.08, "sine", 0.25);
+      playTone(1200, 0.06, "sine", 0.2, 0.04);
+      playNoise(0.05, 0.04, 0.06, 3000);
+      break;
+
+    case "wild_land":
+      // Wild lands on reel - golden thunk
+      playTone(200, 0.15, "sine", 0.28);
+      playTone(400, 0.1, "sine", 0.22, 0.06);
+      playTone(600, 0.08, "sine", 0.18, 0.1);
+      break;
+
+    case "wild_lock":
+      // Wild locks in winning combo - solid lock sound
+      playTone(150, 0.2, "sine", 0.35);
+      playTone(300, 0.15, "sine", 0.25, 0.08);
+      playTone(450, 0.12, "sine", 0.2, 0.14);
+      break;
+
+    case "near_miss":
+      // Near-miss tension - ascending question that doesn't resolve
+      playTone(440, 0.1, "sine", 0.22);
+      playTone(550, 0.12, "sine", 0.2, 0.08);
+      playTone(660, 0.15, "sine", 0.18, 0.16); // Stays up - unresolved
+      break;
+
+    case "cascade_1":
+    case "cascade_2":
+    case "cascade_3":
+    case "cascade_4":
+    case "cascade_5":
+      // Escalating cascade sounds
+      const cascadeLevel = parseInt(name.split("_")[1]);
+      const baseFreq = 600 + cascadeLevel * 100;
+      playTone(baseFreq, 0.2, "sine", 0.3);
+      playTone(baseFreq + 200, 0.18, "sine", 0.25, 0.06);
+      playTone(baseFreq + 400, 0.15, "sine", 0.2, 0.12);
+      if (cascadeLevel >= 3) {
+        playNoise(0.1, 0.08, 0.1, 5000);
+      }
       break;
   }
 }

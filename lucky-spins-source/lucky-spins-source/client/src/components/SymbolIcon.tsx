@@ -6,7 +6,7 @@
 import { type SymbolId } from "@/hooks/useGameState";
 
 interface Props {
-  symbolId: SymbolId;
+  symbolId?: SymbolId;
   size?: number;
   className?: string;
   style?: React.CSSProperties;
@@ -196,7 +196,7 @@ function MuffinIcon({ size, className, style }: Props) {
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className={className} style={style}>
       {/* Muffin base / liner */}
       <path d="M12 26 L14 42 L34 42 L36 26 Z" fill="#88CCFF" />
-      <path d="M13" y1="26" L15" y1="41" L33" y1="41" L35" y1="26 Z" fill="#5599DD" opacity="0.4" />
+      <path d="M13 26 L15 41 L33 41 L35 26 Z" fill="#5599DD" opacity="0.4" />
       {/* Paper liner texture */}
       <path d="M12 26 L14 42" stroke="#88CCFF" strokeWidth="1.5" />
       <path d="M16 26 L16.5 42" stroke="#88CCFF" strokeWidth="1" opacity="0.5" />
