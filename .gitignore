@@ -35,5 +35,13 @@ build/
 # OS folders
 desktop.ini
 
+# Manus/agent logs (personal workspace artifacts)
+.manus/
+.manus-logs/
+__manus__/
+
+# Memory files (personal workspace notes)
+memory/
+
 # Embedded repos (don't commit repos inside repos)
 .lucky-spins-source*/
