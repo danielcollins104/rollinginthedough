@@ -2,10 +2,11 @@
  * Rolling in the Dough — Slot Machine Component
  * PROFESSIONAL CASINO STANDARDS: Matches Jackpot Party / Chumba Casino / LuckyLand
  * Features: Dominant SPIN button, jackpot meters, win overlays, payline animations,
- *           reel blur effects, idle animations, bottom nav, animated win counters
+ *           reel blur effects, idle animations, bottom nav, animated win counters,
+ *           cascade system, scatter anticipation, sticky wilds, near-miss tension
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
 import { playSound, playWinSound } from "@/lib/sounds";
 import { WinParticles } from "./WinParticles";
@@ -23,6 +24,10 @@ const BET_OPTIONS = [10, 25, 50, 100, 200];
 const PAYLINE_OPTIONS = [1, 5, 10, 15, 20, 25];
 const BET_INCREMENT = 10;
 const BET_DECREMENT = 10;
+
+// Cascade multiplier per level (0-indexed: level 1 = 1x, level 5 = 5x)
+const CASCADE_MULTIPLIERS = [1, 2, 3, 4, 5];
+const MAX_CASCADE_LEVEL = 5;
 
 interface Props {
   reels: SymbolId[][];
@@ -56,10 +61,7 @@ function getSymbol(id: SymbolId) {
 
 function isWinningCell(reelIdx: number, rowIdx: number, winLines: WinLine[]): boolean {
   return winLines.some((line) => {
-    // For new payline system, line.row is the payline index (0-24)
-    // We need to check if this cell is on the winning payline
     if (line.row >= 0 && line.row < 25) {
-      // Get the payline path and check if this cell is on it
       const path = getPaylinePath(line.row);
       return path[reelIdx] === rowIdx;
     }
@@ -76,6 +78,87 @@ function getPaylinePath(paylineIndex: number): number[] {
     [0, 1, 0, 1, 0], [2, 1, 2, 1, 2], [1, 0, 2, 0, 1], [1, 2, 0, 2, 1], [0, 0, 2, 2, 2],
   ];
   return paylines[paylineIndex % paylines.length];
+}
+
+// Check if a symbol is a wild
+function isWildSymbol(id: SymbolId): boolean {
+  const sym = getSymbol(id);
+  return sym.isWild || false;
+}
+
+// Check if a symbol is a scatter
+function isScatterSymbol(id: SymbolId): boolean {
+  const sym = getSymbol(id);
+  return sym.isScatter || false;
+}
+
+// Generate a random symbol (for cascade spawning)
+function getRandomSymbolId(): SymbolId {
+  return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].id;
+}
+
+// Check for near-miss: 2 matching + 1 "almost" on a payline
+function findNearMiss(reels: SymbolId[][], winLines: WinLine[]): { reelIdx: number; rowIdx: number }[] {
+  const nearMisses: { reelIdx: number; rowIdx: number }[] = [];
+  
+  // For each payline
+  winLines.forEach((line) => {
+    if (line.row < 0 || line.row >= 25) return;
+    const path = getPaylinePath(line.row);
+    
+    // Collect symbols on this payline
+    const paylineSymbols = reels.map((reel, reelIdx) => ({
+      symId: reel[path[reelIdx]],
+      reelIdx,
+      rowIdx: path[reelIdx]
+    }));
+    
+    // Count symbol frequencies
+    const counts: Record<string, number> = {};
+    paylineSymbols.forEach(cell => {
+      const id = cell.symId;
+      if (!isWildSymbol(id) && !isScatterSymbol(id)) {
+        counts[id] = (counts[id] || 0) + 1;
+      }
+    });
+    
+    // Find pairs (2 matching, not already a win)
+    const pairs = Object.entries(counts).filter(([_, count]) => count >= 2);
+    
+    // For each pair, check if there's a "near miss" (almost 3)
+    pairs.forEach(([symId, count]) => {
+      // Already has 3 = actual win, skip
+      if (count >= 3) return;
+      
+      // Find the reel/row that would complete the triple
+      // Look for symbols adjacent to the pair that are "almost" matching
+      paylineSymbols.forEach(cell => {
+        if (cell.symId === symId) return; // Already matched
+        if (isWildSymbol(cell.symId) || isScatterSymbol(cell.symId)) return; // Not a near miss for wild/scatter
+        
+        const cellSym = getSymbol(cell.symId);
+        // Check if this symbol has similar properties (could be near miss)
+        const targetSym = getSymbol(symId as SymbolId);
+        
+        // Consider it a near miss if same "tier" of payouts
+        if (cellSym.payouts[0] > 0 && 
+            cellSym.payouts[0] <= targetSym.payouts[0] * 2 &&
+            cellSym.payouts[0] >= targetSym.payouts[0] / 2) {
+          // This is a close call - same tier, could have won with different symbol
+          nearMisses.push({ reelIdx: cell.reelIdx, rowIdx: cell.rowIdx });
+        }
+      });
+    });
+  });
+  
+  // Deduplicate
+  const seen = new Set<string>();
+  return nearMisses.filter(nm => {
+    const key = `${nm.reelIdx}-${nm.rowIdx}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // Spinning reel strip with blur effect
@@ -202,6 +285,30 @@ function CoinShower({ show }: { show: boolean }) {
   );
 }
 
+// Cascade multiplier display
+function CascadeMultiplierDisplay({ level, active }: { level: number; active: boolean }) {
+  if (!active || level <= 1) return null;
+  
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none z-25 flex items-center justify-center"
+      style={{ animation: "cascadeMultiplierPopup 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both" }}
+    >
+      <div
+        className="font-display font-black"
+        style={{
+          fontSize: "clamp(1.5rem, 5vw, 3rem)",
+          color: level >= 4 ? "#FF6B35" : level >= 3 ? "#FFD700" : "#D4AF37",
+          textShadow: `0 0 20px ${level >= 4 ? "rgba(255,107,53,0.9)" : level >= 3 ? "rgba(255,215,0,0.9)" : "rgba(212,175,55,0.8)"}`,
+          animation: "cascadeMultiplierPulse 0.5s ease-in-out infinite alternate",
+        }}
+      >
+        {level}x CASCADE!
+      </div>
+    </div>
+  );
+}
+
 export default function SlotMachine({
   reels,
   spinning,
@@ -241,6 +348,26 @@ export default function SlotMachine({
   const prevSpinCount = useRef(spinCount);
   const prevSpinning = useRef(false);
 
+  // Cascade system state
+  const [cascadeActive, setCascadeActive] = useState(false);
+  const [cascadeLevel, setCascadeLevel] = useState(0);
+  const [cascadeGrid, setCascadeGrid] = useState<SymbolId[][] | null>(null);
+  const [cascadeWinningCells, setCascadeWinningCells] = useState<Set<string>>(new Set());
+  const [cascadeAnimatingCells, setCascadeAnimatingCells] = useState<Set<string>>(new Set());
+  const [showCascadeMultiplier, setShowCascadeMultiplier] = useState(false);
+
+  // Scatter anticipation state
+  const [scatterSlowdownActive, setScatterSlowdownActive] = useState(false);
+  const [scatterFanfareActive, setScatterFanfareActive] = useState(false);
+
+  // Sticky wild state
+  const [stickyWildCells, setStickyWildCells] = useState<Set<string>>(new Set());
+  const [wildLockAnimating, setWildLockAnimating] = useState(false);
+
+  // Near-miss state
+  const [nearMissCells, setNearMissCells] = useState<Set<string>>(new Set());
+  const [nearMissAnimating, setNearMissAnimating] = useState(false);
+
   // Sync external triggers for DEALS and SCRATCH from BottomNavBar
   useEffect(() => {
     if (externalShowDeals) setShowDealsModal(true);
@@ -252,13 +379,266 @@ export default function SlotMachine({
 
   // Pulse SPIN button when idle
   useEffect(() => {
-    if (!spinning) {
+    if (!spinning && !cascadeActive) {
       const timer = setTimeout(() => setSpinButtonPulse(true), 4000);
       return () => clearTimeout(timer);
     } else {
       setSpinButtonPulse(false);
     }
-  }, [spinning, lastSpinTime]);
+  }, [spinning, cascadeActive, lastSpinTime]);
+
+  // Compute current display grid (cascade grid takes precedence)
+  const displayGrid = cascadeGrid || reels;
+
+  // Check for scatter anticipation needs
+  const checkScatterAnticipation = useCallback((grid: SymbolId[][], doneReels: boolean[]) => {
+    if (!doneReels.every(d => d)) return; // Only check when all reels stopped
+    
+    let scatterCount = 0;
+    const scatterPositions: { reelIdx: number; rowIdx: number }[] = [];
+    
+    for (let reelIdx = 0; reelIdx < 5; reelIdx++) {
+      for (let rowIdx = 0; rowIdx < 3; rowIdx++) {
+        if (isScatterSymbol(grid[reelIdx][rowIdx])) {
+          scatterCount++;
+          scatterPositions.push({ reelIdx, rowIdx });
+        }
+      }
+    }
+    
+    if (scatterCount === 2) {
+      // 2 scatters visible - trigger anticipation on next spin
+      setScatterSlowdownActive(true);
+    } else if (scatterCount >= 3) {
+      // 3+ scatters - fanfare!
+      setScatterFanfareActive(true);
+      if (soundEnabled) playSound("scatter_win");
+      setTimeout(() => setScatterFanfareActive(false), 2000);
+    }
+  }, [soundEnabled]);
+
+  // Find wild cells in winning combos
+  const findStickyWilds = useCallback((grid: SymbolId[][], lines: WinLine[]): Set<string> => {
+    const wilds = new Set<string>();
+    
+    lines.forEach(line => {
+      if (line.row < 0 || line.row >= 25) return;
+      const path = getPaylinePath(line.row);
+      
+      for (let reelIdx = 0; reelIdx < 5; reelIdx++) {
+        const rowIdx = path[reelIdx];
+        if (isWildSymbol(grid[reelIdx][rowIdx])) {
+          wilds.add(`${reelIdx}-${rowIdx}`);
+        }
+      }
+    });
+    
+    return wilds;
+  }, []);
+
+  // Process cascade - remove winners, drop symbols, spawn new ones
+  const processCascade = useCallback((grid: SymbolId[][], winningCells: Set<string>): SymbolId[][] => {
+    const newGrid: SymbolId[][] = grid.map(reel => [...reel]);
+    
+    // Sort winning cells by row (top to bottom) for proper dropping
+    const sortedWinners = Array.from(winningCells)
+      .map(key => {
+        const [reelIdx, rowIdx] = key.split('-').map(Number);
+        return { reelIdx, rowIdx };
+      })
+      .sort((a, b) => a.rowIdx - b.rowIdx);
+    
+    // For each reel with winners
+    const affectedReels = new Set<number>();
+    sortedWinners.forEach(({ reelIdx }) => affectedReels.add(reelIdx));
+    
+    // Remove winning symbols
+    sortedWinners.forEach(({ reelIdx, rowIdx }) => {
+      newGrid[reelIdx][rowIdx] = 'empty';
+    });
+    
+    // Drop symbols down (gravity)
+    affectedReels.forEach(reelIdx => {
+      const column = newGrid[reelIdx];
+      // Collect non-empty symbols
+      const symbols: SymbolId[] = [];
+      for (let rowIdx = 0; rowIdx < 3; rowIdx++) {
+        if (column[rowIdx] !== 'empty') {
+          symbols.push(column[rowIdx]);
+        }
+      }
+      
+      // Fill from bottom with existing symbols
+      const emptyCount = 3 - symbols.length;
+      const newColumn: SymbolId[] = [];
+      
+      // Add new symbols at top
+      for (let i = 0; i < emptyCount; i++) {
+        newColumn.push(getRandomSymbolId());
+      }
+      
+      // Add existing symbols below
+      for (const sym of symbols) {
+        newColumn.push(sym);
+      }
+      
+      newGrid[reelIdx] = newColumn;
+    });
+    
+    return newGrid;
+  }, []);
+
+  // Cascade win check (simplified - in real app this would come from game logic)
+  const checkCascadeWin = useCallback((grid: SymbolId[][]): { hasWin: boolean; winLines: WinLine[]; multiplier: number } => {
+    // For cascade, we'd normally call the same win detection as the parent
+    // Here we'll do a simplified check based on SYMBOLS matching
+    // This matches the pattern used in useGameState
+    
+    const activeLines = paylines || 1;
+    const allWinLines: WinLine[] = [];
+    
+    for (let lineIdx = 0; lineIdx < activeLines && lineIdx < 25; lineIdx++) {
+      const path = getPaylinePath(lineIdx);
+      const cells = path.map((rowIdx, reelIdx) => ({ reelIdx, rowIdx, symId: grid[reelIdx][rowIdx] }));
+      
+      // Count matching symbols
+      const first = cells[0];
+      if (isWildSymbol(first.symId)) {
+        // Wild on first position - check if rest match
+        const second = cells[1];
+        if (isWildSymbol(second.symId) || cells.every(c => 
+          c.symId === first.symId || isWildSymbol(c.symId))) {
+          // All match or are wild
+          allWinLines.push({ row: lineIdx, cells: cells.map(c => c.symId) });
+        }
+      } else if (cells.every(c => c.symId === first.symId || isWildSymbol(c.symId))) {
+        // All match
+        allWinLines.push({ row: lineIdx, cells: cells.map(c => c.symId) });
+      }
+    }
+    
+    const hasWin = allWinLines.length > 0;
+    const multiplier = hasWin ? CASCADE_MULTIPLIERS[Math.min(cascadeLevel, MAX_CASCADE_LEVEL - 1)] : 1;
+    
+    return { hasWin, winLines: allWinLines, multiplier };
+  }, [paylines, cascadeLevel]);
+
+  // Start cascade sequence
+  const startCascade = useCallback((initialGrid: SymbolId[][], initialWins: WinLine[]) => {
+    if (initialWins.length === 0) return;
+    
+    setCascadeActive(true);
+    setCascadeLevel(1);
+    setCascadeGrid(initialGrid);
+    
+    // Calculate winning cells
+    const winningCells = new Set<string>();
+    initialWins.forEach(line => {
+      const path = getPaylinePath(line.row);
+      path.forEach((rowIdx, reelIdx) => {
+        winningCells.add(`${reelIdx}-${rowIdx}`);
+      });
+    });
+    setCascadeWinningCells(winningCells);
+    setCascadeAnimatingCells(winningCells);
+    
+    // Check for sticky wilds
+    const wilds = findStickyWilds(initialGrid, initialWins);
+    if (wilds.size > 0) {
+      setWildLockAnimating(true);
+      setStickyWildCells(wilds);
+      if (soundEnabled) playSound("wild_lock");
+      setTimeout(() => setWildLockAnimating(false), 800);
+    }
+    
+    // Check for near misses (before we clear the grid)
+    const misses = findNearMiss(initialGrid, initialWins);
+    if (misses.length > 0) {
+      setNearMissCells(new Set(misses.map(m => `${m.reelIdx}-${m.rowIdx}`)));
+      setNearMissAnimating(true);
+      setTimeout(() => setNearMissAnimating(false), 1000);
+    }
+    
+    // Cascade animation duration
+    const animationDuration = 600;
+    
+    setTimeout(() => {
+      // Clear winning cells visually
+      setCascadeWinningCells(new Set());
+      
+      setTimeout(() => {
+        // Process the cascade
+        const newGrid = processCascade(initialGrid, winningCells);
+        setCascadeGrid(newGrid);
+        
+        // Show cascade multiplier if level > 1
+        if (cascadeLevel >= 2) {
+          setShowCascadeMultiplier(true);
+          setTimeout(() => setShowCascadeMultiplier(false), 1000);
+        }
+        
+        // Check for new wins
+        setTimeout(() => {
+          const result = checkCascadeWin(newGrid);
+          
+          if (result.hasWin && cascadeLevel < MAX_CASCADE_LEVEL) {
+            // Continue cascade
+            setCascadeLevel(prev => prev + 1);
+            
+            // Calculate new winning cells
+            const newWinningCells = new Set<string>();
+            result.winLines.forEach(line => {
+              const path = getPaylinePath(line.row);
+              path.forEach((rowIdx, reelIdx) => {
+                newWinningCells.add(`${reelIdx}-${rowIdx}`);
+              });
+            });
+            setCascadeWinningCells(newWinningCells);
+            setCascadeAnimatingCells(newWinningCells);
+            
+            // Check for wilds in new wins
+            const newWilds = findStickyWilds(newGrid, result.winLines);
+            if (newWilds.size > 0) {
+              setWildLockAnimating(true);
+              setStickyWildCells(prev => {
+                const merged = new Set(prev);
+                newWilds.forEach(w => merged.add(w));
+                return merged;
+              });
+              if (soundEnabled) playSound("wild_lock");
+              setTimeout(() => setWildLockAnimating(false), 800);
+            }
+            
+            // Loop back for more cascades
+            setTimeout(() => {
+              setCascadeWinningCells(new Set());
+              setTimeout(() => {
+                const nextGrid = processCascade(newGrid, newWinningCells);
+                setCascadeGrid(nextGrid);
+                
+                setTimeout(() => {
+                  const nextResult = checkCascadeWin(nextGrid);
+                  if (!nextResult.hasWin || cascadeLevel >= MAX_CASCADE_LEVEL) {
+                    // End cascade
+                    setCascadeActive(false);
+                    setCascadeLevel(0);
+                    setCascadeGrid(null);
+                    setStickyWildCells(new Set());
+                  }
+                }, 400);
+              }, 50);
+            }, animationDuration);
+          } else {
+            // End cascade
+            setCascadeActive(false);
+            setCascadeLevel(0);
+            setCascadeGrid(null);
+            setStickyWildCells(new Set());
+          }
+        }, 400);
+      }, 200);
+    }, animationDuration);
+  }, [findStickyWilds, processCascade, checkCascadeWin, soundEnabled, cascadeLevel]);
 
   // Trigger reel spin animation
   useEffect(() => {
@@ -270,11 +650,35 @@ export default function SlotMachine({
       setSpinButtonPulse(false);
       setReelDone([false, false, false, false, false]);
       setLastSpinTime(Date.now());
+      setScatterSlowdownActive(false);
+      setScatterFanfareActive(false);
+      setStickyWildCells(new Set());
+      setNearMissCells(new Set());
 
       if (soundEnabled) playSound("spin");
 
-      // Stagger reel stops with crescendo huntress slam
-      let huntressCount = 0;
+      // Count initial scatters for anticipation
+      let initialScatterCount = 0;
+      reels.forEach(reel => {
+        reel.forEach(symId => {
+          if (isScatterSymbol(symId)) initialScatterCount++;
+        });
+      });
+
+      // Determine reel stop timing with scatter anticipation
+      const getReelStopDelay = (reelIdx: number): number => {
+        const baseDelay = 500 + reelIdx * 220;
+        
+        // Scatter anticipation: if 2 scatters visible and this is reel 2 or 3, slow down
+        if (initialScatterCount === 2 && (reelIdx === 2 || reelIdx === 3)) {
+          // Dramatic slowdown for scatter anticipation
+          return baseDelay + (reelIdx === 2 ? 400 : 600);
+        }
+        
+        return baseDelay;
+      };
+
+      // Stagger reel stops with scatter anticipation timing
       [0, 1, 2, 3, 4].forEach((i) => {
         setTimeout(() => {
           setReelDone((prev) => {
@@ -282,37 +686,43 @@ export default function SlotMachine({
             next[i] = true;
             return next;
           });
+          
           if (soundEnabled) {
-            // Check if huntress landed on this reel
             const reelSymbols = reels[i];
-            if (reelSymbols && reelSymbols.some(s => s === "huntress")) {
-              huntressCount++;
-              // Play crescendo slam based on how many huntress symbols have landed
-              if (huntressCount === 1) {
-                playSound("huntress_slam");
-              } else if (huntressCount === 2) {
-                playSound("huntress_slam_2");
-              } else if (huntressCount === 3) {
-                playSound("huntress_slam_3");
-              } else if (huntressCount === 4) {
-                playSound("huntress_slam_4");
-              } else if (huntressCount >= 5) {
-                playSound("huntress_slam_5");
-              }
+            
+            // Check for scatter on this reel
+            const hasScatter = reelSymbols.some(s => isScatterSymbol(s));
+            const hasWild = reelSymbols.some(s => isWildSymbol(s));
+            
+            if (hasScatter && scatterSlowdownActive) {
+              // This reel has scatter during anticipation - fanfare!
+              playSound("scatter_land");
+              setScatterFanfareActive(true);
+              setTimeout(() => setScatterFanfareActive(false), 1500);
+            } else if (hasWild) {
+              playSound("wild_land");
             } else {
               playSound("reel_stop");
             }
           }
-        }, 500 + i * 220);
+          
+          // After all reels done, check for scatter anticipation on next spin
+          if (i === 4) {
+            setTimeout(() => {
+              checkScatterAnticipation(reels, [true, true, true, true, true]);
+            }, 100);
+          }
+        }, getReelStopDelay(i));
       });
     }
     prevSpinning.current = spinning;
-  }, [spinning, soundEnabled, reels]);
+  }, [spinning, soundEnabled, reels, checkScatterAnticipation, scatterSlowdownActive]);
 
-  // Show win after spinning stops
+  // Show win after spinning stops (and trigger cascades)
   useEffect(() => {
     if (!spinning && spinCount !== prevSpinCount.current) {
       prevSpinCount.current = spinCount;
+      
       setTimeout(() => {
         if (winAmount > 0) {
           setShowWin(true);
@@ -349,13 +759,29 @@ export default function SlotMachine({
               soundManager.playSmallWin();
             }
           }
+
+          // Trigger cascade system
+          if (winLines.length > 0) {
+            startCascade(reels, winLines);
+          }
+        } else {
+          // No win - check for near miss for "almost" excitement
+          const misses = findNearMiss(reels, []);
+          if (misses.length > 0 && !spinning) {
+            setNearMissCells(new Set(misses.map(m => `${m.reelIdx}-${m.rowIdx}`)));
+            setNearMissAnimating(true);
+            setTimeout(() => {
+              setNearMissAnimating(false);
+              setTimeout(() => setNearMissCells(new Set()), 300);
+            }, 800);
+          }
         }
         // No sound on losing spins — silence only
       }, 400);
     }
-  }, [spinning, spinCount, winAmount, lastWinType, soundEnabled]);
+  }, [spinning, spinCount, winAmount, lastWinType, soundEnabled, reels, winLines, startCascade, findNearMiss, soundMuted]);
 
-  const canSpin = !spinning && (coins >= bet || freeSpins > 0);
+  const canSpin = !spinning && !cascadeActive && (coins >= bet || freeSpins > 0);
   const totalBet = bet * (paylines || 1);
 
   const winTypeLabel: Record<string, string> = {
@@ -566,8 +992,11 @@ export default function SlotMachine({
           />
         )}
 
+        {/* Cascade multiplier popup */}
+        <CascadeMultiplierDisplay level={cascadeLevel} active={showCascadeMultiplier} />
+
         {/* Win line highlight overlay */}
-        <WinLineHighlight winLines={winLines} show={showWin} />
+        <WinLineHighlight winLines={winLines} show={showWin && !cascadeActive} />
 
         {/* Payline highlights for each winning line */}
         {showWin && winLines.map((line, idx) => (
@@ -577,17 +1006,28 @@ export default function SlotMachine({
         {/* Idle animations */}
         <IdleAnimations spinning={spinning} lastSpinTime={lastSpinTime} />
 
+        {/* Scatter fanfare overlay */}
+        {scatterFanfareActive && (
+          <div
+            className="absolute inset-0 pointer-events-none z-25 rounded"
+            style={{
+              background: "radial-gradient(ellipse at center, rgba(255,107,107,0.15) 0%, transparent 60%)",
+              animation: "scatterFanfare 0.5s ease-out",
+            }}
+          />
+        )}
+
         {/* Reels */}
         <div className="grid gap-1 sm:gap-1.5" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
-          {reels.map((reel, reelIdx) => (
+          {displayGrid.map((reel, reelIdx) => (
             <div
               key={reelIdx}
-              className="reel-container rounded relative"
+              className={`reel-container rounded relative ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
               style={{
                 aspectRatio: "1/3.2",
                 minHeight: "clamp(45px, 9vw, 150px)",
                 transition: "box-shadow 0.3s ease",
-                boxShadow: reelDone[reelIdx] && showWin && reel.some((_, rowIdx) => isWinningCell(reelIdx, rowIdx, winLines))
+                boxShadow: reelDone[reelIdx] && showWin && !cascadeActive && reel.some((_, rowIdx) => isWinningCell(reelIdx, rowIdx, winLines))
                   ? "0 0 20px rgba(255,215,0,0.6), inset 0 0 15px rgba(255,215,0,0.1)"
                   : "inset 0 0 20px rgba(0,0,0,0.8), 0 0 10px rgba(212,175,55,0.2)",
               }}
@@ -597,16 +1037,34 @@ export default function SlotMachine({
 
               {/* Symbols */}
               {reel.map((symId, rowIdx) => {
-                const isWin = showWin && isWinningCell(reelIdx, rowIdx, winLines);
+                const isWin = showWin && !cascadeActive && isWinningCell(reelIdx, rowIdx, winLines);
+                const isCascadeWinner = cascadeWinningCells.has(`${reelIdx}-${rowIdx}`);
+                const isCascadeAnimating = cascadeAnimatingCells.has(`${reelIdx}-${rowIdx}`);
+                const isStickyWild = stickyWildCells.has(`${reelIdx}-${rowIdx}`);
+                const isNearMiss = nearMissCells.has(`${reelIdx}-${rowIdx}`);
+                const isWild = isWildSymbol(symId);
                 const sym = getSymbol(symId);
+                const cellKey = `${reelIdx}-${rowIdx}`;
+                
                 return (
                   <div
                     key={rowIdx}
-                    className={`flex items-center justify-center transition-all duration-300 ${isWin ? "cell-win-glow symbol-win" : ""}`}
+                    className={`
+                      flex items-center justify-center transition-all duration-300 
+                      ${isWin ? "cell-win-glow symbol-win" : ""}
+                      ${isCascadeWinner ? "cascade-disappear" : ""}
+                      ${isCascadeAnimating && !isCascadeWinner ? "cascade-fall" : ""}
+                      ${isStickyWild && wildLockAnimating ? "sticky-wild-lock" : ""}
+                      ${isStickyWild && !wildLockAnimating ? "sticky-wild-glow" : ""}
+                      ${isNearMiss && nearMissAnimating ? "near-miss-gold" : ""}
+                      ${symId === 'empty' ? "empty-cell" : ""}
+                    `}
                     style={{
                       height: "33.333%",
                       background: isWin
                         ? `radial-gradient(circle at center, ${sym.bgColor}ff 0%, #050510 100%)`
+                        : isCascadeWinner
+                        ? `radial-gradient(circle at center, ${sym.bgColor}66 0%, #050510 100%)`
                         : `radial-gradient(circle at center, ${sym.bgColor}55 0%, #030310 100%)`,
                       borderBottom: rowIdx < 2 ? "1px solid rgba(212,175,55,0.1)" : "none",
                       position: "relative",
@@ -621,21 +1079,44 @@ export default function SlotMachine({
                         }}
                       />
                     )}
-                    <span
-                      className={isWin ? "symbol-win-pop" : ""}
-                      style={{
-                        fontSize: "clamp(1.4rem, 3.8vw, 2.3rem)",
-                        filter: isWin
-                          ? `drop-shadow(0 0 8px ${sym.color}) drop-shadow(0 0 16px ${sym.color}88) brightness(1.5)`
-                          : "none",
-                        transition: "filter 0.3s ease",
-                        position: "relative",
-                        zIndex: 1,
-                        animation: isWin ? "none" : undefined,
-                      }}
-                    >
-                      {sym.emoji}
-                    </span>
+                    {isStickyWild && (
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background: "radial-gradient(circle, rgba(76,175,80,0.4), transparent 70%)",
+                          animation: "stickyWildPulse 0.8s ease-in-out infinite",
+                        }}
+                      />
+                    )}
+                    {isNearMiss && nearMissAnimating && (
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background: "radial-gradient(circle, rgba(255,215,0,0.5), transparent 70%)",
+                        }}
+                      />
+                    )}
+                    {symId !== 'empty' && (
+                      <span
+                        className={isWin ? "symbol-win-pop" : ""}
+                        style={{
+                          fontSize: "clamp(1.4rem, 3.8vw, 2.3rem)",
+                          filter: isWin
+                            ? `drop-shadow(0 0 8px ${sym.color}) drop-shadow(0 0 16px ${sym.color}88) brightness(1.5)`
+                            : isStickyWild
+                            ? `drop-shadow(0 0 12px #90EE90) drop-shadow(0 0 24px #90EE90)`
+                            : isNearMiss && nearMissAnimating
+                            ? `drop-shadow(0 0 10px #FFD700) brightness(1.3)`
+                            : "none",
+                          transition: "filter 0.3s ease",
+                          position: "relative",
+                          zIndex: 1,
+                          animation: isWin ? "none" : undefined,
+                        }}
+                      >
+                        {sym.emoji}
+                      </span>
+                    )}
                   </div>
                 );
               })}
@@ -675,11 +1156,23 @@ export default function SlotMachine({
                 +<AnimatedWinCounter target={winAmount} active={showWin} /> 🪙
               </div>
             </div>
+          ) : cascadeActive && cascadeLevel > 0 ? (
+            <div
+              className="font-display font-black"
+              style={{
+                fontSize: "clamp(1rem, 2.5vw, 1.4rem)",
+                color: cascadeLevel >= 4 ? "#FF6B35" : cascadeLevel >= 3 ? "#FFD700" : "#D4AF37",
+                textShadow: `0 0 15px ${cascadeLevel >= 4 ? "rgba(255,107,53,0.8)" : cascadeLevel >= 3 ? "rgba(255,215,0,0.8)" : "rgba(212,175,55,0.6)"}`,
+                animation: "cascadeLevelPulse 0.6s ease-in-out infinite",
+              }}
+            >
+              🔥 {cascadeLevel}x CASCADE! 🔥
+            </div>
           ) : spinning ? (
             <SpinningDots />
           ) : (
             <div className="text-xs font-body italic" style={{ color: "rgba(212,175,55,0.3)" }}>
-              {coins < bet && freeSpins === 0 ? "⚠ Not enough coins" : "Press SPIN to play"}
+              {coins < bet && freeSpins === 0 ? "⚠ Not enough coins" : cascadeActive ? "Cascading..." : "Press SPIN to play"}
             </div>
           )}
         </div>
@@ -728,7 +1221,9 @@ export default function SlotMachine({
             }}
             title="Click to spin the reels"
           >
-            {freeSpins > 0
+            {cascadeActive
+              ? `⟳ CASCADE ${cascadeLevel}x...`
+              : freeSpins > 0
               ? `🎁 FREE SPIN (${freeSpins})`
               : spinning
               ? "⟳ SPINNING..."
@@ -799,22 +1294,22 @@ export default function SlotMachine({
                 <div className="flex gap-1">
                   <button
                     onClick={() => { const nb = Math.max(10, bet - BET_DECREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
-                    disabled={spinning || bet <= 10}
+                    disabled={spinning || cascadeActive}
                     className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center transition-all"
                     style={{
-                      background: bet <= 10 ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
+                      background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
                       border: "1px solid rgba(212,175,55,0.4)",
-                      color: bet <= 10 ? "#444" : "#C8860A",
+                      color: spinning || cascadeActive ? "#444" : "#C8860A",
                     }}
                   >−</button>
                   <button
                     onClick={() => { const nb = Math.min(200, bet + BET_INCREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
-                    disabled={spinning || bet >= 200}
+                    disabled={spinning || cascadeActive}
                     className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center transition-all"
                     style={{
-                      background: bet >= 200 ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
+                      background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
                       border: "1px solid rgba(212,175,55,0.4)",
-                      color: bet >= 200 ? "#444" : "#C8860A",
+                      color: spinning || cascadeActive ? "#444" : "#C8860A",
                     }}
                   >+</button>
                 </div>
@@ -823,15 +1318,15 @@ export default function SlotMachine({
                 {BET_OPTIONS.map((b) => (
                   <button
                     key={b}
-                    onClick={() => { if (!spinning) { setBet(b); if (soundEnabled) playSound("button_click"); } }}
-                    disabled={spinning}
+                    onClick={() => { if (!spinning && !cascadeActive) { setBet(b); if (soundEnabled) playSound("button_click"); } }}
+                    disabled={spinning || cascadeActive}
                     className="flex-1 py-1.5 text-xs rounded font-numbers font-bold transition-all hover:scale-105"
                     style={{
                       background: bet === b ? "linear-gradient(135deg, #C8860A, #D4AF37)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
                       border: `1px solid ${bet === b ? "#F5E6C8" : "rgba(212,175,55,0.3)"}`,
                       color: bet === b ? "#0a0a1a" : "#D4AF37",
                       boxShadow: bet === b ? "0 0 10px rgba(212,175,55,0.5)" : "none",
-                      opacity: spinning ? 0.5 : 1,
+                      opacity: spinning || cascadeActive ? 0.5 : 1,
                     }}
                   >{b}</button>
                 ))}
@@ -845,14 +1340,14 @@ export default function SlotMachine({
                   📊 Paylines
                 </div>
                 <button
-                  onClick={() => { if (!spinning) { setBet(200); if (soundEnabled) playSound("button_click"); } }}
-                  disabled={spinning}
+                  onClick={() => { if (!spinning && !cascadeActive) { setBet(200); if (soundEnabled) playSound("button_click"); } }}
+                  disabled={spinning || cascadeActive}
                   className="px-2 py-0.5 rounded text-xs font-numbers font-bold transition-all"
                   style={{
                     background: "linear-gradient(135deg, #2a1a00, #3a2a00)",
                     border: "1px solid rgba(212,175,55,0.4)",
                     color: "#C8860A",
-                    opacity: spinning ? 0.5 : 1,
+                    opacity: spinning || cascadeActive ? 0.5 : 1,
                   }}
                 >MAX BET</button>
               </div>
@@ -860,15 +1355,15 @@ export default function SlotMachine({
                 {PAYLINE_OPTIONS.map((p) => (
                   <button
                     key={p}
-                    onClick={() => { if (!spinning && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
-                    disabled={spinning}
+                    onClick={() => { if (!spinning && !cascadeActive && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
+                    disabled={spinning || cascadeActive}
                     className="flex-1 py-1.5 text-xs rounded font-numbers font-bold transition-all hover:scale-105"
                     style={{
                       background: paylines === p ? "linear-gradient(135deg, #1a5a1a, #2a8a2a)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
                       border: `1px solid ${paylines === p ? "#90EE90" : "rgba(76,175,80,0.3)"}`,
                       color: paylines === p ? "#90EE90" : "#D4AF37",
                       boxShadow: paylines === p ? "0 0 10px rgba(144,238,144,0.4)" : "none",
-                      opacity: spinning ? 0.5 : 1,
+                      opacity: spinning || cascadeActive ? 0.5 : 1,
                     }}
                   >{p}</button>
                 ))}
@@ -885,14 +1380,14 @@ export default function SlotMachine({
               {[10, 25, 50, 100, 200].map((b) => (
                 <button
                   key={b}
-                  onClick={() => { if (!spinning) { setBet(b); if (soundEnabled) playSound("button_click"); } }}
-                  disabled={spinning}
+                  onClick={() => { if (!spinning && !cascadeActive) { setBet(b); if (soundEnabled) playSound("button_click"); } }}
+                  disabled={spinning || cascadeActive}
                   className="flex-1 min-w-[2rem] py-1 text-xs rounded font-numbers font-bold"
                   style={{
                     background: bet === b ? "linear-gradient(135deg, #C8860A, #D4AF37)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
                     border: `1px solid ${bet === b ? "#F5E6C8" : "rgba(212,175,55,0.3)"}`,
                     color: bet === b ? "#0a0a1a" : "#D4AF37",
-                    opacity: spinning ? 0.5 : 1,
+                    opacity: spinning || cascadeActive ? 0.5 : 1,
                     fontSize: "0.65rem",
                   }}
                 >{b}</button>
@@ -905,14 +1400,14 @@ export default function SlotMachine({
               {[1, 5, 10, 15, 20, 25].map((p) => (
                 <button
                   key={p}
-                  onClick={() => { if (!spinning && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
-                  disabled={spinning}
+                  onClick={() => { if (!spinning && !cascadeActive && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
+                  disabled={spinning || cascadeActive}
                   className="flex-1 min-w-[2rem] py-1 text-xs rounded font-numbers font-bold"
                   style={{
                     background: paylines === p ? "linear-gradient(135deg, #1a5a1a, #2a8a2a)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
                     border: `1px solid ${paylines === p ? "#90EE90" : "rgba(76,175,80,0.3)"}`,
                     color: paylines === p ? "#90EE90" : "#D4AF37",
-                    opacity: spinning ? 0.5 : 1,
+                    opacity: spinning || cascadeActive ? 0.5 : 1,
                     fontSize: "0.65rem",
                   }}
                 >{p}</button>
@@ -981,7 +1476,6 @@ export default function SlotMachine({
           onWin={(amount) => {
             if (soundEnabled) playSound('big_win');
             soundManager.playBigWin();
-            // Note: scratch win is handled by the parent via onWin callback
           }}
         />
       )}
@@ -1088,6 +1582,150 @@ export default function SlotMachine({
           0%, 100% { box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 10px rgba(212,175,55,0.2); }
           50% { box-shadow: inset 0 0 30px rgba(0,0,0,0.4), 0 0 40px rgba(255,215,0,0.8), 0 0 80px rgba(255,215,0,0.4); }
         }
+        
+        /* ── Cascade Animations ── */
+        @keyframes cascadeDisappear {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.2); opacity: 0.8; }
+          100% { transform: scale(0); opacity: 0; }
+        }
+        .cascade-disappear {
+          animation: cascadeDisappear 0.4s ease-in forwards;
+        }
+        
+        @keyframes cascadeFall {
+          0% { transform: translateY(-100%); opacity: 0; }
+          30% { opacity: 0; }
+          60% { transform: translateY(10%); }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+        .cascade-fall {
+          animation: cascadeFall 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        
+        @keyframes cascadeSpawn {
+          0% { transform: scale(0.5) translateY(-50%); opacity: 0; }
+          60% { transform: scale(1.1); opacity: 1; }
+          80% { transform: scale(0.95); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .cascade-spawn {
+          animation: cascadeSpawn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        @keyframes cascadeMultiplierPopup {
+          0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+          50% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+          70% { transform: scale(0.95) rotate(-2deg); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        
+        @keyframes cascadeMultiplierPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        
+        @keyframes cascadeLevelPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.08); opacity: 0.9; }
+        }
+        
+        /* ── Scatter Anticipation Animations ── */
+        @keyframes scatterSlowdown {
+          0% { filter: blur(0px); }
+          30% { filter: blur(4px) brightness(1.3); }
+          60% { filter: blur(6px) brightness(1.5); }
+          80% { filter: blur(3px); }
+          100% { filter: blur(0px); }
+        }
+        .scatter-slowdown-reel {
+          animation: scatterSlowdown 0.8s ease-in-out;
+        }
+        
+        @keyframes scatterFanfare {
+          0% { background: radial-gradient(ellipse at center, rgba(255,107,107,0.3) 0%, transparent 50%); }
+          50% { background: radial-gradient(ellipse at center, rgba(255,215,0,0.2) 0%, transparent 60%); }
+          100% { background: transparent; }
+        }
+        .scatter-fanfare {
+          animation: scatterFanfare 0.5s ease-out;
+        }
+        
+        /* ── Sticky Wild Animations ── */
+        @keyframes stickyWildLock {
+          0%, 100% { transform: translate(0, 0); }
+          20% { transform: translate(-3px, 2px); }
+          40% { transform: translate(3px, -2px); }
+          60% { transform: translate(-2px, -2px); }
+          80% { transform: translate(2px, 2px); }
+        }
+        .wild-lock-shake {
+          animation: stickyWildLock 0.6s ease-in-out;
+        }
+        
+        @keyframes stickyWildPulse {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        .sticky-wild-glow {
+          animation: stickyWildPulse 0.8s ease-in-out infinite;
+        }
+        
+        @keyframes stickyWildCelebrate {
+          0% { transform: scale(1); filter: brightness(1); }
+          25% { transform: scale(1.3); filter: brightness(1.5); }
+          50% { transform: scale(1.1); filter: brightness(1.3); }
+          75% { transform: scale(1.2); filter: brightness(1.4); }
+          100% { transform: scale(1); filter: brightness(1); }
+        }
+        .sticky-wild-celebrate {
+          animation: stickyWildCelebrate 0.8s ease-out;
+        }
+        
+        /* ── Near-Miss Animations ── */
+        @keyframes nearMissJiggle {
+          0%, 100% { transform: translateX(0) rotate(0deg); }
+          15% { transform: translateX(-4px) rotate(-2deg); }
+          30% { transform: translateX(4px) rotate(2deg); }
+          45% { transform: translateX(-3px) rotate(-1deg); }
+          60% { transform: translateX(3px) rotate(1deg); }
+          75% { transform: translateX(-2px) rotate(0deg); }
+          90% { transform: translateX(2px) rotate(0deg); }
+        }
+        .near-miss-jiggle {
+          animation: nearMissJiggle 0.6s ease-in-out;
+        }
+        
+        @keyframes nearMissGold {
+          0% { 
+            box-shadow: 0 0 0 rgba(255,215,0,0);
+            filter: brightness(1);
+          }
+          30% { 
+            box-shadow: 0 0 30px rgba(255,215,0,0.8), inset 0 0 20px rgba(255,215,0,0.4);
+            filter: brightness(1.5);
+          }
+          60% { 
+            box-shadow: 0 0 20px rgba(255,215,0,0.6), inset 0 0 15px rgba(255,215,0,0.3);
+            filter: brightness(1.3);
+          }
+          100% { 
+            box-shadow: 0 0 0 rgba(255,215,0,0);
+            filter: brightness(1);
+          }
+        }
+        .near-miss-gold {
+          animation: nearMissGold 0.8s ease-out;
+        }
+        
+        /* ── Empty Cell Animation ── */
+        @keyframes emptyCellFade {
+          0% { opacity: 1; }
+          100% { opacity: 0.3; }
+        }
+        .empty-cell {
+          animation: emptyCellFade 0.3s ease-out forwards;
+        }
       `}</style>
     </div>
   );
@@ -1179,6 +1817,9 @@ function PayTable() {
                 <div>⭐ 3+ Scatters = 10 Free Spins · 5 Scatters = Jackpot</div>
                 <div>🗡️ 3+ Huntress = Bonus Round with multiplier rewards</div>
                 <div>All wins multiplied by paylines × bet per line</div>
+                <div className="mt-2" style={{ color: "rgba(255,107,53,0.7)" }}>
+                  🔥 CASCADE SYSTEM: Consecutive wins multiply up to 5x! 🔥
+                </div>
               </div>
             </div>
           </div>

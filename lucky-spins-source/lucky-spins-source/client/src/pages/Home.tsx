@@ -21,6 +21,12 @@ import LoginPromptModal from "@/components/LoginPromptModal";
 import DailyBonusModal from "@/components/DailyBonusModal";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useGameState } from "@/hooks/useGameState";
+import { useRetention } from "@/hooks/useRetention";
+import { DailyLoginBonus } from "@/components/DailyLoginBonus";
+import { DailyStreakDisplay } from "@/components/DailyStreakDisplay";
+import { LevelUp } from "@/components/LevelUp";
+import { Missions } from "@/components/Missions";
+import { SessionTimeReward } from "@/components/SessionTimeReward";
 
 export default function Home() {
   const {
@@ -69,6 +75,29 @@ export default function Home() {
   const [dailyBonusStreak, setDailyBonusStreak] = useState(1);
   const { isAuthenticated } = useAuth();
 
+  // Retention hooks
+  const {
+    currentStreak,
+    level: retentionLevel,
+    xp: retentionXp,
+    xpToNext: retentionXpToNext,
+    lifetimeXp,
+    missions,
+    todayClaimed,
+    shouldShowDailyLogin,
+    claimDailyBonus,
+    recordSpin,
+    recordBonus,
+    recordSpinWin,
+    addXp,
+    claimMissionReward,
+    checkSessionReward,
+  } = useRetention();
+
+  const [showDailyLoginBonus, setShowDailyLoginBonus] = useState(false);
+  const [showMissions, setShowMissions] = useState(false);
+  const [showSessionReward, setShowSessionReward] = useState(false);
+
   const handleCurrencyChange = (currency: CurrencyType) => {
     // If switching to green (Sweeps), check if user is authenticated
     if (currency === "green") {
@@ -99,19 +128,44 @@ export default function Home() {
     jackpotsHit: 0,
   });
 
-  // Show daily bonus on first session of the day (simple version - every 3 hours)
+  // Show daily login bonus modal on app open (once per day)
   useEffect(() => {
-    const lastBonus = localStorage.getItem("lastDailyBonus");
-    const now = Date.now();
-    const threeHours = 3 * 60 * 60 * 1000;
-    
-    if (!lastBonus || now - parseInt(lastBonus) > threeHours) {
-      // Simulate a streak (in production, this would come from the server)
-      const storedStreak = parseInt(localStorage.getItem("dailyStreak") || "1");
-      setDailyBonusStreak(Math.min(storedStreak, 7));
-      setShowDailyBonus(true);
+    if (shouldShowDailyLogin) {
+      // Small delay for UX
+      const t = setTimeout(() => setShowDailyLoginBonus(true), 1500);
+      return () => clearTimeout(t);
     }
-  }, []);
+  }, [shouldShowDailyLogin]);
+
+  // Check for 30-min session reward periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (checkSessionReward()) {
+        setShowSessionReward(true);
+      }
+    }, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, [checkSessionReward]);
+
+  // Record game events for missions and XP
+  useEffect(() => {
+    if (spinCount > 0) {
+      recordSpin();
+    }
+  }, [spinCount, recordSpin]);
+
+  useEffect(() => {
+    if (lastWinType === "HUNTRESS_BONUS") {
+      recordBonus();
+    }
+  }, [lastWinType, recordBonus]);
+
+  useEffect(() => {
+    if (winAmount > 0) {
+      recordSpinWin(winAmount);
+      addXp(Math.floor(winAmount / 10));
+    }
+  }, [winAmount, recordSpinWin, addXp]);
 
   useEffect(() => {
     if (lastWinType === "JACKPOT") {
@@ -274,6 +328,51 @@ export default function Home() {
           }}
         />
       )}
+      
+      {/* Retention overlays */}
+      {showDailyLoginBonus && (
+        <DailyLoginBonus
+          currentStreak={currentStreak}
+          onClaim={() => {
+            const reward = claimDailyBonus();
+            if (selectedCurrency === 'gold') {
+              setGoldCoins((c) => c + reward);
+            } else {
+              setGreenCoins((c) => c + reward);
+            }
+            setShowDailyLoginBonus(false);
+          }}
+        />
+      )}
+      
+      {showMissions && (
+        <Missions
+          missions={missions}
+          onClaimReward={(id) => {
+            const reward = claimMissionReward(id);
+            if (selectedCurrency === 'gold') {
+              setGoldCoins((c) => c + reward);
+            } else {
+              setGreenCoins((c) => c + reward);
+            }
+            return reward;
+          }}
+          onClose={() => setShowMissions(false)}
+        />
+      )}
+      
+      {showSessionReward && (
+        <SessionTimeReward
+          onClaim={(coins) => {
+            if (selectedCurrency === 'gold') {
+              setGoldCoins((c) => c + coins);
+            } else {
+              setGreenCoins((c) => c + coins);
+            }
+          }}
+          onDismiss={() => setShowSessionReward(false)}
+        />
+      )}
       <LoginPromptModal isOpen={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
       {bonusGameType && (
         <BonusGameOverlay
@@ -307,9 +406,21 @@ export default function Home() {
         }}
         onDeals={() => setExternalShowDeals(true)}
         onScratch={() => setExternalShowScratch(true)}
+        onMissions={() => setShowMissions(true)}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
       />
+      
+      {/* Streak display panel - accessible from game area */}
+      <div className="absolute top-20 right-2 z-20 w-40">
+        <DailyStreakDisplay
+          currentStreak={currentStreak}
+          level={retentionLevel}
+          xp={retentionXp}
+          xpToNext={retentionXpToNext}
+          lifetimeXp={lifetimeXp}
+        />
+      </div>
 
       {/* App Footer - only show on desktop when not playing */}
       <div className="hidden md:block"><AppFooter /></div>

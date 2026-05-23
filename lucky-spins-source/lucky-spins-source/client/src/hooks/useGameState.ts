@@ -421,8 +421,16 @@ export function useGameState() {
       setFreeSpins((f) => f + FREE_SPIN_COUNT);
     }
 
-    // Huntress bonus trigger
-    if (isHuntressBonus) {
+    // Scatter bonus trigger: 4+ scatters trigger lucky wheel bonus (in addition to any free spins)
+    if (scatters >= 4) {
+      // 30% chance of bonus game on 4 scatters, guaranteed on 5+
+      if (scatters >= 5 || Math.random() < 0.3) {
+        setBonusGameType('lucky_spin' as BonusGameType);
+      }
+    }
+
+    // Huntress bonus trigger (takes precedence if both trigger)
+    if (isHuntressBonus && !bonusGameType) {
       setBonusGameType('huntress_bonus' as BonusGameType);
     }
 

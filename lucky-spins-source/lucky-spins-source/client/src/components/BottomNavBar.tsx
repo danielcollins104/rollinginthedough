@@ -10,6 +10,7 @@ interface Props {
   onRules: () => void;
   onDeals: () => void;
   onScratch: () => void;
+  onMissions: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
 }
@@ -27,6 +28,7 @@ export default function BottomNavBar({
   onRules,
   onDeals,
   onScratch,
+  onMissions,
   soundEnabled,
   onToggleSound,
 }: Props) {
@@ -47,6 +49,11 @@ export default function BottomNavBar({
       label: "Shop",
       onClick: onShop,
       highlight: true,
+    },
+    {
+      icon: "📋",
+      label: "Missions",
+      onClick: onMissions,
     },
     {
       icon: "🎰",
