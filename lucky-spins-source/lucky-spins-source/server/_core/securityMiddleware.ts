@@ -35,7 +35,10 @@ export const createRateLimiters = () => {
     message: "Too many payment attempts, please try again later.",
     keyGenerator: (req) => {
       // Use user ID if authenticated, otherwise IP
-      return (req as any).user?.id?.toString() || req.ip || "unknown";
+      const userId = (req as any).user?.id?.toString();
+      if (userId) return userId;
+      const ip = typeof req.ip === 'string' ? req.ip : (req.socket?.remoteAddress ?? 'unknown');
+      return ip;
     },
   });
 
@@ -45,7 +48,10 @@ export const createRateLimiters = () => {
     max: 60,
     message: "Spinning too fast, please slow down.",
     keyGenerator: (req) => {
-      return (req as any).user?.id?.toString() || req.ip || "unknown";
+      const userId = (req as any).user?.id?.toString();
+      if (userId) return userId;
+      const ip = typeof req.ip === 'string' ? req.ip : (req.socket?.remoteAddress ?? 'unknown');
+      return ip;
     },
   });
 
