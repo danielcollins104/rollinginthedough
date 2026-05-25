@@ -26,6 +26,7 @@ export const createRateLimiters = () => {
     max: 5,
     message: "Too many login attempts, please try again later.",
     skipSuccessfulRequests: true,
+    validate: { keyGeneratorIpFallback: false },
   });
 
   // Payment limiter: 10 payments per hour per user
@@ -40,6 +41,7 @@ export const createRateLimiters = () => {
       const ip = typeof req.ip === 'string' ? req.ip : (req.socket?.remoteAddress ?? 'unknown');
       return ip;
     },
+    validate: { keyGeneratorIpFallback: false },
   });
 
   // Game spin limiter: 60 spins per minute per user (prevents automation)
@@ -53,6 +55,7 @@ export const createRateLimiters = () => {
       const ip = typeof req.ip === 'string' ? req.ip : (req.socket?.remoteAddress ?? 'unknown');
       return ip;
     },
+    validate: { keyGeneratorIpFallback: false },
   });
 
   return {
