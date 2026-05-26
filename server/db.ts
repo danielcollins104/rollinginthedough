@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { InsertUser, users, coinPackages, coinPurchases, playerStats, InsertCoinPurchase, InsertPlayerStats, dailyStreaks, achievements, DailyStreak, InsertDailyStreak, Achievement, InsertAchievement } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -69,7 +69,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
