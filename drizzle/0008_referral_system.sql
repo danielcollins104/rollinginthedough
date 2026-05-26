@@ -1,43 +1,43 @@
--- Referral System Tables
+-- Referral System Tables (PostgreSQL)
 -- Supports affiliate/referral program with reward tracking
 
 -- Referral codes (one per user, 8-char uppercase alphanumeric)
-CREATE TABLE IF NOT EXISTS `referralCodes` (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `userId` int NOT NULL UNIQUE,
-  `code` varchar(16) NOT NULL UNIQUE,
-  `createdAt` timestamp DEFAULT NOW() NOT NULL
+CREATE TABLE IF NOT EXISTS "referralCodes" (
+  "id" SERIAL PRIMARY KEY,
+  "userId" INTEGER NOT NULL UNIQUE,
+  "code" VARCHAR(16) NOT NULL UNIQUE,
+  "createdAt" TIMESTAMP DEFAULT NOW() NOT NULL
 );
 
 -- Referral relationships (created when referee signs up)
-CREATE TABLE IF NOT EXISTS `referrals` (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `referrerId` int NOT NULL,
-  `refereeId` int NOT NULL,
-  `codeUsed` varchar(16) NOT NULL,
-  `status` enum('signed_up', 'earned_rewards') DEFAULT 'signed_up' NOT NULL,
-  `createdAt` timestamp DEFAULT NOW() NOT NULL
+CREATE TABLE IF NOT EXISTS "referrals" (
+  "id" SERIAL PRIMARY KEY,
+  "referrerId" INTEGER NOT NULL,
+  "refereeId" INTEGER NOT NULL,
+  "codeUsed" VARCHAR(16) NOT NULL,
+  "status" VARCHAR(20) DEFAULT 'signed_up' NOT NULL,
+  "createdAt" TIMESTAMP DEFAULT NOW() NOT NULL
 );
 
 -- Referral rewards earned by referrer
-CREATE TABLE IF NOT EXISTS `referralRewards` (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `referrerId` int NOT NULL,
-  `refereeId` int NOT NULL,
-  `referralId` int NOT NULL,
-  `rewardType` enum('signup_bonus', 'first_1000_coins', 'first_purchase', 'active_30_days') NOT NULL,
-  `coinsAwarded` int NOT NULL,
-  `status` enum('pending', 'claimed') DEFAULT 'pending' NOT NULL,
-  `createdAt` timestamp DEFAULT NOW() NOT NULL,
-  `claimedAt` timestamp
+CREATE TABLE IF NOT EXISTS "referralRewards" (
+  "id" SERIAL PRIMARY KEY,
+  "referrerId" INTEGER NOT NULL,
+  "refereeId" INTEGER NOT NULL,
+  "referralId" INTEGER NOT NULL,
+  "rewardType" VARCHAR(30) NOT NULL,
+  "coinsAwarded" INTEGER NOT NULL,
+  "status" VARCHAR(20) DEFAULT 'pending' NOT NULL,
+  "createdAt" TIMESTAMP DEFAULT NOW() NOT NULL,
+  "claimedAt" TIMESTAMP
 );
 
 -- Track referee milestones for reward triggering
-CREATE TABLE IF NOT EXISTS `referralMilestones` (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `referralId` int NOT NULL UNIQUE,
-  `earned1000Coins` int DEFAULT 0 NOT NULL,
-  `madeFirstPurchase` int DEFAULT 0 NOT NULL,
-  `active30Days` int DEFAULT 0 NOT NULL,
-  `createdAt` timestamp DEFAULT NOW() NOT NULL
+CREATE TABLE IF NOT EXISTS "referralMilestones" (
+  "id" SERIAL PRIMARY KEY,
+  "referralId" INTEGER NOT NULL UNIQUE,
+  "earned1000Coins" INTEGER DEFAULT 0 NOT NULL,
+  "madeFirstPurchase" INTEGER DEFAULT 0 NOT NULL,
+  "active30Days" INTEGER DEFAULT 0 NOT NULL,
+  "createdAt" TIMESTAMP DEFAULT NOW() NOT NULL
 );
