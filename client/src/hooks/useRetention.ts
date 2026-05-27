@@ -169,27 +169,32 @@ export function useRetention() {
     }
     
     // Check streak continuity
-    let currentStreak = saved.currentStreak;
-    let streakDays = [...saved.streakDays];
+    let currentStreak = saved.currentStreak ?? 0;
+    let streakDays = saved.streakDays ?? [];
     
     if (saved.lastLoginDate === yesterday) {
-      // User was here yesterday, streak continues (if they claimed yesterday)
-      // If they didn't claim, streak stays but they need to claim today
+      // User was here yesterday, streak continues
     } else if (saved.lastLoginDate !== today) {
       // Missed a day - reset streak
       currentStreak = 0;
       streakDays = [];
     }
     
-    // Check if today's bonus was already claimed
-    const alreadyClaimedToday = saved.lastClaimDate === today;
-    
+    // Ensure all required fields have default values to prevent undefined errors
     return {
-      ...saved,
-      currentStreak: alreadyClaimedToday ? currentStreak : currentStreak,
-      missions: needsMissionReset ? generateDailyMissions() : saved.missions,
-      lastMissionReset: needsMissionReset ? today : saved.lastMissionReset,
+      streakDays,
+      currentStreak,
+      lastLoginDate: saved.lastLoginDate ?? null,
+      lastClaimDate: saved.lastClaimDate ?? null,
+      level: saved.level ?? 1,
+      xp: saved.xp ?? 0,
+      xpToNext: saved.xpToNext ?? xpForLevel(saved.level ?? 1),
+      lifetimeXp: saved.lifetimeXp ?? 0,
+      missions: needsMissionReset ? generateDailyMissions() : (saved.missions ?? generateDailyMissions()),
+      lastMissionReset: needsMissionReset ? today : (saved.lastMissionReset ?? today),
       sessionStartTime: saved.sessionStartTime ?? Date.now(),
+      lastSessionRewardTime: saved.lastSessionRewardTime ?? null,
+      hasShown30MinReward: saved.hasShown30MinReward ?? false,
     };
   });
   
