@@ -4,6 +4,7 @@
  */
 
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useCallback } from "react";
 
 export interface ReferralStats {
@@ -60,22 +61,25 @@ function normalizeStats(serverStats: {
 }
 
 export function useReferral(): UseReferralReturn {
-  // Fetch referral code
+  const { isAuthenticated } = useAuth();
+
+  // Only fetch referral data when authenticated
   const codeQuery = trpc.referral.getCode.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: isAuthenticated,
   });
 
-  // Fetch referral stats
   const statsQuery = trpc.referral.getStats.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: isAuthenticated,
   });
 
-  // Fetch referrals list
   const referralsQuery = trpc.referral.getReferrals.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: isAuthenticated,
   });
 
   // Claim a referral code (when user enters a friend's code)
