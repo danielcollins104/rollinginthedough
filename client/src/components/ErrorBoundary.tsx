@@ -18,7 +18,19 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    console.error("[ErrorBoundary] Caught error:", error);
+    try {
+      localStorage.setItem("ritd_last_error", JSON.stringify({
+        message: error.message,
+        stack: error.stack,
+        time: Date.now(),
+      }));
+    } catch {}
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[ErrorBoundary] componentDidCatch:", error, errorInfo);
   }
 
   render() {

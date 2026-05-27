@@ -8,54 +8,63 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
-const queryClient = new QueryClient();
+console.log("[main.tsx] Starting app initialization...");
 
-const redirectToLoginIfUnauthorized = (error: unknown) => {
-  if (!(error instanceof TRPCClientError)) return;
-  if (typeof window === "undefined") return;
+try {
+  const queryClient = new QueryClient();
 
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
+  const redirectToLoginIfUnauthorized = (error: unknown) => {
+    if (!(error instanceof TRPCClientError)) return;
+    if (typeof window === "undefined") return;
 
-  if (!isUnauthorized) return;
+    const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
 
-  window.location.href = getLoginUrl();
-};
+    if (!isUnauthorized) return;
 
-queryClient.getQueryCache().subscribe(event => {
-  if (event.type === "updated" && event.action.type === "error") {
-    const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
-  }
-});
+    window.location.href = getLoginUrl();
+  };
 
-queryClient.getMutationCache().subscribe(event => {
-  if (event.type === "updated" && event.action.type === "error") {
-    const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
-  }
-});
+  queryClient.getQueryCache().subscribe(event => {
+    if (event.type === "updated" && event.action.type === "error") {
+      const error = event.query.state.error;
+      redirectToLoginIfUnauthorized(error);
+      console.error("[API Query Error]", error);
+    }
+  });
 
-const trpcClient = trpc.createClient({
-  links: [
-    httpBatchLink({
-      url: "/api/trpc",
-      transformer: superjson,
-      fetch(input, init) {
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          credentials: "include",
-        });
-      },
-    }),
-  ],
-});
+  queryClient.getMutationCache().subscribe(event => {
+    if (event.type === "updated" && event.action.type === "error") {
+      const error = event.mutation.state.error;
+      redirectToLoginIfUnauthorized(error);
+      console.error("[API Mutation Error]", error);
+    }
+  });
 
-createRoot(document.getElementById("root")!).render(
-  <trpc.Provider client={trpcClient} queryClient={queryClient}>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </trpc.Provider>
-);
+  const trpcClient = trpc.createClient({
+    links: [
+      httpBatchLink({
+        url: "/api/trpc",
+        transformer: superjson,
+        fetch(input, init) {
+          return globalThis.fetch(input, {
+            ...(init ?? {}),
+            credentials: "include",
+          });
+        },
+      }),
+    ],
+  });
+
+  console.log("[main.tsx] Creating root and rendering App...");
+  createRoot(document.getElementById("root")!).render(
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </trpc.Provider>
+  );
+  console.log("[main.tsx] Render complete");
+} catch (e) {
+  console.error("[main.tsx] FATAL initialization error:", e);
+  document.body.innerHTML = `<pre style="padding:20px;color:red">Fatal Error: ${e instanceof Error ? e.message : String(e)}\n\n${e instanceof Error ? e.stack : ''}</pre>`;
+}

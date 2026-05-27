@@ -30,6 +30,7 @@ import { SessionTimeReward } from "@/components/SessionTimeReward";
 import ReferralScreen, { FloatingReferralBadge } from "@/components/ReferralScreen";
 
 export default function Home() {
+  console.log("[Home] Component rendering...");
   const {
     coins,
     bet,
@@ -74,7 +75,9 @@ export default function Home() {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [showDailyBonus, setShowDailyBonus] = useState(false);
   const [dailyBonusStreak, setDailyBonusStreak] = useState(1);
-  const { isAuthenticated } = useAuth();
+  const auth = useAuth();
+  console.log("[Home] Auth state:", { isAuthenticated: auth.isAuthenticated, loading: auth.loading, error: auth.error?.message });
+  const { isAuthenticated } = auth;
 
   // Retention hooks
   const {
@@ -132,9 +135,13 @@ export default function Home() {
 
   // Show daily login bonus modal on app open (once per day)
   useEffect(() => {
+    console.log("[Home] Daily login effect - shouldShowDailyLogin:", shouldShowDailyLogin);
     if (shouldShowDailyLogin) {
       // Small delay for UX
-      const t = setTimeout(() => setShowDailyLoginBonus(true), 1500);
+      const t = setTimeout(() => {
+        console.log("[Home] Setting showDailyLoginBonus to true");
+        setShowDailyLoginBonus(true);
+      }, 1500);
       return () => clearTimeout(t);
     }
   }, [shouldShowDailyLogin]);
