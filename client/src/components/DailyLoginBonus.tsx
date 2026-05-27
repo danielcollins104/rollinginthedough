@@ -18,7 +18,7 @@ export function DailyLoginBonus({ currentStreak, onClaim }: DailyLoginBonusProps
   const [progress, setProgress] = useState(0);
   const [countdown, setCountdown] = useState<string>("");
 
-  const reward = STREAK_REWARDS[Math.min(currentStreak, 7)];
+  const reward = STREAK_REWARDS[Math.min(currentStreak || 1, 7)] || 100;
   const displayStreak = currentStreak || 1;
 
   // Animation sequence
@@ -241,7 +241,7 @@ export function DailyLoginBonus({ currentStreak, onClaim }: DailyLoginBonusProps
                   className="text-4xl font-black"
                   style={{ color: "#FFD700", textShadow: "0 0 20px rgba(255,215,0,0.5)" }}
                 >
-                  {reward.toLocaleString()} 🪙
+                  {(reward || 0).toLocaleString()} 🪙
                 </p>
               </>
             ) : (
@@ -251,7 +251,7 @@ export function DailyLoginBonus({ currentStreak, onClaim }: DailyLoginBonusProps
                   className="text-4xl font-black"
                   style={{ color: "#FFD700", textShadow: "0 0 30px rgba(255,215,0,0.8)" }}
                 >
-                  +{earnedCoins.toLocaleString()} 🪙
+                  +{(earnedCoins || 0).toLocaleString()} 🪙
                 </div>
                 {phase === "reveal" && (
                   <div className="mt-3 w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
