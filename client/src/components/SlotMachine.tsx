@@ -826,7 +826,7 @@ export default function SlotMachine({
   };
 
   return (
-    <div className={`w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-14 sm:pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''}`}>
+    <div className={`w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''}`}>
       {/* Win Particle Animations */}
       <WinParticles trigger={particleTrigger} winAmount={winAmount} isJackpot={lastWinType === "JACKPOT"} />
 
@@ -861,7 +861,7 @@ export default function SlotMachine({
           <div className="h-0.5" style={{ background: "linear-gradient(90deg, transparent, #D4AF37, #F5E6C8, #D4AF37, transparent)" }} />
 
           {/* Logo area — compact */}
-          <div className="py-2 px-4 flex items-center justify-between">
+          <div className="py-1 px-3 flex items-center justify-between">
             <ArtDecoOrnament />
             <div className="text-center flex-1">
               <div
@@ -886,7 +886,7 @@ export default function SlotMachine({
             style={{
               background: "linear-gradient(90deg, #050510, #0d0a00, #050510)",
               borderTop: "1px solid rgba(212,175,55,0.2)",
-              padding: "4px 0",
+              padding: "2px 0",
             }}
           >
             <div className="marquee-text text-xs font-numbers px-4" style={{ color: "#C8860A", fontSize: "0.65rem" }}>
@@ -903,7 +903,7 @@ export default function SlotMachine({
           border: "2px solid #D4AF37",
           borderTop: "none",
           borderBottom: "none",
-          padding: "8px 12px",
+          padding: "4px 8px",
           width: "100%",
         }}
         className="grid grid-cols-3 gap-2"
@@ -987,7 +987,7 @@ export default function SlotMachine({
           border: "2px solid #D4AF37",
           borderTop: "none",
           borderBottom: "none",
-          padding: "8px 8px",
+          padding: "4px 4px",
         }}
       >
         {/* Payline indicators */}
@@ -1039,8 +1039,9 @@ export default function SlotMachine({
               key={reelIdx}
               className={`reel-container rounded relative ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
               style={{
-                aspectRatio: "1/3.2",
-                minHeight: "clamp(45px, 9vw, 150px)",
+                minHeight: "120px",
+                height: "100%",
+                maxHeight: "300px",
                 transition: "box-shadow 0.3s ease",
                 boxShadow: reelDone[reelIdx] && showWin && !cascadeActive && reel.some((_, rowIdx) => isWinningCell(reelIdx, rowIdx, winLines))
                   ? "0 0 20px rgba(255,215,0,0.6), inset 0 0 15px rgba(255,215,0,0.1)"
@@ -1075,7 +1076,8 @@ export default function SlotMachine({
                       ${symId === 'empty' ? "empty-cell" : ""}
                     `}
                     style={{
-                      height: "33.333%",
+                      flex: "1 1 0%",
+                      minHeight: 0,
                       background: isWin
                         ? `radial-gradient(circle at center, ${sym.bgColor}ff 0%, #050510 100%)`
                         : isCascadeWinner
@@ -1136,7 +1138,7 @@ export default function SlotMachine({
         </div>
 
         {/* Win display below reels */}
-        <div className="mt-1 sm:mt-2 text-center min-h-[2.5rem] flex items-center justify-center">
+        <div className="mt-0.5 text-center min-h-[1.5rem] flex items-center justify-center">
           {showWin && winAmount > 0 && lastWinType ? (
             <div
               className="flex items-center gap-2"
@@ -1196,7 +1198,7 @@ export default function SlotMachine({
           border: "2px solid #D4AF37",
           borderTop: "none",
           borderRadius: "0 0 0.75rem 0.75rem",
-          padding: "12px",
+          padding: "8px",
           width: "100%",
         }}
       >

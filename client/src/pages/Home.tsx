@@ -5,6 +5,7 @@
  * Typography: Playfair Display, Oswald, Cormorant Garamond
  */
 
+console.log("[DEBUG] Home.tsx module loading");
 import { useCallback, useEffect, useRef, useState } from "react";
 import SlotMachine from "@/components/SlotMachine";
 import GameHeader from "@/components/GameHeader";
@@ -30,7 +31,6 @@ import { SessionTimeReward } from "@/components/SessionTimeReward";
 import ReferralScreen, { FloatingReferralBadge } from "@/components/ReferralScreen";
 
 export default function Home() {
-  console.log("[Home] Component rendering...");
   const {
     coins,
     bet,
@@ -75,9 +75,7 @@ export default function Home() {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [showDailyBonus, setShowDailyBonus] = useState(false);
   const [dailyBonusStreak, setDailyBonusStreak] = useState(1);
-  const auth = useAuth();
-  console.log("[Home] Auth state:", { isAuthenticated: auth.isAuthenticated, loading: auth.loading, error: auth.error?.message });
-  const { isAuthenticated } = auth;
+  const { isAuthenticated } = useAuth();
 
   // Retention hooks
   const {
@@ -135,11 +133,9 @@ export default function Home() {
 
   // Show daily login bonus modal on app open (once per day)
   useEffect(() => {
-    console.log("[Home] Daily login effect - shouldShowDailyLogin:", shouldShowDailyLogin);
     if (shouldShowDailyLogin) {
       // Small delay for UX
       const t = setTimeout(() => {
-        console.log("[Home] Setting showDailyLoginBonus to true");
         setShowDailyLoginBonus(true);
       }, 1500);
       return () => clearTimeout(t);
@@ -239,7 +235,7 @@ export default function Home() {
       />
 
       {/* Currency Toggle - Compact Tab-Style */}
-      <div className="w-full max-w-4xl mx-auto px-4 relative z-10 flex justify-center" style={{ paddingTop: "2px", paddingBottom: "2px" }}>
+      <div className="w-full max-w-4xl mx-auto px-4 relative z-10 flex justify-center" style={{ paddingTop: "1px", paddingBottom: "1px" }}>
         <CurrencyToggle
           selectedCurrency={activeCurrency}
           goldCoins={goldCoins}
@@ -250,42 +246,33 @@ export default function Home() {
 
 
 
-      {/* Huntress Banner - Compact */}
-      <div className="w-full max-w-4xl mx-auto px-2 relative z-10" style={{ paddingTop: "2px", paddingBottom: "2px" }}>
+      {/* Huntress Banner - Ultra Compact */}
+      <div className="w-full max-w-4xl mx-auto px-1 relative z-10 flex-shrink-0" style={{ maxHeight: "8vh" }}>
         <div
-          className="rounded-lg overflow-hidden shadow-2xl relative"
+          className="rounded overflow-hidden shadow-2xl relative h-full"
           style={{
             background: "linear-gradient(135deg, #0d0d20, #1a1a35)",
-            border: "2px solid #D4AF37",
-            boxShadow: "0 0 30px rgba(212,175,55,0.3), inset 0 0 30px rgba(212,175,55,0.1)",
+            border: "1px solid rgba(212,175,55,0.3)",
           }}
         >
-          <img
-            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663349960110/ayNoVaN9cNAqmUHUzZ966J/ritd-huntress-banner-GnGRDCVgJWhBE4Xv2oVVHf.webp"
-            alt="Rolling in the Dough - Huntress Warrior"
-            className="w-full h-auto block"
-            style={{ display: "block", maxHeight: "clamp(60px, 15vw, 120px)", objectFit: "cover" }}
-          />
-          {/* Gradient overlay with game info */}
-          <div
-            className="absolute inset-0 flex items-end justify-between px-3 py-2"
-            style={{
-              background: "linear-gradient(to right, rgba(5,5,16,0.85) 0%, transparent 40%, transparent 60%, rgba(5,5,16,0.85) 100%)",
-            }}
-          >
-            <div>
-              <div className="font-display font-black text-gold-gradient" style={{ fontSize: "clamp(0.8rem, 2.5vw, 1.2rem)" }}>Huntress Warrior</div>
-              <div className="font-numbers text-xs" style={{ color: "rgba(212,175,55,0.7)" }}>3+ Symbols = Bonus Round</div>
+          <div className="flex items-center justify-between px-3 py-1 h-full">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🗡️</span>
+              <div>
+                <div className="font-display font-bold text-sm" style={{ color: "#D4AF37" }}>Huntress Warrior</div>
+                <div className="text-xs" style={{ color: "rgba(212,175,55,0.6)" }}>3+ Symbols = Bonus Round</div>
+              </div>
             </div>
             <div className="text-right">
-              <div className="font-numbers font-bold" style={{ color: "#FF6B6B", fontSize: "clamp(0.7rem, 2vw, 1rem)" }}>🗡️ SCATTER</div>
-              <div className="font-numbers text-xs" style={{ color: "rgba(255,107,107,0.7)" }}>Up to 1,000x</div>
+              <div className="font-numbers font-bold text-sm" style={{ color: "#FF6B6B" }}>SCATTER</div>
+              <div className="text-xs" style={{ color: "rgba(255,107,107,0.7)" }}>Up to 1,000x</div>
             </div>
           </div>
         </div>
       </div>
 
-      <main className="flex-1 flex items-center justify-center px-2 relative z-10 overflow-hidden" style={{ minHeight: 0, paddingTop: "2px", paddingBottom: "2px" }}>
+      {/* Main Slot Machine Area */}
+      <main className="flex-1 flex items-center justify-center px-1 relative z-10 overflow-hidden" style={{ minHeight: "200px" }}>
         <SlotMachine
           reels={reels}
           spinning={spinning}
