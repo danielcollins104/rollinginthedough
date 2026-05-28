@@ -826,7 +826,10 @@ export default function SlotMachine({
   };
 
   return (
-    <div className={`w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''}`}>
+    <div 
+      className={`w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''}`}
+      style={{ minHeight: "450px" }}
+    >
       {/* Win Particle Animations */}
       <WinParticles trigger={particleTrigger} winAmount={winAmount} isJackpot={lastWinType === "JACKPOT"} />
 
@@ -1033,7 +1036,7 @@ export default function SlotMachine({
         )}
 
         {/* Reels */}
-        <div className="grid gap-1 sm:gap-1.5" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
+        <div className="grid gap-1 sm:gap-1.5" style={{ gridTemplateColumns: "repeat(5, 1fr)", minHeight: "120px" }}>
           {displayGrid.map((reel, reelIdx) => (
             <div
               key={reelIdx}

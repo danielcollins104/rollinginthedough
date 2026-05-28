@@ -187,15 +187,17 @@ export default function Home() {
 
   return (
     <div
-      className="fixed inset-0 flex flex-col"
+      className="flex flex-col"
       style={{
-        height: "100dvh",
+        height: "100vh",
+        minHeight: "-webkit-fill-available",
         background: "linear-gradient(160deg, #050510 0%, #0a0a1a 40%, #0d0a1a 70%, #050510 100%)",
+        overflow: "hidden",
       }}
     >
       {/* Background hero image overlay */}
       <div
-        className="fixed inset-0 opacity-20 pointer-events-none"
+        className="absolute inset-0 opacity-20 pointer-events-none"
         style={{
           backgroundImage: `url(https://d2xsxph8kpxj0f.cloudfront.net/310519663349960110/ayNoVaN9cNAqmUHUzZ966J/ritd-hero-bg-FzGNyPyAATYm9thgu9JZxr.webp)`,
           backgroundSize: "cover",
@@ -205,7 +207,7 @@ export default function Home() {
       />
 
       {/* Animated background particles */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {[...Array(12)].map((_, i) => (
           <div
             key={i}
@@ -234,7 +236,7 @@ export default function Home() {
       />
 
       {/* Currency Toggle - Compact Tab-Style */}
-      <div className="w-full max-w-4xl mx-auto px-4 relative z-10 flex justify-center" style={{ paddingTop: "1px", paddingBottom: "1px" }}>
+      <div className="flex-shrink-0 w-full max-w-4xl mx-auto px-4 relative z-10" style={{ paddingTop: "2px", paddingBottom: "2px" }}>
         <CurrencyToggle
           selectedCurrency={activeCurrency}
           goldCoins={goldCoins}
@@ -246,7 +248,7 @@ export default function Home() {
 
 
       {/* Huntress Banner - Ultra Compact */}
-      <div className="w-full max-w-4xl mx-auto px-1 relative z-10 flex-shrink-0" style={{ maxHeight: "8vh" }}>
+      <div className="flex-shrink-0 w-full max-w-4xl mx-auto px-1 relative z-10" style={{ maxHeight: "60px" }}>
         <div
           className="rounded overflow-hidden shadow-2xl relative h-full"
           style={{
@@ -271,7 +273,7 @@ export default function Home() {
       </div>
 
       {/* Main Slot Machine Area */}
-      <main className="flex-1 flex items-center justify-center px-1 relative z-10 overflow-hidden" style={{ minHeight: "200px" }}>
+      <main className="flex-grow flex items-center justify-center px-1 relative z-10" style={{ minHeight: "0" }}>
         <SlotMachine
           reels={reels}
           spinning={spinning}

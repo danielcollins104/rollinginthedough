@@ -4,7 +4,7 @@
  * Features: animated coin counter, level badge, XP bar, daily bonus, compact layout
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
