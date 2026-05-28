@@ -1,0 +1,47 @@
+# Render Blueprint — Rolling in the Dough
+# Deploy with: render-blueprint render.yaml
+
+services:
+  # ── Web App (Node/Express server) ──────────────────────────────────────────
+  - type: web
+    name: rollinginthedough
+    env: node
+    region: oregon
+    plan: starter
+    rootDir: .
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+
+    # Environment variables — fill in values in Render dashboard or .env file
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false   # Set in Render dashboard → Environment
+      - key: JWT_SECRET
+        generateValue: true
+      - key: VITE_APP_ID
+        value: lucky-spins-dev
+      - key: VITE_SUPABASE_URL
+        value: https://fla0t0f0c1lo5mgtbqj.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsYTB0MGYwYzFsbzVnZ3RicWoiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MzU5MTYwMCwiZXhwIjoxOTU5MTY3NjAwfQ.Vx3T8T1WkD5dW8KQhRkPq7sD0Y6h3Zz9r0R5t6N3qM0
+      - key: SUPABASE_URL
+        value: https://fla0t0f0c1lo5mgtbqj.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false   # Set in Render dashboard → Environment (never commit this)
+      - key: OAUTH_SERVER_URL
+        value: https://rollinginthedough.onrender.com
+      - key: VITE_OAUTH_PORTAL_URL
+        value: https://rollinginthedough.onrender.com
+      - key: SQUARE_ACCESS_TOKEN
+        sync: false
+      - key: SQUARE_LOCATION_ID
+        value: L2N0S3FA7EX8B
+      - key: VITE_SQUARE_APP_ID
+        sync: false
+      - key: OWNER_OPEN_ID
+        value: owner

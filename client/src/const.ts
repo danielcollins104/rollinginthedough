@@ -1,24 +1,20 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
-const oauthPortalUrl = () => import.meta.env.VITE_OAUTH_PORTAL_URL || "http://localhost:3000";
-const appId = () => import.meta.env.VITE_APP_ID || "lucky-spins-dev";
+const oauthBase = () => window.location.origin;
 
-const buildOAuthUrl = (provider?: string) => {
-  const redirectUri = `${window.location.origin}/api/oauth/callback`;
-  const state = btoa(JSON.stringify({ redirectUri, provider: provider || "default" }));
-
-  const url = new URL(`${oauthPortalUrl()}/oauth/consent`);
-  url.searchParams.set("appId", appId());
-  url.searchParams.set("redirectUri", redirectUri);
+/**
+ * Get the Supabase OAuth authorization URL for a given provider.
+ * Redirects to /api/oauth/callback after the user authorizes.
+ */
+export const getOAuthUrl = (provider: string, redirectUri?: string) => {
+  const callback = redirectUri || `${oauthBase()}/api/oauth/callback`;
+  const state = btoa(JSON.stringify({ redirectUri: callback, provider }));
+  const url = new URL(`${oauthBase()}/api/oauth/authorize`);
+  url.searchParams.set("provider", provider);
+  url.searchParams.set("redirectUri", callback);
   url.searchParams.set("state", state);
-  if (provider) {
-    url.searchParams.set("provider", provider);
-  }
   return url.toString();
 };
 
-// Legacy — redirects to generic OAuth flow
-export const getLoginUrl = () => buildOAuthUrl();
-
-// Direct social login — pre-selects the provider on the consent page
-export const getOAuthUrl = (provider: string) => buildOAuthUrl(provider);
+// Legacy — kept for backwards compatibility during migration
+export const getLoginUrl = () => getOAuthUrl("google");
