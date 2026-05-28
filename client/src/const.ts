@@ -1,22 +1,24 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
-// Generate login URL at runtime so redirect URI reflects the current origin.
-export const getLoginUrl = () => {
-  try {
-    const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL || "http://localhost:3000";
-    const appId = import.meta.env.VITE_APP_ID || "lucky-spins-dev";
-    const redirectUri = `${window.location.origin}/api/oauth/callback`;
-    const state = btoa(redirectUri);
+const oauthPortalUrl = () => import.meta.env.VITE_OAUTH_PORTAL_URL || "http://localhost:3000";
+const appId = () => import.meta.env.VITE_APP_ID || "lucky-spins-dev";
 
-    const url = new URL(`${oauthPortalUrl}/app-auth`);
-    url.searchParams.set("appId", appId);
-    url.searchParams.set("redirectUri", redirectUri);
-    url.searchParams.set("state", state);
-    url.searchParams.set("type", "signIn");
+const buildOAuthUrl = (provider?: string) => {
+  const redirectUri = `${window.location.origin}/api/oauth/callback`;
+  const state = btoa(JSON.stringify({ redirectUri, provider: provider || "default" }));
 
-    return url.toString();
-  } catch (error) {
-    console.error("[getLoginUrl] Failed to construct URL:", error);
-    return "/";
+  const url = new URL(`${oauthPortalUrl()}/oauth/consent`);
+  url.searchParams.set("appId", appId());
+  url.searchParams.set("redirectUri", redirectUri);
+  url.searchParams.set("state", state);
+  if (provider) {
+    url.searchParams.set("provider", provider);
   }
+  return url.toString();
 };
+
+// Legacy — redirects to generic OAuth flow
+export const getLoginUrl = () => buildOAuthUrl();
+
+// Direct social login — pre-selects the provider on the consent page
+export const getOAuthUrl = (provider: string) => buildOAuthUrl(provider);
