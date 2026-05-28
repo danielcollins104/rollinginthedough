@@ -1213,7 +1213,20 @@ export default function SlotMachine({
               }
             }}
             disabled={!canSpin}
-            className="w-full rounded-full font-display font-black tracking-wider transition-all transform active:scale-95"
+            className="w-full rounded-full font-display font-black tracking-wider transition-all relative overflow-hidden"
+            onPointerDown={() => canSpin && soundEnabled && playSound("button_click")}
+            onMouseDown={(e) => {
+              if (canSpin) {
+                e.currentTarget.style.transform = "translateY(2px)";
+                e.currentTarget.style.boxShadow = "0 0 40px rgba(255,215,0,1), 0 0 80px rgba(255,215,0,0.7), 0 2px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.3)";
+              }
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
             style={{
               padding: "clamp(12px, 2.5vw, 18px) clamp(16px, 4vw, 32px)",
               fontSize: "clamp(1.1rem, 3.5vw, 1.6rem)",
@@ -1224,16 +1237,30 @@ export default function SlotMachine({
               color: canSpin ? "#0a0a1a" : "#444",
               boxShadow: canSpin
                 ? spinButtonPulse
-                  ? "0 0 40px rgba(255,215,0,1), 0 0 80px rgba(255,215,0,0.6), 0 8px 30px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.4)"
-                  : "0 0 25px rgba(255,215,0,0.7), 0 0 50px rgba(255,215,0,0.3), 0 6px 20px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.3)"
+                  ? "0 0 50px rgba(255,215,0,1), 0 0 100px rgba(255,215,0,0.7), 0 8px 30px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -3px 6px rgba(0,0,0,0.3)"
+                  : "0 0 30px rgba(255,215,0,0.8), 0 0 60px rgba(255,215,0,0.4), 0 6px 20px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2)"
                 : "none",
               cursor: canSpin ? "pointer" : "not-allowed",
               textShadow: canSpin ? "0 2px 4px rgba(0,0,0,0.4)" : "none",
-              animation: canSpin && spinButtonPulse ? "spinBtnPulse 1.5s ease-in-out infinite" : "none",
+              animation: canSpin && spinButtonPulse ? "spinBtnPulse 1.2s ease-in-out infinite" : "none",
               letterSpacing: "0.15em",
+              transform: "translateY(0)",
+              transition: "transform 0.08s ease, box-shadow 0.15s ease",
             }}
             title="Click to spin the reels"
           >
+            {/* Inner shine overlay */}
+            <span
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "inherit",
+                background: canSpin
+                  ? "linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 40%, rgba(0,0,0,0.08) 100%)"
+                  : "none",
+                pointerEvents: "none",
+              }}
+            />
             {cascadeActive
               ? `⟳ CASCADE ${cascadeLevel}x...`
               : freeSpins > 0

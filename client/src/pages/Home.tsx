@@ -5,7 +5,6 @@
  * Typography: Playfair Display, Oswald, Cormorant Garamond
  */
 
-console.log("[DEBUG] Home.tsx module loading");
 import { useCallback, useEffect, useRef, useState } from "react";
 import SlotMachine from "@/components/SlotMachine";
 import GameHeader from "@/components/GameHeader";

@@ -21,8 +21,15 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
+
+  // Only serve index.html for browser page requests, not for assets/modules
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
+
+    // Skip API routes and other non-HTML requests
+    if (url.startsWith("/api") || url.startsWith("/@vite") || url.startsWith("/src/") || url.includes(".")) {
+      return next();
+    }
 
     try {
       const clientTemplate = path.resolve(

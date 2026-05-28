@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class="dark" style="height: 100%">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Rolling in the Dough — Sweepstakes Slots</title>
     <meta name="description" content="Rolling in the Dough — A free-to-play sweepstakes slot machine game. Spin the reels, win virtual coins, and roll in the dough! Art Deco casino style." />
     <meta name="theme-color" content="#0a0a1a" />
@@ -11,9 +11,12 @@
     <meta property="og:type" content="website" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
     <script src="/public/__manus__/debug-collector.js" type="module"></script>
+    <style>
+      html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" style="height: 100%"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
