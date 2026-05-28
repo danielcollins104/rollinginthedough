@@ -195,62 +195,164 @@ export function playSound(name: SoundName) {
     case "small_win":
       // Research-backed small win: ascending pitch + harmonic richness
       // Triggers dopamine release through positive reinforcement
-      playNoise(0.08, 0.12, 0, 4000); // High-freq sparkle (8-16kHz range)
-      playTone(330, 0.15, "sine", 0.25);        // Low warmth (200-500Hz range)
-      playTone(440, 0.12, "sine", 0.28, 0.08);  // A4 - ascending start
-      playTone(550, 0.12, "sine", 0.3, 0.14);   // C#5 - ascending
-      playTone(660, 0.15, "sine", 0.32, 0.2);   // E5 - peak (dopamine trigger)
-      playTone(880, 0.2, "sine", 0.28, 0.28);   // A5 - satisfying finish
+      // 3 variations to prevent habituation
+      {
+        const variation = Math.floor(Math.random() * 3);
+        if (variation === 0) {
+          // Classic ascending major chord
+          playNoise(0.08, 0.12, 0, 4000);
+          playTone(330, 0.15, "sine", 0.25);
+          playTone(415, 0.12, "sine", 0.28, 0.08);
+          playTone(523, 0.12, "sine", 0.3, 0.14);
+          playTone(659, 0.15, "sine", 0.32, 0.2);
+          playTone(830, 0.2, "sine", 0.28, 0.28);
+        } else if (variation === 1) {
+          // Bright sparkle burst
+          playNoise(0.1, 0.18, 0, 5000);
+          playTone(392, 0.12, "sine", 0.22);
+          playTone(523, 0.1, "sine", 0.26, 0.06);
+          playTone(659, 0.1, "sine", 0.28, 0.12);
+          playTone(784, 0.12, "sine", 0.3, 0.18);
+          playTone(988, 0.18, "sine", 0.26, 0.24);
+          playNoise(0.06, 0.08, 0.28, 6000);
+        } else {
+          // Warm harmonic swell
+          playTone(262, 0.18, "sine", 0.2);
+          playTone(330, 0.15, "sine", 0.24, 0.04);
+          playTone(392, 0.12, "sine", 0.28, 0.1);
+          playTone(523, 0.15, "sine", 0.3, 0.16);
+          playTone(659, 0.2, "sine", 0.28, 0.22);
+          playTone(784, 0.25, "sine", 0.22, 0.28);
+        }
+      }
       break;
 
     case "big_win":
       // Research-backed big win: multi-frequency engagement
       // Bass impact + ascending melody + harmonic layering = strong dopamine response
-      playTone(60, 0.15, "sine", 0.3);          // Deep bass impact (40-80Hz)
-      playNoise(0.1, 0.15, 0, 4500);            // Sparkle burst
-      playTone(440, 0.1, "sine", 0.3, 0.05);    // A4 start
-      playTone(550, 0.1, "sine", 0.32, 0.12);   // C#5 ascending
-      playTone(660, 0.1, "sine", 0.34, 0.19);   // E5 ascending
-      playTone(880, 0.15, "sine", 0.36, 0.26);  // A5 peak
-      playTone(1100, 0.2, "sine", 0.3, 0.34);   // Extended high
-      playChord([440, 660, 880, 1100], 0.3, "sine", 0.2, 0.42); // Rich harmonic chord
+      // 3 variations to keep it fresh
+      {
+        const variation = Math.floor(Math.random() * 3);
+        if (variation === 0) {
+          // Full orchestral blast
+          playTone(60, 0.15, "sine", 0.3);
+          playNoise(0.1, 0.15, 0, 4500);
+          playTone(440, 0.1, "sine", 0.3, 0.05);
+          playTone(550, 0.1, "sine", 0.32, 0.12);
+          playTone(660, 0.1, "sine", 0.34, 0.19);
+          playTone(880, 0.15, "sine", 0.36, 0.26);
+          playTone(1100, 0.2, "sine", 0.3, 0.34);
+          playChord([440, 660, 880, 1100], 0.3, "sine", 0.2, 0.42);
+        } else if (variation === 1) {
+          // Deep bass punch with rising sirens
+          playTone(55, 0.2, "sine", 0.35);
+          playTone(110, 0.18, "sine", 0.3, 0.04);
+          playTone(220, 0.15, "sine", 0.28, 0.08);
+          playNoise(0.12, 0.18, 0.12, 4800);
+          playTone(660, 0.12, "sine", 0.32, 0.2);
+          playTone(880, 0.15, "sine", 0.34, 0.28);
+          playTone(1100, 0.2, "sine", 0.28, 0.36);
+          playChord([660, 990, 1320], 0.35, "sine", 0.22, 0.45);
+        } else {
+          // Sparkle cascade
+          playNoise(0.08, 0.2, 0, 5500);
+          playTone(880, 0.08, "sine", 0.28);
+          playTone(1100, 0.08, "sine", 0.3, 0.06);
+          playTone(1320, 0.1, "sine", 0.32, 0.12);
+          playTone(880, 0.12, "sine", 0.3, 0.18);
+          playTone(1100, 0.15, "sine", 0.32, 0.26);
+          playTone(60, 0.18, "sine", 0.25, 0.2);
+          playTone(1320, 0.2, "sine", 0.3, 0.34);
+          playTone(1760, 0.25, "sine", 0.22, 0.44);
+        }
+      }
       break;
 
     case "mega_win":
       // Research-backed mega win: maximum dopamine trigger
       // Multi-layered frequencies across entire spectrum + bass impact
-      playTone(50, 0.2, "sine", 0.35);          // Sub-bass impact (felt, not heard)
-      playTone(80, 0.18, "sine", 0.32, 0.02);   // Bass impact
-      playNoise(0.12, 0.18, 0.04, 5000);        // High sparkle
-      const megaFreqs = [330, 440, 550, 660, 880];
-      megaFreqs.forEach((freq, i) => {
-        playTone(freq, 0.2, "sine", 0.3, i * 0.06);
-      });
-      // Powerful harmonic swell
-      playChord([440, 660, 1100, 1320], 0.4, "sine", 0.25, 0.4);
-      playTone(1320, 0.5, "sine", 0.25, 0.5); // Sustained high note
-      playTone(1760, 0.3, "sine", 0.15, 0.6); // Ultra-high sparkle
+      // 3 variations to prevent habituation
+      {
+        const variation = Math.floor(Math.random() * 3);
+        if (variation === 0) {
+          // Standard mega celebration
+          playTone(50, 0.2, "sine", 0.35);
+          playTone(80, 0.18, "sine", 0.32, 0.02);
+          playNoise(0.12, 0.18, 0.04, 5000);
+          const megaFreqs = [330, 440, 550, 660, 880];
+          megaFreqs.forEach((freq, i) => {
+            playTone(freq, 0.2, "sine", 0.3, i * 0.06);
+          });
+          playChord([440, 660, 1100, 1320], 0.4, "sine", 0.25, 0.4);
+          playTone(1320, 0.5, "sine", 0.25, 0.5);
+          playTone(1760, 0.3, "sine", 0.15, 0.6);
+        } else if (variation === 1) {
+          // Deep sub-bass thunder
+          playTone(40, 0.25, "sine", 0.4);
+          playTone(60, 0.2, "sine", 0.38, 0.02);
+          playTone(80, 0.18, "sine", 0.35, 0.04);
+          playNoise(0.15, 0.2, 0.06, 5200);
+          playTone(523, 0.15, "sine", 0.3, 0.08);
+          playTone(659, 0.15, "sine", 0.32, 0.14);
+          playTone(784, 0.15, "sine", 0.34, 0.2);
+          playTone(1047, 0.2, "sine", 0.36, 0.26);
+          playChord([523, 784, 1047, 1319], 0.5, "sine", 0.28, 0.38);
+          playTone(1560, 0.4, "sine", 0.22, 0.5);
+          playTone(2090, 0.3, "sine", 0.15, 0.65);
+        } else {
+          // Ascending triumphant fanfare
+          playNoise(0.1, 0.2, 0, 5500);
+          playTone(262, 0.2, "sine", 0.3);
+          playTone(330, 0.18, "sine", 0.32, 0.06);
+          playTone(392, 0.15, "sine", 0.34, 0.12);
+          playTone(523, 0.15, "sine", 0.36, 0.18);
+          playTone(659, 0.18, "sine", 0.38, 0.24);
+          playTone(784, 0.2, "sine", 0.36, 0.3);
+          playTone(1047, 0.25, "sine", 0.32, 0.36);
+          playChord([659, 784, 1047, 1319], 0.5, "sine", 0.26, 0.5);
+          playTone(1560, 0.4, "sine", 0.2, 0.62);
+          playNoise(0.2, 0.12, 0.7, 6000);
+        }
+      }
       break;
 
     case "jackpot":
       // Research-backed jackpot: MAXIMUM dopamine trigger
       // Full frequency spectrum engagement + sustained excitement
-      playTone(40, 0.25, "sine", 0.4);          // Sub-bass (felt viscerally)
-      playTone(80, 0.22, "sine", 0.38, 0.02);   // Bass impact
-      playTone(120, 0.2, "sine", 0.35, 0.04);   // Secondary bass
-      playNoise(0.15, 0.2, 0.06, 5500);         // High sparkle burst
-      const jackpotFreqs = [220, 330, 440, 550, 660, 880];
-      jackpotFreqs.forEach((freq, i) => {
-        playTone(freq, 0.25, "sine", 0.32, i * 0.06);
-      });
-      // Powerful harmonic chord (multiple layers)
-      playChord([440, 660, 880, 1100], 0.5, "sine", 0.28, 0.38);
-      // Sustained high note with frequency sweep
-      playTone(1320, 0.8, "sine", 0.3, 0.5);
-      playTone(1320, 0.8, "sine", 0.18, 0.5, 1400); // Frequency wobble
-      // Extended celebratory burst
-      playNoise(0.4, 0.12, 0.8, 4000);
-      playTone(1760, 0.4, "sine", 0.2, 0.9); // Ultra-high celebration
+      // 2 intense variations
+      {
+        const variation = Math.floor(Math.random() * 2);
+        if (variation === 0) {
+          playTone(40, 0.25, "sine", 0.4);
+          playTone(80, 0.22, "sine", 0.38, 0.02);
+          playTone(120, 0.2, "sine", 0.35, 0.04);
+          playNoise(0.15, 0.2, 0.06, 5500);
+          const jackpotFreqs = [220, 330, 440, 550, 660, 880];
+          jackpotFreqs.forEach((freq, i) => {
+            playTone(freq, 0.25, "sine", 0.32, i * 0.06);
+          });
+          playChord([440, 660, 880, 1100], 0.5, "sine", 0.28, 0.38);
+          playTone(1320, 0.8, "sine", 0.3, 0.5);
+          playTone(1320, 0.8, "sine", 0.18, 0.5, 1400);
+          playNoise(0.4, 0.12, 0.8, 4000);
+          playTone(1760, 0.4, "sine", 0.2, 0.9);
+        } else {
+          playNoise(0.12, 0.25, 0, 5800);
+          playTone(30, 0.3, "sine", 0.45);
+          playTone(60, 0.25, "sine", 0.4, 0.03);
+          playTone(90, 0.22, "sine", 0.36, 0.06);
+          const jackpotFreqs2 = [196, 294, 392, 523, 659, 784, 988];
+          jackpotFreqs2.forEach((freq, i) => {
+            playTone(freq, 0.22, "sine", 0.3, i * 0.05);
+          });
+          playChord([392, 523, 784, 988, 1319], 0.6, "sine", 0.26, 0.42);
+          playTone(1480, 0.5, "sine", 0.28, 0.55);
+          playTone(1975, 0.4, "sine", 0.2, 0.7);
+          playNoise(0.3, 0.15, 0.85, 5000);
+          playTone(2200, 0.35, "sine", 0.18, 1.0);
+          playTone(50, 0.5, "sine", 0.22, 1.1);
+        }
+      }
       break;
 
     case "coin_drop":
