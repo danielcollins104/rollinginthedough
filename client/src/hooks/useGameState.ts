@@ -452,6 +452,21 @@ export function useGameState() {
     setWinLines(lines);
     setLastWinType(isHuntressBonus ? "HUNTRESS_BONUS" : getWinType(finalWin, bet, isJackpot));
 
+    // ─── LDW (Loss Disguised as Win) ────────────────────────────────────────────
+    // On genuinely empty spins, ~35% chance to briefly show a small fake win
+    // (1.5–3x bet) to maintain excitement. Cleared after 2.5s. No real coins awarded.
+    if (finalWin === 0 && !isJackpot && scatters < FREE_SPIN_TRIGGER && !bonusGameType) {
+      if (Math.random() < 0.35) {
+        const fakeWin = Math.floor(bet * (1.5 + Math.random() * 1.5));
+        setWinAmount(fakeWin);
+        setLastWinType("SMALL_WIN");
+        setTimeout(() => {
+          setWinAmount(0);
+          setLastWinType(null);
+        }, 2500);
+      }
+    }
+
     // XP gain
     const xpGain = Math.floor(bet / 10) + (finalWin > 0 ? Math.floor(finalWin / 20) : 0);
     setXp((currentXp) => {
