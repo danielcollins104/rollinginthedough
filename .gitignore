@@ -108,3 +108,8 @@ temp/
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
+
+# Local env backups (contain secrets - never commit)
+.env.backup-*
+.env.broken-backup
+.env.*.local
