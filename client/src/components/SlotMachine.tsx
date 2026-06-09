@@ -804,7 +804,7 @@ export default function SlotMachine({
     BIG_WIN: "🔥 BIG WIN! 🔥",
     MEGA_WIN: "⚡ MEGA WIN! ⚡",
     JACKPOT: "🌟 JACKPOT! 🌟",
-    HUNTRESS_BONUS: "👑 HUNTRESS BONUS! 👑",
+    HUNTRESS_BONUS: "🏹 HUNTRESS BONUS! 🏹",
   };
 
 

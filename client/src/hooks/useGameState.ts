@@ -15,10 +15,10 @@ export type SymbolId =
   | "cookie"     // 🍪 Chocolate Chip Cookie — medium-high value
   | "cupcake"    // 🧁 Pink Cupcake — high value
   | "cake"       // 🎂 Celebration Cake — high value
-  | "muffin"     // 🧁 Blueberry Muffin — medium-high value
+  | "muffin"     // 🫐 Blueberry Muffin — medium-high value
   | "bun"        // 🫓 Sweet Bun — high value (wild)
-  | "huntress"   // 👑 Bakery Queen — bonus trigger (scatter)
-  | "dough"      // 🍞 Rolling in the Dough — JACKPOT (scatter)
+  | "huntress"   // 🏹 Huntress — bonus trigger (scatter)
+  | "dough"      // 💰 Cash Stash — JACKPOT (scatter)
   | "empty"      // Empty cell for cascade system
 
 export interface Symbol {
@@ -99,7 +99,7 @@ export const SYMBOLS: Symbol[] = [
   },
   {
     id: "muffin",
-    emoji: "🧁",
+    emoji: "🫐",
     name: "Blueberry Muffin",
     color: "#88CCFF",
     bgColor: "#001a2a",
@@ -118,8 +118,11 @@ export const SYMBOLS: Symbol[] = [
   },
   {
     id: "huntress",
-    emoji: "👑",
-    name: "Bakery Queen",
+    // TODO(art): replace emoji with a properly designed character illustration.
+    // The bow is intentionally generic to avoid implying any specific Indigenous
+    // nation; if custom art is commissioned, work with a cultural consultant.
+    emoji: "🏹",
+    name: "Huntress",
     color: "#FF6B6B",
     bgColor: "#2a0a0a",
     payouts: [100, 350, 1500],
@@ -128,8 +131,9 @@ export const SYMBOLS: Symbol[] = [
   },
   {
     id: "dough",
-    emoji: "🍞",
-    name: "Rolling in the Dough",
+    // TODO(art): replace emoji with a custom cash bundle illustration.
+    emoji: "💰",
+    name: "Cash Stash",
     color: "#FFD700",
     bgColor: "#1a1000",
     payouts: [150, 750, 3000],

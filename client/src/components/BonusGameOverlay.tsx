@@ -356,7 +356,7 @@ export default function BonusGameOverlay({ gameType, onClose }: Props) {
                 {gameType === "coin_flip" && "🪙"}
                 {gameType === "lucky_spin" && "🎡"}
                 {gameType === "treasure_hunt" && "🏆"}
-                {gameType === "huntress_bonus" && "👑"}
+                {gameType === "huntress_bonus" && "🏹"}
               </div>
               <p className="text-yellow-300 font-bold text-lg mb-4">
                 {game.description}
