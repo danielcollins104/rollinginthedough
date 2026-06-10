@@ -45,6 +45,7 @@ interface Props {
   setAutoplay: (a: boolean) => void;
   spinCount: number;
   soundEnabled: boolean;
+  setSoundEnabled: (v: boolean) => void;
   paylines?: number;
   setPaylines?: (p: number) => void;
   onCoinShop?: () => void;
@@ -314,6 +315,7 @@ export default function SlotMachine({
   setAutoplay,
   spinCount,
   soundEnabled,
+  setSoundEnabled,
   paylines,
   setPaylines,
   onCoinShop,
@@ -329,7 +331,12 @@ export default function SlotMachine({
   const [winFlash, setWinFlash] = useState(false);
   const [showCoinShower, setShowCoinShower] = useState(false);
   const [particleTrigger, setParticleTrigger] = useState(0);
-  const [soundMuted, setSoundMuted] = useState(false);
+  // NOTE: the local `soundMuted` state was removed. The in-game 🔊/🔇
+  // button now calls setSoundEnabled (the prop from useGameState) so
+  // the React state is the single source of truth. The useEffect in
+  // useGameState.ts propagates the React state to the legacy
+  // lib/sounds.ts module and the lib/soundManager singleton.
+  // See docs/PHASE_3_STATUS.md Gap B.
   const [showScratchGame, setShowScratchGame] = useState(false);
   const [showDealsModal, setShowDealsModal] = useState(false);
   const [showBigWin, setShowBigWin] = useState(false);
@@ -741,7 +748,7 @@ export default function SlotMachine({
             setTimeout(() => setShowBigWin(true), 600);
           }
 
-          if (!soundMuted) {
+          if (soundEnabled) {
             const winLineCount = winLines.length;
             if (lastWinType === "JACKPOT") {
               playSound("jackpot");
@@ -783,7 +790,7 @@ export default function SlotMachine({
         // No sound on losing spins — silence only
       }, 400);
     }
-  }, [spinning, spinCount, winAmount, lastWinType, soundEnabled, reels, winLines, startCascade, findNearMiss, soundMuted]);
+  }, [spinning, spinCount, winAmount, lastWinType, soundEnabled, reels, winLines, startCascade, findNearMiss]);
 
   const canSpin = !spinning && !cascadeActive && (coins >= bet || freeSpins > 0);
   const totalBet = bet * (paylines || 1);
@@ -1448,19 +1455,15 @@ export default function SlotMachine({
         {/* ── Bottom utility row ── */}
         <div className="hidden sm:flex gap-1.5">
           <button
-            onClick={() => {
-              const newMuted = !soundMuted;
-              setSoundMuted(newMuted);
-              soundManager.setMuted(newMuted);
-            }}
+            onClick={() => setSoundEnabled(!soundEnabled)}
             className="px-3 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all"
             style={{
-              background: soundMuted ? "linear-gradient(135deg, #3a1a1a, #5a2a2a)" : "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
-              border: soundMuted ? "1px solid rgba(255,107,107,0.5)" : "1px solid rgba(76,175,80,0.5)",
-              color: soundMuted ? "#FF6B6B" : "#90EE90",
+              background: !soundEnabled ? "linear-gradient(135deg, #3a1a1a, #5a2a2a)" : "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
+              border: !soundEnabled ? "1px solid rgba(255,107,107,0.5)" : "1px solid rgba(76,175,80,0.5)",
+              color: !soundEnabled ? "#FF6B6B" : "#90EE90",
             }}
           >
-            {soundMuted ? "🔇 MUTE" : "🔊 SOUND"}
+            {soundEnabled ? "🔊 SOUND" : "🔇 MUTE"}
           </button>
           {onCoinShop && (
             <button

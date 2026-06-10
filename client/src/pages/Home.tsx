@@ -289,6 +289,7 @@ export default function Home() {
           setAutoplay={setAutoplay}
           spinCount={spinCount}
           soundEnabled={soundEnabled}
+          setSoundEnabled={setSoundEnabled}
           paylines={paylines}
           setPaylines={setPaylines}
           onCoinShop={() => setShowCoinShop(true)}

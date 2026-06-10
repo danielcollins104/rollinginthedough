@@ -6,6 +6,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BonusGameType } from "@/lib/bonusGames";
 import { getPaylinePath } from "@/lib/paylines";
+import { setSoundEnabled as setSoundsModuleEnabled } from "@/lib/sounds";
+import { soundManager } from "@/lib/soundManager";
 
 // ─── Symbol definitions ───────────────────────────────────────────────────────
 export type SymbolId =
@@ -313,7 +315,20 @@ export function useGameState() {
   useEffect(() => {
     saveState({ coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency });
   }, [coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency]);
-  
+
+  // Propagate the React soundEnabled state to the legacy sound modules.
+  // The codebase has three separate "is sound muted" concepts
+  // (lib/sounds.ts module-level, lib/soundManager.ts instance state,
+  // and this React state) and historically they were not kept in
+  // sync — the header mute button would flip the React state but
+  // sounds routed through playSound() / soundManager kept playing.
+  // This effect makes the React state the single source of truth.
+  // See docs/PHASE_3_STATUS.md Gap B.
+  useEffect(() => {
+    setSoundsModuleEnabled(soundEnabled);
+    soundManager.setMuted(!soundEnabled);
+  }, [soundEnabled]);
+
   // Get current currency balance
   const currentBalance = selectedCurrency === 'gold' ? goldCoins : greenCoins;
 
