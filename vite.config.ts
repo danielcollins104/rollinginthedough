@@ -150,7 +150,22 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const plugins = [
+  react(),
+  tailwindcss(),
+  jsxLocPlugin(),
+  // vitePluginManusRuntime injects a 274 KB inline <script> with
+  // the Manus platform's live-edit / DOM-selector dev tool. It
+  // should only ship in dev builds. In production it adds 366 kB
+  // to index.html and blocks first paint on a synchronous script.
+  // The user's own custom vitePluginManusDebugCollector has a
+  // similar NODE_ENV guard baked in. See docs/PHASE_4_STATUS.md
+  // Gap E.
+  ...(process.env.NODE_ENV !== "production"
+    ? [vitePluginManusRuntime()]
+    : []),
+  vitePluginManusDebugCollector(),
+];
 
 export default defineConfig({
   plugins,
