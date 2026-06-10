@@ -843,9 +843,11 @@ export default function SlotMachine({
   };
 
   return (
-    <div 
+    <div
       className={`w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''}`}
       style={{ minHeight: "450px" }}
+      aria-busy={spinning || cascadeActive}
+      aria-label="Slot machine game"
     >
       {/* Win Particle Animations */}
       <WinParticles trigger={particleTrigger} winAmount={winAmount} isJackpot={lastWinType === "JACKPOT"} />
@@ -1050,7 +1052,12 @@ export default function SlotMachine({
         )}
 
         {/* Reels */}
-        <div className="grid gap-1 sm:gap-1.5" style={{ gridTemplateColumns: "repeat(5, 1fr)", minHeight: "120px" }}>
+        <div
+          className="grid gap-1 sm:gap-1.5"
+          style={{ gridTemplateColumns: "repeat(5, 1fr)", minHeight: "120px" }}
+          role="list"
+          aria-label={`Reels, ${5} columns by 3 rows`}
+        >
           {displayGrid.map((reel, reelIdx) => (
             <div
               key={reelIdx}
@@ -1064,6 +1071,8 @@ export default function SlotMachine({
                   ? "0 0 20px rgba(255,215,0,0.6), inset 0 0 15px rgba(255,215,0,0.1)"
                   : "inset 0 0 20px rgba(0,0,0,0.8), 0 0 10px rgba(212,175,55,0.2)",
               }}
+              role="listitem"
+              aria-label={`Reel ${reelIdx + 1}`}
             >
               {/* Spinning blur overlay */}
               <ReelStrip symbols={reel} spinning={spinning} done={reelDone[reelIdx]} />
@@ -1155,7 +1164,12 @@ export default function SlotMachine({
         </div>
 
         {/* Win display below reels */}
-        <div className="mt-0.5 text-center min-h-[1.5rem] flex items-center justify-center">
+        <div
+          className="mt-0.5 text-center min-h-[1.5rem] flex items-center justify-center"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {showWin && winAmount > 0 && lastWinType ? (
             <div
               className="flex items-center gap-2"
@@ -1234,6 +1248,7 @@ export default function SlotMachine({
               }
             }}
             disabled={!canSpin}
+            aria-label={canSpin ? "Spin the reels" : "Spinning, please wait"}
             className="w-full rounded-full font-display font-black tracking-wider transition-all relative overflow-hidden"
             onPointerDown={() => canSpin && soundEnabled && playSound("button_click")}
             onMouseDown={(e) => {

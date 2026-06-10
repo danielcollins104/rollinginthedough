@@ -228,6 +228,8 @@ export default function GameHeader({
               border: "1px solid rgba(212,175,55,0.35)",
               boxShadow: "inset 0 0 12px rgba(0,0,0,0.4), 0 0 8px rgba(212,175,55,0.1)",
             }}
+            role="group"
+            aria-label={`Coin balance: ${coins.toLocaleString()} coins`}
           >
             <AnimatedCoinIcon value={coins} />
             <div className="flex-1 min-w-0">
