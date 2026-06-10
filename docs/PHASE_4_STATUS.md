@@ -315,44 +315,75 @@ the bigger problem.
 
 ### Gap C: Production-side performance monitoring
 
-**The fix:** add `web-vitals` (1.7 kB gzipped) and a small
-`reportWebVitals` helper that batches and POSTs to a new
-`/api/metrics` endpoint. Get the LCP, CLS, INP, and TTFB
-values into a backend table. The minimum viable version:
+**Status: SHIPPED.** Web vitals monitoring is now wired up
+end-to-end. Five new files (one client library, one server
+helper, one server route, one server test, one SQL migration),
+plus a small edit to `main.tsx`. The new `webVitals` table
+is in the schema and a hand-written `drizzle/0001_web_vitals.sql`
+is committed — the user needs to run `drizzle-kit generate &&
+drizzle-kit migrate` to apply the migration against their
+database.
 
-```ts
-import { onLCP, onCLS, onINP, onTTFB } from "web-vitals";
+Architecture:
 
-export function reportWebVitals() {
-  const send = (metric: { name: string; value: number; id: string }) => {
-    const body = JSON.stringify({
-      name: metric.name,
-      value: metric.value,
-      id: metric.id,
-      url: location.pathname,
-      ts: Date.now(),
-    });
-    navigator.sendBeacon("/api/metrics", body);
-  };
-  onLCP(send);
-  onCLS(send);
-  onINP(send);
-  onTTFB(send);
-}
-```
+| Layer | File | What it does |
+|-------|------|--------------|
+| Client reporter | `client/src/lib/reportWebVitals.ts` | Dynamically imports `web-vitals`, wires LCP/CLS/INP/TTFB, samples at 1-in-10, sends each metric via `navigator.sendBeacon` (with `fetch keepalive` fallback) to `/api/trpc/metrics.recordWebVitals`. Fire-and-forget. |
+| Wiring | `client/src/main.tsx` | One line after the React render: `reportWebVitals()`. |
+| Server route | `server/routers.ts` | New `metrics.recordWebVitals` public procedure (zod-validated, accepts all 4 metric names plus FCP, accepts optional userId). |
+| Server helper | `server/db.ts` | `insertWebVital(metric)` — gracefully handles "no DB" (returns false) and "table not migrated" (catches the error, logs a warning, returns false). |
+| Schema | `drizzle/schema.ts` | New `webVitals` table with id, metricId, name, value, rating, delta, navigationType, pathname, userId, createdAt. |
+| Migration | `drizzle/0001_web_vitals.sql` | Hand-written `CREATE TABLE`. User runs `drizzle-kit generate && drizzle-kit migrate` to apply. |
+| Tests | `server/metrics.test.ts` | 6 tests: valid input, all metric names, optional userId, rejects unknown names, rejects missing pathname, rejects empty metricId. |
 
-Then a backend route that just stores the rows. No aggregation,
-no dashboard, no real-time alerts — just *recording the data*
-so the team can ask "what was the LCP for /home on mobile in
-the last 7 days" and get an answer.
+**Sampling.** 1 in 10 page loads report metrics. The
+sampling constant is `SAMPLING_RATE` in
+`reportWebVitals.ts` — easy to find and dial up. With
+sampling at 10%, a slot machine with 1000 DAU generates
+~400 metrics/day at full sampling, which the sampler
+reduces to ~40/day. Still plenty for a meaningful p50/p95
+over a week.
 
-**Expected impact:** indirect but real. You can't optimize what
-you don't measure, and the current codebase has zero
-production-side perf data.
+**Transport.** `navigator.sendBeacon()` is tried first
+(non-blocking, works during page unload). On failure or
+unsupported, falls back to `fetch` with `keepalive: true`.
+All errors are swallowed — perf monitoring must never
+throw.
 
-**Effort:** 1-2 hours for the client + server route. No
-dashboard work (that's a separate task). One commit each
-side, plus a docs entry.
+**Graceful degradation.** Three layers:
+1. **No DB** (test env, no `DATABASE_URL` set): `getDb()`
+   returns null, `insertWebVital` returns false, the route
+   returns `{ ok: true }`. Client never knows the difference.
+2. **DB but no table** (user hasn't migrated yet): the insert
+   throws "relation does not exist", `insertWebVital` catches
+   it, logs a warning, returns false. Route still returns
+   `{ ok: true }`.
+3. **DB has table, schema correct**: metrics land in the
+   `webVitals` table with all fields populated.
+
+**Build impact.** web-vitals is dynamically imported, so
+it ships in its own chunk (`web-vitals-...js`, 5.87 kB /
+2.39 kB gzip) loaded only on sampled page loads. The main
+`index-...js` chunk grew by 0.87 kB (uncompressed) for the
+reporter glue code. Net first-paint cost: zero (the chunk
+loads after first paint).
+
+**Type safety.** zod-validated input on the server side.
+tsc clean (was clean before, still clean after). Tests
+cover the input shape.
+
+**Migration status.** Hand-written `0001_web_vitals.sql`
+is committed. The user must run `drizzle-kit generate &&
+drizzle-kit migrate` to materialize the table. The route
+gracefully handles the pre-migration state.
+
+**Next steps the user might want:**
+- Bump sampling rate (currently 1-in-10) once you confirm
+  the table is collecting useful data
+- Add a retention query: "p95 LCP for /home in the last
+  7 days"
+- Surface metrics in a simple admin dashboard
+- Add custom metrics (e.g., time-to-first-spin)
 
 ### Gap D: Delete dead code (1,580 lines)
 
@@ -475,8 +506,12 @@ In order of cost/benefit:
 3. **Gap D (delete dead code)** — DONE. 1,580 lines
    removed from the repo. Build output unchanged (Vite was
    already tree-shaking).
-4. **Gap C (web-vitals monitoring)** — 1-2 hours, unlocks
-   future perf work. **Do fourth.**
+4. **Gap C (web-vitals monitoring)** — DONE. 7 files
+   (1 new client lib, 1 new server helper, 1 new server
+   route, 1 new server test, 1 new SQL migration, plus
+   schema + main.tsx edits). 115/115 tests passing,
+   web-vitals is a separate 2.4 kB chunk, 1-in-10
+   sampling, fire-and-forget via sendBeacon.
 5. **Gap B (lazy bonus/shop components)** — 1-2 hours,
    bigger bundle win but UX trade-off. **Do fifth, after
    the first four.**
