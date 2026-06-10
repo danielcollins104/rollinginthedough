@@ -221,46 +221,62 @@ clean commit. See Gap D.
 
 ### Gap A: Route-level code splitting
 
-**The fix:** in `App.tsx`, replace the 6 static page imports
-with `React.lazy()` + wrap `<Router>` in `<Suspense>`. Example:
+**Status: SHIPPED** (commit `5118782`-ish, see the route-level
+chunks in the bundle output below). The fix is in
+`client/src/App.tsx` — 5 of the 6 routed pages are now
+`React.lazy()`-loaded, the Router is wrapped in `<Suspense>`,
+and there's a small `PageLoading` fallback that matches the
+dark "Art Deco Opulence" theme.
 
-```tsx
-import { lazy, Suspense } from "react";
-const Home = lazy(() => import("./pages/Home"));
-const Pricing = lazy(() => import("./pages/Pricing"));
-const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
-const TermsOfService = lazy(() => import("./pages/TermsOfService"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+The expected-vs-measured comparison is interesting:
+**Home stays in the initial bundle** (not lazy-loaded). Home
+imports SlotMachine (1,912 lines), CoinShop (607 lines),
+BonusGameOverlay (619 lines), and most of the game's heavy
+components. Lazy-loading Home would force a Suspense
+fallback for the landing page on every cold load *and*
+would not save meaningful bytes (its imports are the
+bulk of the game's runtime). The audit doc's prediction
+was "1-2 of the 6 page chunks no longer included" — the
+real answer turned out to be 5 of 6 (everything except
+Home), because the other 5 pages are small and pull in
+fewer components.
 
-<ErrorBoundary>
-  <ThemeProvider>
-    <TooltipProvider>
-      <Toaster ... />
-      <Suspense fallback={<div>Loading...</div>}>
-        <Router />
-      </Suspense>
-    </TooltipProvider>
-  </ThemeProvider>
-</ErrorBoundary>
+Post-fix bundle (measured, 2026-06-10):
+
+```
+dist/public/index.html                            1.31 kB │ gzip:   0.66 kB
+dist/public/assets/index-5cUH3RXV.css           167.68 kB │ gzip:  25.41 kB
+dist/public/assets/NotFound-Cwx5DXXU.js           2.61 kB │ gzip:   0.98 kB
+dist/public/assets/CheckoutSuccess-B_SCAkEb.js    4.31 kB │ gzip:   1.61 kB
+dist/public/assets/Pricing-bn5reB8f.js            8.53 kB │ gzip:   2.57 kB
+dist/public/assets/TermsOfService-Bm0cow9P.js    14.52 kB │ gzip:   3.35 kB
+dist/public/assets/PrivacyPolicy-CG-lss5g.js     19.95 kB │ gzip:   3.93 kB
+dist/public/assets/index-Dk-o36ld.js            749.84 kB │ gzip: 207.07 kB
 ```
 
-Vite's build will then emit one chunk per lazy page. The user
-landing on `/` gets the Home chunk + a tiny shared chunk. The
-Pricing, Privacy, etc. chunks only download if the user
-navigates to them.
+Compared to pre-fix:
 
-**Expected impact:** Home chunk shrinks by ~10-15% (1-2 of the
-6 page chunks no longer included). For Privacy/Terms (which
-have a lot of legal text in JSX), this could be 30-50 kB
-gzipped saved on the initial load.
+| Metric | Pre-fix | Post-fix | Delta |
+|--------|--------:|---------:|------:|
+| Initial JS | 797.34 kB | 749.84 kB | **-47.50 kB** (-6.0%) |
+| Initial JS (gzip) | 215.97 kB | 207.07 kB | **-8.90 kB** (-4.1%) |
+| Lazy chunks total | (in main) | 49.92 kB | extracted |
+| Lazy chunks total (gzip) | (in main) | 12.44 kB | extracted |
 
-**Risk:** low. wouter docs explicitly support this pattern.
-The only thing to watch is the `<Suspense fallback>` — a
-spinner or skeleton would feel more native than a "Loading..."
-text node.
+A user landing on `/` now downloads 8.90 kB less gzipped
+JS to parse before first paint. A user clicking "Privacy
+Policy" downloads an additional 3.93 kB on demand. The
+largest single lazy chunk is PrivacyPolicy (19.95 kB / 3.93
+gzip), the smallest is NotFound (2.61 kB / 0.98 gzip).
 
-**Effort:** 30 min, one commit.
+The wouter `<Route component={...}>` pattern works
+correctly with `React.lazy` — wouter calls
+`h(component, {params})` and treats lazy components
+like any other component. No special integration needed.
+
+Verified: 109/109 tests passing, tsc clean, all 5 lazy
+chunks have distinct content (verified by grep for page
+names in chunk files).
 
 ### Gap B: Lazy-load bonus and shop components
 
@@ -437,13 +453,12 @@ unaddressed.
 
 In order of cost/benefit:
 
-1. **Gap E (fix vitePluginManusRuntime guard)** — 5 min, biggest
-   bundle-size and first-paint win of any Phase 4 change. -366 kB
-   on the initial HTML document, unblocks first paint. **Do first.**
-2. **Gap D (delete dead code)** — 5 min, immediate 1,580-line
-   repo cleanup, no runtime impact. **Do second.**
-3. **Gap A (route-level code splitting)** — 30 min, real
-   initial-load win, low risk. **Do third.**
+1. **Gap E (fix vitePluginManusRuntime guard)** — DONE.
+   -366 kB on initial HTML, unblocks first paint.
+2. **Gap A (route-level code splitting)** — DONE. -47.5 kB
+   on initial JS (-8.9 kB gzip), 5 lazy chunks extracted.
+3. **Gap D (delete dead code)** — 5 min, immediate 1,580-line
+   repo cleanup, no runtime impact. **Do next.**
 4. **Gap C (web-vitals monitoring)** — 1-2 hours, unlocks
    future perf work. **Do fourth.**
 5. **Gap B (lazy bonus/shop components)** — 1-2 hours,
