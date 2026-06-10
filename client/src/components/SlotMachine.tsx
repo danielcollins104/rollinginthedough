@@ -21,6 +21,11 @@ import FreeSpinsDisplay from "./FreeSpinsDisplay";
 import IdleAnimations from "./IdleAnimations";
 import PaylineHighlight from "./PaylineHighlight";
 import { WinParticles } from "./WinParticles";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const BET_OPTIONS = [10, 25, 50, 100, 200];
 const PAYLINE_OPTIONS = [1, 5, 10, 15, 20, 25];
@@ -1319,23 +1324,32 @@ export default function SlotMachine({
           >
             🎰 SCRATCH
           </button>
-          <button
-            onClick={() => {
-              setAutoplay(!autoplay);
-              if (soundEnabled) playSound("button_click");
-            }}
-            className="flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
-            style={{
-              background: autoplay
-                ? "linear-gradient(135deg, #1a3a1a, #2a5a2a)"
-                : "linear-gradient(135deg, #1a1a2a, #2a2a3a)",
-              border: `2px solid ${autoplay ? "rgba(76,175,80,0.6)" : "rgba(212,175,55,0.3)"}`,
-              color: autoplay ? "#90EE90" : "#D4AF37",
-              boxShadow: autoplay ? "0 0 10px rgba(76,175,80,0.3)" : "none",
-            }}
-          >
-            {autoplay ? "■ STOP" : "▶ AUTO"}
-          </button>
+          <Tooltip delayDuration={400}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => {
+                  setAutoplay(!autoplay);
+                  if (soundEnabled) playSound("button_click");
+                }}
+                className="flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
+                style={{
+                  background: autoplay
+                    ? "linear-gradient(135deg, #1a3a1a, #2a5a2a)"
+                    : "linear-gradient(135deg, #1a1a2a, #2a2a3a)",
+                  border: `2px solid ${autoplay ? "rgba(76,175,80,0.6)" : "rgba(212,175,55,0.3)"}`,
+                  color: autoplay ? "#90EE90" : "#D4AF37",
+                  boxShadow: autoplay ? "0 0 10px rgba(76,175,80,0.3)" : "none",
+                }}
+              >
+                {autoplay ? "■ STOP" : "▶ AUTO"}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {autoplay
+                ? "Stop autoplay"
+                : "Auto-spin the reels until you stop me"}
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* ── Bet Controls — Desktop ── */}
@@ -1348,26 +1362,36 @@ export default function SlotMachine({
                   💰 Bet Per Line
                 </div>
                 <div className="flex gap-1">
-                  <button
-                    onClick={() => { const nb = Math.max(10, bet - BET_DECREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
-                    disabled={spinning || cascadeActive}
-                    className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center transition-all"
-                    style={{
-                      background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
-                      border: "1px solid rgba(212,175,55,0.4)",
-                      color: spinning || cascadeActive ? "#444" : "#C8860A",
-                    }}
-                  >−</button>
-                  <button
-                    onClick={() => { const nb = Math.min(200, bet + BET_INCREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
-                    disabled={spinning || cascadeActive}
-                    className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center transition-all"
-                    style={{
-                      background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
-                      border: "1px solid rgba(212,175,55,0.4)",
-                      color: spinning || cascadeActive ? "#444" : "#C8860A",
-                    }}
-                  >+</button>
+                  <Tooltip delayDuration={400}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => { const nb = Math.max(10, bet - BET_DECREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
+                        disabled={spinning || cascadeActive}
+                        className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center transition-all"
+                        style={{
+                          background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
+                          border: "1px solid rgba(212,175,55,0.4)",
+                          color: spinning || cascadeActive ? "#444" : "#C8860A",
+                        }}
+                      >−</button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Decrease bet</TooltipContent>
+                  </Tooltip>
+                  <Tooltip delayDuration={400}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => { const nb = Math.min(200, bet + BET_INCREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
+                        disabled={spinning || cascadeActive}
+                        className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center transition-all"
+                        style={{
+                          background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
+                          border: "1px solid rgba(212,175,55,0.4)",
+                          color: spinning || cascadeActive ? "#444" : "#C8860A",
+                        }}
+                      >+</button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Increase bet</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
               <div className="flex gap-1">
@@ -1395,33 +1419,44 @@ export default function SlotMachine({
                 <div className="text-xs font-numbers uppercase tracking-widest" style={{ color: "rgba(76,175,80,0.7)" }}>
                   📊 Paylines
                 </div>
-                <button
-                  onClick={() => { if (!spinning && !cascadeActive) { setBet(200); if (soundEnabled) playSound("button_click"); } }}
-                  disabled={spinning || cascadeActive}
-                  className="px-2 py-0.5 rounded text-xs font-numbers font-bold transition-all"
-                  style={{
-                    background: "linear-gradient(135deg, #2a1a00, #3a2a00)",
-                    border: "1px solid rgba(212,175,55,0.4)",
-                    color: "#C8860A",
-                    opacity: spinning || cascadeActive ? 0.5 : 1,
-                  }}
-                >MAX BET</button>
+                <Tooltip delayDuration={400}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => { if (!spinning && !cascadeActive) { setBet(200); if (soundEnabled) playSound("button_click"); } }}
+                      disabled={spinning || cascadeActive}
+                      className="px-2 py-0.5 rounded text-xs font-numbers font-bold transition-all"
+                      style={{
+                        background: "linear-gradient(135deg, #2a1a00, #3a2a00)",
+                        border: "1px solid rgba(212,175,55,0.4)",
+                        color: "#C8860A",
+                        opacity: spinning || cascadeActive ? 0.5 : 1,
+                      }}
+                    >MAX BET</button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Set bet to maximum (200)</TooltipContent>
+                </Tooltip>
               </div>
               <div className="flex gap-1">
                 {PAYLINE_OPTIONS.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => { if (!spinning && !cascadeActive && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
-                    disabled={spinning || cascadeActive}
-                    className="flex-1 py-1.5 text-xs rounded font-numbers font-bold transition-all hover:scale-105"
-                    style={{
-                      background: paylines === p ? "linear-gradient(135deg, #1a5a1a, #2a8a2a)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
-                      border: `1px solid ${paylines === p ? "#90EE90" : "rgba(76,175,80,0.3)"}`,
-                      color: paylines === p ? "#90EE90" : "#D4AF37",
-                      boxShadow: paylines === p ? "0 0 10px rgba(144,238,144,0.4)" : "none",
-                      opacity: spinning || cascadeActive ? 0.5 : 1,
-                    }}
-                  >{p}</button>
+                  <Tooltip delayDuration={400} key={p}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => { if (!spinning && !cascadeActive && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
+                        disabled={spinning || cascadeActive}
+                        className="flex-1 py-1.5 text-xs rounded font-numbers font-bold transition-all hover:scale-105"
+                        style={{
+                          background: paylines === p ? "linear-gradient(135deg, #1a5a1a, #2a8a2a)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
+                          border: `1px solid ${paylines === p ? "#90EE90" : "rgba(76,175,80,0.3)"}`,
+                          color: paylines === p ? "#90EE90" : "#D4AF37",
+                          boxShadow: paylines === p ? "0 0 10px rgba(144,238,144,0.4)" : "none",
+                          opacity: spinning || cascadeActive ? 0.5 : 1,
+                        }}
+                      >{p}</button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      Activate {p} payline{p === 1 ? "" : "s"}
+                    </TooltipContent>
+                  </Tooltip>
                 ))}
               </div>
             </div>
@@ -1474,29 +1509,41 @@ export default function SlotMachine({
 
         {/* ── Bottom utility row ── */}
         <div className="hidden sm:flex gap-1.5">
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="px-3 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all"
-            style={{
-              background: !soundEnabled ? "linear-gradient(135deg, #3a1a1a, #5a2a2a)" : "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
-              border: !soundEnabled ? "1px solid rgba(255,107,107,0.5)" : "1px solid rgba(76,175,80,0.5)",
-              color: !soundEnabled ? "#FF6B6B" : "#90EE90",
-            }}
-          >
-            {soundEnabled ? "🔊 SOUND" : "🔇 MUTE"}
-          </button>
+          <Tooltip delayDuration={400}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="px-3 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all"
+                style={{
+                  background: !soundEnabled ? "linear-gradient(135deg, #3a1a1a, #5a2a2a)" : "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
+                  border: !soundEnabled ? "1px solid rgba(255,107,107,0.5)" : "1px solid rgba(76,175,80,0.5)",
+                  color: !soundEnabled ? "#FF6B6B" : "#90EE90",
+                }}
+              >
+                {soundEnabled ? "🔊 SOUND" : "🔇 MUTE"}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {soundEnabled ? "Mute sound effects" : "Unmute sound effects"}
+            </TooltipContent>
+          </Tooltip>
           {onCoinShop && (
-            <button
-              onClick={onCoinShop}
-              className="flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105"
-              style={{
-                background: "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
-                border: "1px solid rgba(76,175,80,0.5)",
-                color: "#90EE90",
-              }}
-            >
-              💰 SHOP
-            </button>
+            <Tooltip delayDuration={400}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onCoinShop}
+                  className="flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105"
+                  style={{
+                    background: "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
+                    border: "1px solid rgba(76,175,80,0.5)",
+                    color: "#90EE90",
+                  }}
+                >
+                  💰 SHOP
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Open the coin shop</TooltipContent>
+            </Tooltip>
           )}
           <button
             onClick={() => {
