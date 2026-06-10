@@ -3,6 +3,10 @@
 Audit of `IMPROVEMENT_PLAN.md` Phase 5 against the live code as
 of 2026-06-10. Same pattern as Phases 1, 2, 3, 4.
 
+**Status (as of last update):** Gap B (haptics) and Gap E (friendly
+errors) shipped in this session. The remaining gaps (A, C, D, F, G)
+are still in the same state described below.
+
 ---
 
 ## Headline
@@ -11,6 +15,13 @@ Phase 5 is **mostly not done**. The plan has 7 items, and the
 audit's honest answer is "0 of 7 fully done, 4 partially done
 (via library code that isn't actually used), 1 not started, 2
 structural."
+
+*(Update after this session: Gap B (haptics) and Gap E
+(ErrorBoundary UI) are now shipped. The headline above is the
+original audit state; the status block at the top of this doc
+is current. The 2/7 → 4/7 shift in the headline numbers still
+applies — haptics and friendly errors were both partially-done
+or unimplemented; both are now full.)*
 
 The good news: this is **the most user-facing phase in the
 entire plan**. Accessibility, keyboard nav, error states,
@@ -73,23 +84,10 @@ that shows the symbol payouts when the player clicks a
 
 **Effort:** 2-4 hours for a minimal version. See Gap A.
 
-### 2. ❌ Haptic feedback for mobile devices on wins
+### 2. ✅ Haptic feedback for mobile devices on wins
 
-**Status:** NOT STARTED. Zero `navigator.vibrate` /
-`triggerHaptic` / `HapticFeedback` hits in `client/src/`.
-iOS Safari does NOT support `navigator.vibrate` at all
-(only Android Chrome does), and on iOS the equivalent is
-`UIImpactFeedbackGenerator` from a native module (not
-available in web). For a PWA that runs in mobile browsers,
-the realistic implementation is `navigator.vibrate?.(...)`
-with feature detection.
-
-**Where to wire it:** big wins (`win_explosion` / `mega_win` /
-`jackpot` sounds), scatter triggers (`free_spin`), and the
-SPIN button press.
-
-**Effort:** 30 minutes — one helper, three call sites.
-See Gap B.
+**Status: SHIPPED** (commit `2bcd909`). See Gap B below for the
+implementation details and the 16-test suite.
 
 ### 3. ⚠️ Accessibility with proper ARIA labels
 
@@ -149,33 +147,17 @@ A reasonable minimal set of keyboard shortcuts:
 
 **Effort:** 1-2 hours for a minimal version. See Gap D.
 
-### 5. ⚠️ Better error states and user-friendly messages
+### 5. ✅ Better error states and user-friendly messages
 
-**Status:** PARTIALLY DONE. The codebase has an `ErrorBoundary`
-at `client/src/components/ErrorBoundary.tsx` that wraps
-`<App>` in `App.tsx`. When a component throws, the boundary
-catches it and shows a "Reload Page" button. **Good.**
-
-But the current error UI has problems:
-- It **dumps the raw `error.stack` to the player** in a
-  pre/code block. Stack traces are useful for developers
-  but alarming and meaningless to players. The CSS class
-  is `text-muted-foreground` but it's still a stack trace
-  on screen.
-- There's no "what happened, what to do" copy. Just
-  "An unexpected error occurred."
-- No way to copy the error or report it (helpful for
-  the user, but also for the team — the audit found no
-  existing "send error report" mechanism beyond
-  `localStorage.setItem("ritd_last_error", ...)`).
-- No try/catch wrapping in API calls: trpc calls have
-  default error handling, but most user-facing actions
-  (spin, claim daily bonus, etc.) don't show a friendly
-  toast on failure.
-
-**Effort:** 1-2 hours to fix the ErrorBoundary UI, plus
-the broader error-handling pattern is a separate task.
-See Gap E.
+**Status: SHIPPED for the ErrorBoundary UI** (commit `d99cf81`).
+See Gap E below for the implementation. **Honest caveat:** the
+broader "toast on every failed trpc call" pattern is NOT shipped.
+The audit's bullet about "most user-facing actions don't show a
+friendly toast on failure" is still true — that's a separate
+task and probably belongs in a Phase 5 follow-up doc if we want
+to track it formally. The ErrorBoundary rewrite alone is a
+meaningful fix (no more stack trace on screen) and the rest of
+the gap can be picked up incrementally.
 
 ### 6. ❌ Loading skeletons for better perceived performance
 
@@ -244,15 +226,39 @@ that's the right behavior.
 
 ### Gap B: Haptic feedback on wins and big events
 
-A `vibrate(pattern)` helper with feature detection (works
-on Android Chrome, no-op on iOS). Wire to:
-- Big win (50ms)
-- Mega win ([50, 50, 50])
-- Jackpot ([100, 50, 100, 50, 200])
-- Scatter trigger (30ms)
-- SPIN button press (10ms) — optional, may annoy
+**Status: SHIPPED** (commit `2bcd909`).
 
-**Effort:** 30 minutes.
+A `vibrate(pattern)` helper at `client/src/lib/haptics.ts`
+with feature detection (works on Android Chrome, no-op on
+iOS / desktop / SSR). Five named patterns matching game
+events:
+
+- `tap` — 10ms — SPIN button press
+- `small` — 30ms — scatter trigger, small win
+- `medium` — 50ms — big win, scratch game win
+- `large` — 3-pulse crescendo on mega win
+- `jackpot` — 5-pulse celebration on jackpot
+
+Public API: `vibrate(name | number | number[])`,
+`setHapticsEnabled(boolean)`, `hapticsAvailable()`,
+`HAPTIC_PATTERNS` table. The `setHapticsEnabled` toggle
+mirrors the sound-system mute pattern and is wired in
+code but **no UI toggle exists yet** — a future gap can
+add a settings switch the same way Phase 3 Gap B wired
+the sound mute.
+
+Wired into `client/src/components/SlotMachine.tsx` at 5
+call sites: SPIN press, scatter trigger, jackpot, mega win,
+big win, small win, scratch game win.
+
+Tests: `client/src/lib/haptics.test.ts` (16 tests) — all
+named patterns, raw pass-through, feature detection, SSR
+safety, no-op behavior, error swallowing, and the public
+`HAPTIC_PATTERNS` table shape.
+
+Effort: ~30 min estimate was correct. The haptics helper
+itself is 96 lines (mostly comments); the tests are 161
+lines; the SlotMachine wiring is 9 small call sites.
 
 ### Gap C: Accessibility for the slot machine
 
@@ -288,17 +294,39 @@ the shortcuts must not fire when an input is focused (typing
 
 ### Gap E: Friendlier error UI
 
-The current `ErrorBoundary` shows a raw stack trace. Fix:
-- Replace the stack trace with friendly copy
-  ("Something went wrong on our end. Reloading usually
-  fixes it.")
-- Add a "Copy error details" button (for support)
-- Keep the stack trace in a `<details>` block, collapsed
-  by default, for developers
-- Wire the existing `localStorage.ritd_last_error` to the
-  copy button (it already stores the last error)
+**Status: SHIPPED** (commit `d99cf81`).
 
-**Effort:** 1-2 hours.
+The current `ErrorBoundary` at `client/src/components/ErrorBoundary.tsx`
+now shows:
+- Friendly headline: "Something went wrong"
+- Plain-English copy: "Reloading usually fixes it. If it keeps
+  happening, copy the error details and send them to support."
+- Two actions: Reload (green, primary), Copy error details
+  (gold, secondary, with idle/copied/failed visual feedback
+  that resets after 2s)
+- Technical stack inside a collapsed `<details>` block, only
+  visible to a user who clicks "Technical details"
+- Copy payload includes: ISO timestamp, current URL,
+  `error.message`, `error.stack`, `errorInfo.componentStack`
+- `localStorage.ritd_last_error` now also stores
+  `componentStack` and `userAgent` for post-reload debugging
+- Clipboard write uses `navigator.clipboard.writeText` with a
+  `document.execCommand("copy")` fallback for non-secure
+  contexts / older browsers; both paths are wrapped in
+  try/catch so a clipboard failure can never break the UI
+
+The component is still a class because React error boundaries
+must be classes (no hook equivalent in React 19). The visual
+design matches the rest of the app's gold/cream-on-dark theme.
+
+**Honest caveat:** the audit also called out "no friendly toast
+on trpc call failure" — that's a broader pattern and is **not**
+in this commit. Worth tracking as a follow-up gap.
+
+Effort: ~1-2 hours estimate was correct. The rewrite is a
+single-file change (`+221 / -35`). No tests added because the
+component renders React in a node-environment vitest setup,
+which is awkward; coverage is via tsc clean + visual review.
 
 ### Gap F: Skeletons for the home page, modals, and route loads
 
@@ -361,13 +389,11 @@ In cost/benefit order:
 | Gap A (onboarding) | 2-4 h | medium (new players only) | Real value |
 | Gap C (a11y) | 4-8 h | high (a11y users) | Biggest win |
 
-**Recommended next turn:** Gap E (friendly error UI) + Gap
-B (haptics) in the same commit. Both are small, both
-genuine fixes, together they round out the "user error
-path" and the "physical feedback" path. After those, the
-next big win is Gap D (keyboard shortcuts) or Gap F
-(skeletons), depending on what the user feels is more
-visible.
+**Recommended next turn:** Gap D (keyboard shortcuts) or Gap
+F (loading skeletons), depending on which the user feels is
+more visible. Both are 1-2 / 2-4 hours respectively. Gap C
+(slot machine a11y) is the biggest single win but 4-8 hours
+of careful work — worth saving for a focused session.
 
 ---
 
@@ -377,11 +403,14 @@ visible.
 - `PRIORITIES.md` — independent priority list that has its
   own Phase 5 items (Accessibility, Haptic Feedback,
   Enhanced Onboarding, Error Handling)
-- `client/src/components/ErrorBoundary.tsx` — current
-  error UI (Gap E)
-- `client/src/components/SlotMachine.tsx:1848-1912` —
-  `PayTable` component (the closest thing to a tutorial
-  that exists today)
+- `client/src/lib/haptics.ts` — haptics helper (Gap B,
+  shipped in `2bcd909`)
+- `client/src/lib/haptics.test.ts` — 16 haptics tests
+- `client/src/components/ErrorBoundary.tsx` — friendly
+  error UI (Gap E, shipped in `d99cf81`)
+- `client/src/components/SlotMachine.tsx` — `PayTable`
+  component at lines ~1848-1912 (the closest thing to a
+  tutorial that exists today)
 - `client/src/components/ui/skeleton.tsx` — Skeleton
   primitive
 - `client/src/components/ui/tooltip.tsx` — Tooltip
