@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
 import { playSound, playWinSound } from "@/lib/sounds";
 import { getPaylinePath } from "@/lib/paylines";
-import { WinParticles } from "./WinParticles";
+import { vibrate } from "@/lib/haptics";
 import { soundManager } from "@/lib/soundManager";
 import ScratchGame from "./ScratchGame";
 import DealsModal from "./DealsModal";
@@ -20,6 +20,7 @@ import SymbolIcon from "./SymbolIcon";
 import FreeSpinsDisplay from "./FreeSpinsDisplay";
 import IdleAnimations from "./IdleAnimations";
 import PaylineHighlight from "./PaylineHighlight";
+import { WinParticles } from "./WinParticles";
 
 const BET_OPTIONS = [10, 25, 50, 100, 200];
 const PAYLINE_OPTIONS = [1, 5, 10, 15, 20, 25];
@@ -411,6 +412,10 @@ export default function SlotMachine({
       // 3+ scatters - fanfare!
       setScatterFanfareActive(true);
       if (soundEnabled) playSound("scatter_win");
+      // Scatter trigger — short haptic blip. The visual scatter
+      // fanfare is the main signal; haptics is a bonus for
+      // mobile users. No-op on iOS (no Vibration API support).
+      vibrate("small");
       setTimeout(() => setScatterFanfareActive(false), 2000);
     }
   }, [soundEnabled]);
@@ -753,21 +758,32 @@ export default function SlotMachine({
             if (lastWinType === "JACKPOT") {
               playSound("jackpot");
               soundManager.playJackpot();
+              // Jackpot haptic: a 5-pulse crescendo. The
+              // strongest pattern we ship; only fires on
+              // actual jackpot.
+              vibrate("jackpot");
             } else if (lastWinType === "MEGA_WIN") {
               playSound("mega_win");
               soundManager.playBigWin();
+              // Mega win haptic: 3-pulse crescendo.
+              vibrate("large");
               if (winLineCount >= 3) {
                 setTimeout(() => playSound("multi_win"), 400);
               }
             } else if (lastWinType === "BIG_WIN") {
               playSound("big_win");
               soundManager.playBigWin();
+              // Big win haptic: single 50ms pulse.
+              vibrate("medium");
               if (winLineCount >= 2) {
                 setTimeout(() => playSound("multi_win"), 400);
               }
             } else {
               playWinSound(winLineCount);
               soundManager.playSmallWin();
+              // Small win haptic: short 30ms pulse. Subtle,
+              // doesn't compete with the sound.
+              vibrate("small");
             }
           }
 
@@ -1205,6 +1221,10 @@ export default function SlotMachine({
               if (canSpin) {
                 spin();
                 if (soundEnabled) playSound("button_click");
+                // SPIN button press haptic: 10ms tap. Subtle
+                // enough not to annoy, gives physical feedback
+                // for mobile users. No-op on iOS.
+                vibrate("tap");
                 setSpinButtonPulse(false);
               }
             }}
@@ -1508,6 +1528,8 @@ export default function SlotMachine({
           onWin={(amount) => {
             if (soundEnabled) playSound('big_win');
             soundManager.playBigWin();
+            // Scratch-game win haptic: same as big win.
+            vibrate("medium");
           }}
         />
       )}
