@@ -356,15 +356,30 @@ side, plus a docs entry.
 
 ### Gap D: Delete dead code (1,580 lines)
 
-**The fix:** delete `ComponentShowcase.tsx` and `DebugPanel.tsx`.
-They're not imported. They're not in the build. They're
-"documented" only by their own headers.
+**Status: SHIPPED.** Both files deleted in commit (this turn's
+fix). Verified before deletion: zero importers across the entire
+repo (grep on `ComponentShowcase` and `DebugPanel` matched only
+the audit doc itself, the self-export, and... nothing else).
+After deletion: build output is byte-identical to pre-delete
+(750 kB main chunk, same lazy chunks, no new entries) — confirms
+Vite was already tree-shaking both files. Tests still 109/109,
+tsc clean.
 
-If the team wants to keep them for reference, move them to
-`docs/scratch/` or similar. Don't keep them in the production
-source tree.
+| File | Lines (pre) | Status |
+|------|------------:|--------|
+| `client/src/pages/ComponentShowcase.tsx` | 1,437 | deleted |
+| `client/src/components/DebugPanel.tsx` | 143 | deleted |
+| **Total** | **1,580** | **deleted** |
 
-**Effort:** 5 min, one commit.
+Net: `client/src/pages/` shrank from 2,840 to 1,403 lines
+(-50.6%). `client/src/components/` shrank from 11,885 to
+11,742 lines (-1.2%). Repo is noticeably easier to navigate
+and `codebase-inspection` results are cleaner.
+
+**The right answer was always "no, these files were never
+useful in their current location."** Vite tree-shook them
+from any build, so they never affected runtime. They only
+existed in the repo as clutter.
 
 ### Gap E: 368 kB index.html is a real production bug
 
@@ -457,8 +472,9 @@ In order of cost/benefit:
    -366 kB on initial HTML, unblocks first paint.
 2. **Gap A (route-level code splitting)** — DONE. -47.5 kB
    on initial JS (-8.9 kB gzip), 5 lazy chunks extracted.
-3. **Gap D (delete dead code)** — 5 min, immediate 1,580-line
-   repo cleanup, no runtime impact. **Do next.**
+3. **Gap D (delete dead code)** — DONE. 1,580 lines
+   removed from the repo. Build output unchanged (Vite was
+   already tree-shaking).
 4. **Gap C (web-vitals monitoring)** — 1-2 hours, unlocks
    future perf work. **Do fourth.**
 5. **Gap B (lazy bonus/shop components)** — 1-2 hours,
