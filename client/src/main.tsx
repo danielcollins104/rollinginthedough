@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
+import { reportWebVitals } from "./lib/reportWebVitals";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -59,3 +60,9 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </trpc.Provider>
 );
+
+// Wire up web-vitals reporting after the initial render. This
+// is fire-and-forget — see client/src/lib/reportWebVitals.ts
+// for the sampling rate and transport. Safe to call in dev
+// and prod; the helper is a no-op without `window`.
+reportWebVitals();

@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, serial, text, timestamp, varchar, integer } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, serial, text, timestamp, varchar, integer, doublePrecision } from "drizzle-orm/pg-core";
 
 /**
  * Core user table backing auth flow.
@@ -218,3 +218,29 @@ export const referralMilestones = pgTable("referralMilestones", {
 
 export type ReferralMilestone = typeof referralMilestones.$inferSelect;
 export type InsertReferralMilestone = typeof referralMilestones.$inferInsert;
+
+// Web Vitals metrics (LCP, CLS, INP, TTFB, FCP) reported by the
+// client at runtime. Used for production-side performance
+// monitoring — see client/src/lib/reportWebVitals.ts and
+// docs/PHASE_4_STATUS.md Gap C.
+//
+// The `metricId` column is the unique id provided by the
+// web-vitals library per metric event; combined with the
+// timestamp it dedupes repeat reports for the same metric.
+// `userId` is nullable because the reporter is on a public
+// route and web vitals are anonymous by default.
+export const webVitals = pgTable("webVitals", {
+  id: serial("id").primaryKey(),
+  metricId: varchar("metricId", { length: 64 }).notNull(),
+  name: varchar("name", { length: 16 }).notNull(), // "LCP" | "CLS" | "INP" | "TTFB" | "FCP"
+  value: doublePrecision("value").notNull(),
+  rating: varchar("rating", { length: 24 }).notNull(), // "good" | "needs-improvement" | "poor"
+  delta: doublePrecision("delta").notNull(),
+  navigationType: varchar("navigationType", { length: 32 }).notNull(),
+  pathname: varchar("pathname", { length: 256 }).notNull(),
+  userId: integer("userId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WebVital = typeof webVitals.$inferSelect;
+export type InsertWebVital = typeof webVitals.$inferInsert;

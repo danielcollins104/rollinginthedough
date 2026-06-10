@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { InsertUser, users, coinPackages, coinPurchases, playerStats, InsertCoinPurchase, InsertPlayerStats, dailyStreaks, achievements, DailyStreak, InsertDailyStreak, Achievement, InsertAchievement } from "../drizzle/schema";
+import { InsertUser, users, coinPackages, coinPurchases, playerStats, InsertCoinPurchase, InsertPlayerStats, dailyStreaks, achievements, DailyStreak, InsertDailyStreak, Achievement, InsertAchievement, webVitals, InsertWebVital } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -360,4 +360,32 @@ export async function clearUserSession(userId: number) {
     sessionToken: null,
     sessionExpiresAt: null,
   }).where(eq(users.id, userId));
+}
+
+// Web Vitals
+// Records a single web-vitals metric (LCP, CLS, INP, TTFB, FCP)
+// reported by the client. Returns true if recorded, false if
+// the DB or table is unavailable. The route wrapper treats
+// "false" the same as success because perf monitoring must
+// never block the user.
+export async function insertWebVital(metric: InsertWebVital): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  try {
+    await db.insert(webVitals).values(metric);
+    return true;
+  } catch (error) {
+    // The webVitals table may not have been migrated yet
+    // (the schema is in drizzle/schema.ts but the migration
+    // is hand-written and the user has to apply it). Treat
+    // "table doesn't exist" as a soft failure, not a hard
+    // one — the route returns 200 and the client never
+    // knows the difference.
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("does not exist") || msg.includes("relation") || msg.includes("webVitals")) {
+      console.warn("[webVitals] table not migrated; metric dropped:", msg);
+      return false;
+    }
+    throw error;
+  }
 }

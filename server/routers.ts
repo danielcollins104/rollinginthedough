@@ -5,7 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { SquareClient, SquareEnvironment } from "square";
-import { getCoinPackages, getOrCreatePlayerStats, createCoinPurchase, getOrCreateDailyStreak, updateDailyStreak, unlockAchievement, getPlayerAchievements, updateCoinPurchaseStatus, getDb, updateUserSession } from "./db";
+import { getCoinPackages, getOrCreatePlayerStats, createCoinPurchase, getOrCreateDailyStreak, updateDailyStreak, unlockAchievement, getPlayerAchievements, updateCoinPurchaseStatus, getDb, updateUserSession, insertWebVital } from "./db";
 import { coinPurchases, playerStats } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { createCryptoCharge, getCryptoChargeStatus } from "./crypto";
@@ -476,6 +476,49 @@ export const appRouter = router({
       const totalClaimed = await claimReferralRewards(ctx.user.id);
       return { totalClaimed };
     }),
+  }),
+
+  // Web vitals / performance monitoring
+  // Public procedure — web vitals are anonymous and the
+  // endpoint needs to be reachable from sendBeacon() (which
+  // doesn't carry credentials). The client hits this with
+  // /api/trpc/metrics.recordWebVitals.
+  metrics: router({
+    recordWebVitals: publicProcedure
+      .input(z.object({
+        metricId: z.string().min(1).max(64),
+        name: z.enum(["LCP", "CLS", "INP", "TTFB", "FCP"]),
+        value: z.number(),
+        rating: z.enum(["good", "needs-improvement", "poor"]),
+        delta: z.number(),
+        navigationType: z.enum([
+          "navigate",
+          "reload",
+          "back-forward",
+          "back-forward-cache",
+          "prerender",
+          "restore",
+        ]),
+        pathname: z.string().min(1).max(256),
+        userId: z.number().int().positive().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Best-effort: insert returns false if the DB is
+        // unavailable or the table isn't migrated yet. The
+        // client never knows the difference — perf monitoring
+        // is fire-and-forget.
+        await insertWebVital({
+          metricId: input.metricId,
+          name: input.name,
+          value: input.value,
+          rating: input.rating,
+          delta: input.delta,
+          navigationType: input.navigationType,
+          pathname: input.pathname,
+          userId: input.userId,
+        });
+        return { ok: true };
+      }),
   }),
 });
 
