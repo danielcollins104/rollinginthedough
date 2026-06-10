@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
 import { playSound, playWinSound } from "@/lib/sounds";
+import { getPaylinePath } from "@/lib/paylines";
 import { WinParticles } from "./WinParticles";
 import { soundManager } from "@/lib/soundManager";
 import ScratchGame from "./ScratchGame";
@@ -67,17 +68,6 @@ function isWinningCell(reelIdx: number, rowIdx: number, winLines: WinLine[]): bo
     }
     return false;
   });
-}
-
-function getPaylinePath(paylineIndex: number): number[] {
-  const paylines: number[][] = [
-    [0, 0, 0, 0, 0], [1, 1, 1, 1, 1], [2, 2, 2, 2, 2], [0, 0, 1, 0, 0], [2, 2, 1, 2, 2],
-    [0, 0, 0, 1, 1], [0, 1, 0, 1, 0], [0, 0, 1, 1, 1], [1, 0, 0, 0, 1], [0, 1, 1, 1, 0],
-    [2, 2, 2, 1, 1], [2, 1, 2, 1, 2], [2, 2, 1, 1, 1], [1, 2, 2, 2, 1], [2, 1, 1, 1, 2],
-    [0, 1, 2, 1, 0], [1, 0, 1, 2, 1], [1, 2, 1, 0, 1], [0, 2, 0, 2, 0], [2, 0, 2, 0, 2],
-    [0, 1, 0, 1, 0], [2, 1, 2, 1, 2], [1, 0, 2, 0, 1], [1, 2, 0, 2, 1], [0, 0, 2, 2, 2],
-  ];
-  return paylines[paylineIndex % paylines.length];
 }
 
 // Check if a symbol is a wild

@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BonusGameType } from "@/lib/bonusGames";
+import { getPaylinePath } from "@/lib/paylines";
 
 // ─── Symbol definitions ───────────────────────────────────────────────────────
 export type SymbolId =
@@ -183,48 +184,10 @@ function generateReels(): SymbolId[][] {
 }
 
 // ─── Define all 25 paylines (distinct paths across 5 reels) ──────────────────
-function getPaylinePath(paylineIndex: number): number[] {
-  // Each payline is a path across 5 reels, with row indices for each reel
-  // Rows: 0=top, 1=middle, 2=bottom
-  const paylines: number[][] = [
-    // Rows (5 paylines)
-    [0, 0, 0, 0, 0], // Top row
-    [1, 1, 1, 1, 1], // Middle row
-    [2, 2, 2, 2, 2], // Bottom row
-    [0, 0, 1, 0, 0], // Top with dip
-    [2, 2, 1, 2, 2], // Bottom with dip
-    
-    // Upper diagonals (5 paylines)
-    [0, 0, 0, 1, 1], // Top-left to middle-right
-    [0, 1, 0, 1, 0], // Zigzag top
-    [0, 0, 1, 1, 1], // Top to bottom-right
-    [1, 0, 0, 0, 1], // V-shape top
-    [0, 1, 1, 1, 0], // Wave top
-    
-    // Lower diagonals (5 paylines)
-    [2, 2, 2, 1, 1], // Bottom-left to middle-right
-    [2, 1, 2, 1, 2], // Zigzag bottom
-    [2, 2, 1, 1, 1], // Bottom to top-right
-    [1, 2, 2, 2, 1], // V-shape bottom
-    [2, 1, 1, 1, 2], // Wave bottom
-    
-    // Mixed diagonals (5 paylines)
-    [0, 1, 2, 1, 0], // Diamond
-    [1, 0, 1, 2, 1], // Mountain
-    [1, 2, 1, 0, 1], // Valley
-    [0, 2, 0, 2, 0], // Checkerboard
-    [2, 0, 2, 0, 2], // Checkerboard reverse
-    
-    // Additional mixed paths (5 paylines)
-    [0, 1, 0, 1, 0], // Alternating top-middle
-    [2, 1, 2, 1, 2], // Alternating bottom-middle
-    [1, 0, 2, 0, 1], // Complex wave
-    [1, 2, 0, 2, 1], // Reverse complex wave
-    [0, 0, 2, 2, 2], // Staircase down
-  ];
-  
-  return paylines[paylineIndex % paylines.length];
-}
+// Note: the payline path data now lives in @/lib/paylines as the single
+// source of truth. Previously this function was duplicated in 3 places
+// (useGameState.ts, SlotMachine.tsx, PaylineHighlight.tsx) — see
+// docs/PHASE_2_STATUS.md Gap C.
 
 // ─── Evaluate wins with paylines support ──────────────────────────────────────
 function evaluateWins(reels: SymbolId[][], bet: number, paylines: number): { winLines: WinLine[]; totalWin: number } {

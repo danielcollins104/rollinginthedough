@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { getPaylinePath } from "@/lib/paylines";
 
 interface PaylineHighlightProps {
   paylineIndex: number;
@@ -37,17 +38,6 @@ const LINE_COLORS = [
   "#FF9100", // Amber
   "#00BFA5", // Teal
 ];
-
-function getPaylinePath(paylineIndex: number): number[] {
-  const paylines: number[][] = [
-    [0, 0, 0, 0, 0], [1, 1, 1, 1, 1], [2, 2, 2, 2, 2], [0, 0, 1, 0, 0], [2, 2, 1, 2, 2],
-    [0, 0, 0, 1, 1], [0, 1, 0, 1, 0], [0, 0, 1, 1, 1], [1, 0, 0, 0, 1], [0, 1, 1, 1, 0],
-    [2, 2, 2, 1, 1], [2, 1, 2, 1, 2], [2, 2, 1, 1, 1], [1, 2, 2, 2, 1], [2, 1, 1, 1, 2],
-    [0, 1, 2, 1, 0], [1, 0, 1, 2, 1], [1, 2, 1, 0, 1], [0, 2, 0, 2, 0], [2, 0, 2, 0, 2],
-    [0, 1, 0, 1, 0], [2, 1, 2, 1, 2], [1, 0, 2, 0, 1], [1, 2, 0, 2, 1], [0, 0, 2, 2, 2],
-  ];
-  return paylines[paylineIndex % paylines.length];
-}
 
 export default function PaylineHighlight({
   paylineIndex,

@@ -38,6 +38,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { PAYLINE_PATHS as PAYLINES, REEL_COUNT, ROW_COUNT } from "@/lib/paylines";
 
 // ─── Symbol table (mirror of SYMBOLS in useGameState.ts) ─────────────────────
 type SymbolId =
@@ -66,18 +67,8 @@ const SYMBOLS: Symbol[] = [
   { id: "dough",     payouts: [150, 750, 3000], weight: 4, isScatter: true },
 ];
 
-const REEL_COUNT = 5;
-const ROW_COUNT = 3;
 const WILD_ID: SymbolId = "bun";
 const SCATTER_ID: SymbolId = "dough";
-
-const PAYLINES: number[][] = [
-  [0,0,0,0,0], [1,1,1,1,1], [2,2,2,2,2], [0,0,1,0,0], [2,2,1,2,2],
-  [0,0,0,1,1], [0,1,0,1,0], [0,0,1,1,1], [1,0,0,0,1], [0,1,1,1,0],
-  [2,2,2,1,1], [2,1,2,1,2], [2,2,1,1,1], [1,2,2,2,1], [2,1,1,1,2],
-  [0,1,2,1,0], [1,0,1,2,1], [1,2,1,0,1], [0,2,0,2,0], [2,0,2,0,2],
-  [0,1,0,1,0], [2,1,2,1,2], [1,0,2,0,1], [1,2,0,2,1], [0,0,2,2,2],
-];
 
 // ─── Math (mirror of useGameState.ts) ────────────────────────────────────────
 function pickSymbol(): SymbolId {
@@ -238,10 +229,10 @@ describe("Slot machine balance / RTP simulation", () => {
   //   SPINS=10000 BET=25 PAYLINES=25 npx vitest run useGameState.balance.test
   const SPINS = Number(process.env.SPINS) || 100_000;
   const BET = Number(process.env.BET) || 25;
-  const PAYLINES = Number(process.env.PAYLINES) || 25;
+  const PAYLINE_COUNT = Number(process.env.PAYLINES) || 25;
 
-  it(`simulates ${SPINS.toLocaleString()} spins at bet=${BET} × ${PAYLINES} paylines`, () => {
-    const r = simulate(SPINS, BET, PAYLINES);
+  it(`simulates ${SPINS.toLocaleString()} spins at bet=${BET} × ${PAYLINE_COUNT} paylines`, () => {
+    const r = simulate(SPINS, BET, PAYLINE_COUNT);
 
     // Always log the full result so the baseline numbers are visible in
     // vitest output, even on a passing test.
