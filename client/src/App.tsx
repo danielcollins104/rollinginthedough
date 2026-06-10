@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { PageSkeleton } from "./components/PageSkeleton";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 
@@ -30,26 +31,11 @@ const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Suspense fallback shown while a lazy chunk downloads. Matches
-// the dark "Art Deco Opulence" theme used by the rest of the app.
+// Suspense fallback shown while a lazy chunk downloads. Uses
+// the PageSkeleton (dark theme, gold-tinted pulse blocks)
+// rather than a bare "Loading…" text node. See Gap F.
 function PageLoading() {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #0d0d20, #1a1a35)",
-        color: "#D4AF37",
-        fontFamily: "'Playfair Display', serif",
-        fontSize: "1.25rem",
-        letterSpacing: "0.05em",
-      }}
-    >
-      Loading…
-    </div>
-  );
+  return <PageSkeleton />;
 }
 
 function Router() {
