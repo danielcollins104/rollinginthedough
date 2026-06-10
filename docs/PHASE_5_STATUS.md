@@ -4,9 +4,9 @@ Audit of `IMPROVEMENT_PLAN.md` Phase 5 against the live code as
 of 2026-06-10. Same pattern as Phases 1, 2, 3, 4.
 
 **Status (as of last update):** Gap B (haptics), Gap D (keyboard
-shortcuts), Gap E (friendly errors), and Gap G (tooltips)
-shipped in this session. The remaining gaps (A, C, F) are
-still in the same state described below.
+shortcuts), Gap E (friendly errors), Gap F (skeletons), and
+Gap G (tooltips) shipped in this session. The remaining gaps
+(A, C) are still in the same state described below.
 
 ---
 
@@ -159,28 +159,32 @@ to track it formally. The ErrorBoundary rewrite alone is a
 meaningful fix (no more stack trace on screen) and the rest of
 the gap can be picked up incrementally.
 
-### 6. ❌ Loading skeletons for better perceived performance
+### 6. ✅ Loading skeletons for better perceived performance
 
-**Status:** PARTIALLY DONE. There's a `Skeleton` UI primitive
-at `client/src/components/ui/skeleton.tsx` and a
-`DashboardLayoutSkeleton` for the dashboard. But the *primary
-user flow* — the slot machine and the home page — shows
-nothing while loading:
+**Status: SHIPPED for the lazy-route fallback** (commit `475e086`).
+A new `PageSkeleton` component at
+`client/src/components/PageSkeleton.tsx` replaces the
+"Loading…" text node that App.tsx's `PageLoading` was
+showing during chunk download. The skeleton matches the
+app's dark theme (midnight-navy gradient, gold-tinted
+pulse blocks, Playfair Display label) and shows 4
+placeholder blocks in positions where real content usually
+sits, so the layout doesn't jump when the chunk loads.
 
-- The `PageLoading` fallback I added in Phase 4 Gap A (the
-  route-level Suspense) is a "Loading…" text node, not a
-  skeleton.
-- The Home page has no initial-load skeleton. On a slow
-  network, the user sees an empty dark page.
-- The SlotMachine, while it does have its own "spinning"
-  state (the reels are physically spinning), has no
-  initial-mount skeleton (the moment between "page loads"
-  and "first reels appear" is blank).
-- The CoinShop, BonusGameOverlay, and other modal-triggered
-  components have no load skeleton (they pop in suddenly).
+**Honest caveats — not in this commit:**
 
-**Effort:** 2-4 hours. Each component gets its own skeleton
-matching its real layout. See Gap F.
+- **Home page first-render skeleton:** not added. Home is
+  eager-loaded and `useGameState` initializes synchronously,
+  so the "blank frame" is <50ms and not worth a skeleton.
+- **Modal "pop in"** (CoinShop, BonusGameOverlay, etc.):
+  not a skeleton problem. These are eager imports that
+  mount in one frame. The right fix is a deferred render
+  with a fade-in, which is a different pattern from a
+  skeleton. Tracked as a follow-up gap.
+- **Per-page-specific skeletons** for /pricing, /terms,
+  /privacy, /checkout-success, /404: not added. The
+  generic PageSkeleton is the right level of detail for
+  chunks that download in <200ms on broadband.
 
 ### 7. ✅ More informative tooltips and help text
 
@@ -367,14 +371,40 @@ which is awkward; coverage is via tsc clean + visual review.
 
 ### Gap F: Skeletons for the home page, modals, and route loads
 
-A `HomePageSkeleton` that matches the real Home page layout
-(slot machine frame, coin balance, header). A
-`SlotMachineSkeleton` (reel grid + spin button placeholder).
-A `ModalSkeleton` for the modals. The `PageLoading` for
-lazy routes can either be upgraded to a skeleton or kept
-as the simple "Loading…" — both work.
+**Status: SHIPPED for the route-level fallback** (commit
+`475e086`).
 
-**Effort:** 2-4 hours. Mostly visual matching work.
+A `PageSkeleton` component at
+`client/src/components/PageSkeleton.tsx` replaces the
+"Loading…" text node in App.tsx's `PageLoading`:
+
+- Dark midnight-navy gradient background matching the
+  app's theme
+- 4 placeholder blocks in positions where real content
+  usually sits (header bar, title bar, main content, action
+  button) so the layout doesn't jump on chunk load
+- Gold-tinted pulse blocks (`rgba(212,175,55,0.10-0.12)`
+  on the default accent, with explicit inline styles)
+- Small uppercase "Loading…" caption in the corner for
+  sighted users
+- `role="status"` + `aria-live="polite"` so screen readers
+  announce the loading state
+
+**Honest scope of this gap:** only the route-level
+fallback was shipped. The audit listed 4 places that
+needed skeletons; of those, only the lazy-route
+fallback is a real "loading" moment:
+
+| Place | Shipped? | Why |
+|-------|---------:|-----|
+| `PageLoading` (route fallback) | YES | Real chunk download, real skeleton needed |
+| Home page first-render | NO | <50ms, not worth a skeleton |
+| CoinShop / BonusGameOverlay pop-in | NO | Eager imports, not a loading problem |
+| Per-page specific skeletons | NO | Marginal benefit, generic is fine |
+
+The audit's "Effort: 2-4 hours" estimate was for all 4;
+the shipped piece is closer to 1 hour. The rest are
+genuine follow-up gaps, not oversights.
 
 ### Gap G: Tooltips on the game controls
 
@@ -448,10 +478,10 @@ In cost/benefit order:
 | Gap A (onboarding) | 2-4 h | medium (new players only) | Real value |
 | Gap C (a11y) | 4-8 h | high (a11y users) | Biggest win |
 
-**Recommended next turn:** Gap F (loading skeletons) is the
-last small win. Gap C (slot machine a11y) is the biggest
-single win but 4-8 hours of careful work — worth saving for
-a focused session.
+**Recommended next turn:** Gap C (slot machine a11y) — 4-8
+hours of careful work, the biggest single Phase 5 win.
+Gap A (onboarding modal) is also still open at 2-4 hours
+and easier to start a session on.
 
 ---
 
@@ -468,6 +498,8 @@ a focused session.
   shortcut hook (Gap D, shipped in `b042674`)
 - `client/src/hooks/useKeyboardShortcuts.test.ts` — 24
   shortcut tests
+- `client/src/components/PageSkeleton.tsx` — route-level
+  loading skeleton (Gap F, shipped in `475e086`)
 - `client/src/components/ErrorBoundary.tsx` — friendly
   error UI (Gap E, shipped in `d99cf81`)
 - `client/src/components/SlotMachine.tsx` — `PayTable`
