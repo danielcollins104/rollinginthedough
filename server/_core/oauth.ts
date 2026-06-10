@@ -87,7 +87,7 @@ export function registerOAuthRoutes(app: Express) {
    * Query params: provider (google|facebook|apple|microsoft), redirectUri
    */
   app.get("/api/oauth/authorize", async (req: Request, res: Response) => {
-    const provider = getQueryParam(req, "provider") as "google" | "facebook" | "apple" | "microsoft";
+    const provider = getQueryParam(req, "provider") as "google" | "facebook" | "apple" | "microsoft" | undefined;
     const redirectUri = getQueryParam(req, "redirectUri") ||
       `${req.protocol}://${req.get("host")}/api/oauth/callback`;
 
@@ -96,10 +96,17 @@ export function registerOAuthRoutes(app: Express) {
       return;
     }
 
+    // Translate the public-facing provider name to Supabase's internal
+    // provider name. The client contract uses "microsoft" (matches the
+    // "Continue with Microsoft" button label) but Supabase's auth API
+    // uses "azure" for Microsoft OAuth. Other providers map 1:1.
+    const supabaseProvider: "google" | "facebook" | "apple" | "azure" =
+      provider === "microsoft" ? "azure" : provider;
+
     const { data, error } = await supabaseAdmin.auth.signInWithOAuth({
-      provider,
+      provider: supabaseProvider,
       options: {
-        redirectTo,
+        redirectTo: redirectUri,
         skipBrowserRedirect: true,
         scopes: provider === "google"
           ? "openid email profile"
