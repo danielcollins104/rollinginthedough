@@ -3,10 +3,11 @@
 Audit of `IMPROVEMENT_PLAN.md` Phase 5 against the live code as
 of 2026-06-10. Same pattern as Phases 1, 2, 3, 4.
 
-**Status (as of last update):** Gap B (haptics), Gap D (keyboard
-shortcuts), Gap E (friendly errors), Gap F (skeletons), and
-Gap G (tooltips) shipped in this session. The remaining gaps
-(A, C) are still in the same state described below.
+**Status (as of last update):** Gap B (haptics), Gap C (slot
+machine a11y), Gap D (keyboard shortcuts), Gap E (friendly
+errors), Gap F (skeletons), and Gap G (tooltips) shipped in
+this session. The remaining gap (A) is still in the same
+state described below.
 
 ---
 
@@ -90,37 +91,25 @@ that shows the symbol payouts when the player clicks a
 **Status: SHIPPED** (commit `2bcd909`). See Gap B below for the
 implementation details and the 16-test suite.
 
-### 3. ⚠️ Accessibility with proper ARIA labels
+### 3. ✅ Accessibility with proper ARIA labels
 
-**Status:** PARTIALLY DONE (50 grep matches, but almost all
-in the shadcn `ui/` library, not the actual app). Of the 50
-ARIA matches, **48 are in `client/src/components/ui/*`** —
-the shadcn-style library components (button, dialog, input,
-select, etc.) ship with proper ARIA defaults. The 2 hits
-in the actual app code are:
+**Status: SHIPPED for the slot machine and coin balance**
+(commit `d871a89`). See Gap C below for the implementation.
 
-- `client/src/index.css:84` — a focus-ring CSS rule
-  targeting `[role="button"]:not([aria-disabled="true"])`,
-  pure styling
-- `client/src/components/DashboardLayout.tsx:167` —
-  `aria-label="Toggle navigation"` on the menu button
-
-**What's missing (the real gaps):**
-- The `<SlotMachine>` itself has **zero ARIA**. A screen
-  reader user gets no idea what's on screen during a spin
-  (the symbols, the win state, the bet amount).
-- The SPIN button has no accessible label.
-- The win display has no `aria-live` region, so screen
-  readers can't announce wins.
-- The coin balance has no `aria-label` (just the number).
-- Modal dialogs (shop, bonus, scratch game, etc.) inherit
-  ARIA from the shadcn `Dialog` primitive, but the *content*
-  inside them (the actual shop prices, the scratch card
-  state) is not announced.
-
-**Effort:** 4-8 hours of careful work, but most of it is
-mechanical (adding `aria-label`, `role`, `aria-live` to
-existing elements). See Gap C.
+**Honest caveats:**
+- The Tooltip-based accessible names from Gap G cover the
+  game controls (bet +/-, max bet, paylines, mute, autoplay,
+  shop) — explicit `aria-label` on those would be redundant
+  and was skipped.
+- Real screen-reader testing (NVDA / VoiceOver) is NOT
+  included. The audit's 4-8 hour estimate included that
+  testing; this commit was reviewed via tsc + tests only.
+  Manual screen-reader testing recommended before declaring
+  a11y fully done.
+- The 50 ARIA hits in `client/src/components/ui/*` (shadcn
+  primitives) are still the bulk of the app's a11y; this
+  commit addresses the 0 hits that were in the actual game
+  code.
 
 ### 4. ✅ Keyboard navigation support
 
@@ -263,20 +252,66 @@ lines; the SlotMachine wiring is 9 small call sites.
 
 ### Gap C: Accessibility for the slot machine
 
-The single biggest Phase 5 work item. The slot machine has
-no ARIA at all. The minimum useful set:
-- `aria-label` on the SPIN button ("Spin the reels")
-- `aria-label` on the bet +/− buttons ("Decrease bet",
-  "Increase bet")
-- `aria-label` on the payline selector
-- `aria-live="polite"` on the win display (announces wins
-  to screen readers)
-- `aria-label` on the coin balance
-- `<table>` semantics or `role="list"` for the reels grid
-- `aria-busy="true"` while spinning
+**Status: SHIPPED for the minimum useful set** (commit
+`d871a89`).
 
-**Effort:** 4-8 hours. The work is mechanical but needs to
-be done carefully and tested with an actual screen reader.
+Five ARIA additions, all on the slot machine and the coin
+balance:
+
+- **SlotMachine root** — `aria-busy={spinning||cascadeActive}`
+  so screen readers know the region is busy during a spin,
+  and `aria-label="Slot machine game"` to name the region
+- **Reels grid** — `role="list"` with
+  `aria-label="Reels, 5 columns by 3 rows"`; each reel
+  container `role="listitem"` with
+  `aria-label="Reel N"` (N = 1-5)
+- **Win display** — `role="status"` + `aria-live="polite"`
+  + `aria-atomic="true"` so screen readers announce the
+  win label and amount when `showWin` toggles on
+- **SPIN button** — `aria-label` is state-aware: "Spin
+  the reels" when `canSpin` is true, "Spinning, please
+  wait" when false. Decouples the accessible name from
+  the visible decorative text.
+- **GameHeader coin balance** — `role="group"` with
+  `aria-label="Coin balance: N coins"` so the live region
+  announces the current balance (already live via
+  AnimatedNumber; the label just gives the region a
+  semantic identity)
+
+**Not in this commit:**
+
+- **Live balance announcer** — the balance changes
+  mid-spin via AnimatedNumber. A screen reader user
+  currently hears the value update only on focus. A
+  follow-up could add `aria-live="polite"` on a separate
+  balance announcer region, but doing it naively would
+  create non-stop announcements. Tracked as a follow-up
+  gap.
+- **Real screen-reader testing (NVDA / VoiceOver)** — the
+  audit's 4-8 hour estimate included that testing; this
+  commit was reviewed via tsc + tests only. Manual
+  screen-reader testing recommended before declaring
+  a11y fully done.
+- **Tooltip-based accessible names on the game controls**
+  (bet +/-, max bet, paylines, mute, autoplay, shop) are
+  already provided by the shadcn `Tooltip` from Gap G.
+  Explicit `aria-label` on those would be redundant;
+  skipped intentionally.
+
+**Honest scope:** this is the "minimum useful set" the
+audit called out. The 4-8 hour estimate in the original
+audit included a screen-reader test pass; without that
+pass the actual work was 1-2 hours of mechanical edits.
+The test pass is the missing piece and should be done by
+the user (or a future gap) with a real screen reader
+before declaring a11y fully complete.
+
+Diff: +20/-3 across SlotMachine + GameHeader. No new
+tests (a11y changes are DOM attributes; the project's
+test pattern is unit-testing pure functions in node
+env, not DOM snapshots).
+
+Test results: 155/155 still pass; tsc clean.
 
 ### Gap D: Keyboard shortcuts
 
@@ -476,12 +511,12 @@ In cost/benefit order:
 | Gap D (keyboard) | 1-2 h | medium-high | Power users + a11y |
 | Gap F (skeletons) | 2-4 h | medium | Polish |
 | Gap A (onboarding) | 2-4 h | medium (new players only) | Real value |
-| Gap C (a11y) | 4-8 h | high (a11y users) | Biggest win |
+| Gap C (a11y) | ✅ shipped `d871a89` (1-2 h actual, 4-8 h with screen-reader test) | high (a11y users) | Biggest win |
 
-**Recommended next turn:** Gap C (slot machine a11y) — 4-8
-hours of careful work, the biggest single Phase 5 win.
-Gap A (onboarding modal) is also still open at 2-4 hours
-and easier to start a session on.
+**Recommended next turn:** Gap A (first-visit onboarding
+modal) — 2-4 hours, real value for new players, the only
+remaining Phase 5 item. After that, Phase 5 is done and
+the plan moves to Phase 6 (Retention & Monetization).
 
 ---
 
@@ -502,9 +537,9 @@ and easier to start a session on.
   loading skeleton (Gap F, shipped in `475e086`)
 - `client/src/components/ErrorBoundary.tsx` — friendly
   error UI (Gap E, shipped in `d99cf81`)
-- `client/src/components/SlotMachine.tsx` — `PayTable`
-  component at lines ~1848-1912 (the closest thing to a
-  tutorial that exists today)
+- `client/src/components/SlotMachine.tsx` and
+  `GameHeader.tsx` — ARIA additions for the slot machine
+  and coin balance (Gap C, shipped in `d871a89`)
 - `client/src/components/ui/skeleton.tsx` — Skeleton
   primitive
 - `client/src/components/ui/tooltip.tsx` — Tooltip
