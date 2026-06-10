@@ -217,6 +217,16 @@ audit-driven workflow we've been running. Then move to a
 Phase 4 task (performance / bundle size) — that's where the
 next user-visible win is.
 
+**Status as of 2026-06-10:** Gap A and Gap C both closed. Gap B
+closed as a side effect of Gap A (unreachable branches removed
+with `WinLineHighlight.tsx`). Gap D (particle perf) deferred.
+The duplicate-payline-paths bug called out under Gap C has also
+been fixed — the player is no longer double-paid on indices 6+20
+and 11+21. The 25-payline promise is preserved by replacing the
+two duplicates with new unique shapes. See `docs/GAME_BALANCE.md`
+iteration log for measured impact (~0.01pp RTP delta, within
+sampling noise).
+
 ---
 
 ## See also

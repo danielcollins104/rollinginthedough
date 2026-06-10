@@ -120,6 +120,7 @@ is preserved:
 | Date       | Change                                       | Hit freq before/after | RTP before/after | Notes |
 |------------|----------------------------------------------|------------------------|------------------|-------|
 | 2026-06-10 | Initial baseline measurement                 | 37.3% (measured)       | 45.6% (measured) | Task 1.3 — added `useGameState.balance.test.ts`, ran 100k spins × 2 (mean RTP 45.64% / 45.59%). Profile updated to "Profitable" (43% target with 5% headroom). The original 92% target was aspirational; the model was never tuned to it. |
+| 2026-06-10 | Fix duplicate-payline balance bug             | 37.4% (no change)       | 45.7% (no change) | Indices 20 and 21 in `PAYLINE_PATHS` were duplicates of indices 6 and 11 — a 25-payline bet was double-counting wins on those two shapes. Replaced with two new unique shapes `[0,1,0,1,2]` (Top zigzag descent) and `[1,0,1,0,1]` (Middle zigzag). Measured impact across 5 seeds × 100k spins: ~0.01pp RTP delta (within sampling noise), 37.4% hit frequency unchanged. The "fix" is a clean-up of unintended free wins; the player's expected return is essentially the same. See `docs/PHASE_2_STATUS.md` Gap C follow-up. |
 
 ---
 
