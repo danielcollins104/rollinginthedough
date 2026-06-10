@@ -15,7 +15,6 @@ import ScratchGame from "./ScratchGame";
 import DealsModal from "./DealsModal";
 import BigWinOverlay from "./BigWinOverlay";
 import JackpotMeters from "./JackpotMeters";
-import WinLineHighlight from "./WinLineHighlight";
 import SymbolIcon from "./SymbolIcon";
 import FreeSpinsDisplay from "./FreeSpinsDisplay";
 import IdleAnimations from "./IdleAnimations";
@@ -1013,12 +1012,9 @@ export default function SlotMachine({
         {/* Cascade multiplier popup */}
         <CascadeMultiplierDisplay level={cascadeLevel} active={showCascadeMultiplier} />
 
-        {/* Win line highlight overlay */}
-        <WinLineHighlight winLines={winLines} show={showWin && !cascadeActive} />
-
-        {/* Payline highlights for each winning line */}
+        {/* Payline highlights for each winning line (geometrically correct SVG paths) */}
         {showWin && winLines.map((line, idx) => (
-          <PaylineHighlight key={idx} paylineIndex={line.row} isActive={true} reelCount={5} rowCount={3} />
+          <PaylineHighlight key={idx} paylineIndex={line.row} lineIndex={idx} isActive={true} reelCount={5} rowCount={3} />
         ))}
 
         {/* Idle animations */}
