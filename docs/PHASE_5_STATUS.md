@@ -3,9 +3,10 @@
 Audit of `IMPROVEMENT_PLAN.md` Phase 5 against the live code as
 of 2026-06-10. Same pattern as Phases 1, 2, 3, 4.
 
-**Status (as of last update):** Gap B (haptics) and Gap E (friendly
-errors) shipped in this session. The remaining gaps (A, C, D, F, G)
-are still in the same state described below.
+**Status (as of last update):** Gap B (haptics), Gap E (friendly
+errors), and Gap G (tooltips) shipped in this session. The
+remaining gaps (A, C, D, F) are still in the same state
+described below.
 
 ---
 
@@ -182,25 +183,22 @@ nothing while loading:
 **Effort:** 2-4 hours. Each component gets its own skeleton
 matching its real layout. See Gap F.
 
-### 7. ❌ More informative tooltips and help text
+### 7. ✅ More informative tooltips and help text
 
-**Status:** PARTIALLY DONE (library code exists, app doesn't
-use it). The shadcn `Tooltip` primitive is at
-`client/src/components/ui/tooltip.tsx` and is exported, but
-**zero app components use it.** Grep for `Tooltip` in
-`client/src/components/*.tsx` returns only shadcn-internal
-references (sidebar's collapse tooltip, the ui library
-itself).
+**Status: SHIPPED for the 6 game controls** (commit `9dfaffa`).
+The shadcn `Tooltip` primitive is now wired into:
+- Bet − / Bet + buttons
+- Max Bet button
+- Paylines selector (1, 5, 10, 15, 20, 25)
+- Autoplay / Stop button (state-aware copy)
+- Sound / Mute button (state-aware copy)
+- Shop button
 
-The app could benefit from tooltips on:
-- The bet +/− buttons ("Decrease bet" / "Increase bet")
-- The paylines selector ("Choose how many paylines to bet on")
-- The max bet button ("Set bet to maximum")
-- The autoplay button ("Auto-spin until you stop me")
-- The mute button ("Mute sound" / "Unmute sound")
-- The shop/coin buttons (price hints)
-
-**Effort:** 1-2 hours. Pure wiring. See Gap G.
+**Honest caveat:** the audit also listed "Shop/coin buttons
+(price hints)" — that's per-package price hints *inside* the
+CoinShop modal, which is a different file and different scope.
+The "Open the coin shop" tooltip on the Shop button is shipped;
+the in-modal price hints are a small follow-up gap.
 
 ---
 
@@ -341,19 +339,41 @@ as the simple "Loading…" — both work.
 
 ### Gap G: Tooltips on the game controls
 
-Pure wiring of the existing `Tooltip` primitive:
-- Bet +/− buttons
-- Max bet button
-- Autoplay button
-- Mute button
-- Paylines selector
-- Shop buttons
+**Status: SHIPPED** (commit `9dfaffa`).
 
-Each tooltip is 2 lines of JSX. The visual polish (delay
-duration, fade animation) is already handled by the
-shadcn primitive.
+The shadcn `Tooltip` primitive is now wired into the 6
+game-control buttons called out in the audit:
 
-**Effort:** 1-2 hours.
+- **Bet − / Bet +** — "Decrease bet" / "Increase bet"
+- **Max Bet** — "Set bet to maximum (200)"
+- **Paylines (1/5/10/15/20/25)** — "Activate N payline(s)"
+  (singular/plural-aware copy)
+- **Autoplay / Stop** — state-aware: "Auto-spin the reels
+  until you stop me" / "Stop autoplay"
+- **Sound / Mute** — state-aware: "Mute sound effects" /
+  "Unmute sound effects"
+- **Shop** — "Open the coin shop"
+
+All tooltips use `delayDuration={400}` (fast enough to
+help, slow enough not to flash on a fast mouse pass) and
+`side="top"` (the buttons sit at the bottom of the slot
+machine, so the tooltips open upward into the reels area
+where there's empty space).
+
+Implementation note: `TooltipTrigger asChild` merges the
+tooltip trigger behavior into the existing `<button>` element
+rather than wrapping it in a new `<button>` inside a `<button>`
+(which would be invalid HTML and break clicks). The visual
+behavior of each button is unchanged.
+
+**Follow-up (not in this commit):** in-modal price hints
+inside the CoinShop component — per-package tooltips explaining
+the coin/USD ratio, package size, etc. Different file, different
+scope; tracked as a follow-up.
+
+Effort: ~1-2 hours estimate was correct. The change is a
+single-file diff (+130 / -83). All 131 tests still pass;
+tsc is clean.
 
 ---
 
