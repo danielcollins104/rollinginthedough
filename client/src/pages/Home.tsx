@@ -22,6 +22,7 @@ import DailyBonusModal from "@/components/DailyBonusModal";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useGameState } from "@/hooks/useGameState";
 import { useRetention } from "@/hooks/useRetention";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { DailyLoginBonus } from "@/components/DailyLoginBonus";
 import { DailyStreakDisplay } from "@/components/DailyStreakDisplay";
 import { LevelUp } from "@/components/LevelUp";
@@ -140,6 +141,21 @@ export default function Home() {
       return () => clearTimeout(t);
     }
   }, [shouldShowDailyLogin]);
+
+  // Global keyboard shortcuts. See useKeyboardShortcuts.ts.
+  // Suppressed automatically when the user is typing in an
+  // input or when a button is focused, so this never
+  // interferes with normal form interaction. See Gap D.
+  useKeyboardShortcuts({
+    spin,
+    toggleSound: () => setSoundEnabled(!soundEnabled),
+    togglePaytable: () => {
+      const btn = document.querySelector("[data-paytable-toggle]");
+      if (btn) (btn as HTMLButtonElement).click();
+    },
+    increaseBet: () => setBet(Math.min(200, bet + 10)),
+    decreaseBet: () => setBet(Math.max(10, bet - 10)),
+  });
 
   // Check for 30-min session reward periodically
   useEffect(() => {
