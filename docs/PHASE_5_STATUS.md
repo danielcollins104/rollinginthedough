@@ -3,10 +3,10 @@
 Audit of `IMPROVEMENT_PLAN.md` Phase 5 against the live code as
 of 2026-06-10. Same pattern as Phases 1, 2, 3, 4.
 
-**Status (as of last update):** Gap B (haptics), Gap E (friendly
-errors), and Gap G (tooltips) shipped in this session. The
-remaining gaps (A, C, D, F) are still in the same state
-described below.
+**Status (as of last update):** Gap B (haptics), Gap D (keyboard
+shortcuts), Gap E (friendly errors), and Gap G (tooltips)
+shipped in this session. The remaining gaps (A, C, F) are
+still in the same state described below.
 
 ---
 
@@ -122,31 +122,30 @@ in the actual app code are:
 mechanical (adding `aria-label`, `role`, `aria-live` to
 existing elements). See Gap C.
 
-### 4. ⚠️ Keyboard navigation support
+### 4. ✅ Keyboard navigation support
 
-**Status:** PARTIALLY DONE. The shadcn primitives handle
-keyboard nav for form inputs (tab/enter, escape to close
-dialogs — see `ui/dialog.tsx:96-130` for the escape
-handler). But the *game itself* has no documented keyboard
-shortcuts:
+**Status: SHIPPED for global game shortcuts** (commit `b042674`).
+A new `useKeyboardShortcuts` hook at
+`client/src/hooks/useKeyboardShortcuts.ts` is mounted in
+`client/src/pages/Home.tsx` and dispatches:
 
-- **No way to spin with the keyboard** (a screen reader
-  user, a power user, or a player on a laptop with no
-  trackpad would have to reach for the mouse).
-- **No keyboard shortcut to open the paytable**.
-- **No keyboard shortcut for max bet / autoplay toggle**.
-- **The bet +/− buttons** are real `<button>` elements, so
-  they're tab-focusable by default — that's good, but
-  undocumented.
+- `Space` / `Enter` → spin the reels (suppressed when a
+  button is focused, so the focused button gets the keypress)
+- `M` / `m` → toggle sound
+- `P` / `p` → toggle the paytable/rules panel
+- `+` / `=` → increase bet (capped at 200)
+- `-` / `_` → decrease bet (floored at 10)
 
-A reasonable minimal set of keyboard shortcuts:
-- **Space / Enter** when the SPIN button is focused → spin
-- **M** → toggle sound
-- **P** → open/close paytable
-- **+ / −** → adjust bet
-- **Escape** → close any open modal (already works via shadcn)
-
-**Effort:** 1-2 hours for a minimal version. See Gap D.
+**Honest caveats:**
+- The audit also listed "keyboard shortcut to open max bet /
+  autoplay toggle" — those are NOT in this commit. The
+  shortcuts only cover the 5 most-used actions; max bet and
+  autoplay can be added later if needed.
+- Escape-to-close-modals is already handled by the shadcn
+  `Dialog` primitive; the hook doesn't need to re-implement it.
+- No documentation/help dialog yet listing the shortcuts to
+  the user. The `?` key (or a help button) could surface
+  this. Tracked as a follow-up.
 
 ### 5. ✅ Better error states and user-friendly messages
 
@@ -277,18 +276,58 @@ be done carefully and tested with an actual screen reader.
 
 ### Gap D: Keyboard shortcuts
 
-- Space / Enter when SPIN is focused → spin
-- M → toggle sound
-- P → toggle paytable
-- + / − → adjust bet
-- Escape → close modals (already works via shadcn)
+**Status: SHIPPED** (commit `b042674`).
 
-Implement as a single `useKeyboardShortcuts()` hook that
-listens on `window` and dispatches via callbacks. Important:
-the shortcuts must not fire when an input is focused (typing
-"M" into a text field shouldn't mute the game).
+A `useKeyboardShortcuts` hook at
+`client/src/hooks/useKeyboardShortcuts.ts` is mounted in
+`client/src/pages/Home.tsx` and dispatches:
 
-**Effort:** 1-2 hours.
+- `Space` / `Enter` → spin the reels
+- `M` / `m` → toggle sound
+- `P` / `p` → toggle the paytable
+- `+` / `=` → increase bet (capped at 200, step 10)
+- `-` / `_` → decrease bet (floored at 10, step 10)
+
+**Critical correctness rules baked in:**
+
+- All shortcuts suppressed when an editable element is
+  focused (input, textarea, select, contenteditable).
+  Typing "m" into a chat field must not mute the game.
+- Spin (Space/Enter) suppressed when any focusable
+  interactive element is focused (button, link,
+  role=button, [tabindex]). The focused control gets the
+  keypress.
+- Modifier keys (Ctrl/Cmd/Alt) suppress all shortcuts so
+  browser shortcuts like Ctrl+M (mute tab) still work.
+- Auto-repeat (event.repeat) is suppressed so holding "M"
+  doesn't toggle sound 30 times per second.
+
+**Architecture:** the dispatch logic is a pure function
+(`dispatchShortcut`) exported alongside the hook, so it
+can be unit-tested in a node environment without jsdom or
+React render. 24 tests cover letter shortcuts, Space/Enter,
+bet adjustment, focus suppression, modifier suppression,
+auto-repeat, preventDefault, and the return value. The
+hook itself is a thin wrapper that calls
+`document.activeElement` to compute focus state and binds
+a single `window` keydown listener on mount.
+
+The hook reads handlers via a ref so its `useEffect` binds
+exactly once. Re-renders with new handler identities do
+not re-attach the listener (would cause churn).
+
+**Not in this commit:**
+- Max-bet and autoplay keyboard shortcuts (not called out
+  by the audit as required; the SPIN button + UI controls
+  cover these).
+- A help dialog listing the shortcuts to the user.
+  Tracked as a follow-up gap.
+- Escape-to-close-modal — already handled by the shadcn
+  `Dialog` primitive.
+
+Effort: ~1-2 hours estimate was correct. Single hook
+file (224 lines) + test file (302 lines) + 16 lines in
+Home.tsx. All 155 tests pass; tsc clean.
 
 ### Gap E: Friendlier error UI
 
@@ -409,11 +448,10 @@ In cost/benefit order:
 | Gap A (onboarding) | 2-4 h | medium (new players only) | Real value |
 | Gap C (a11y) | 4-8 h | high (a11y users) | Biggest win |
 
-**Recommended next turn:** Gap D (keyboard shortcuts) or Gap
-F (loading skeletons), depending on which the user feels is
-more visible. Both are 1-2 / 2-4 hours respectively. Gap C
-(slot machine a11y) is the biggest single win but 4-8 hours
-of careful work — worth saving for a focused session.
+**Recommended next turn:** Gap F (loading skeletons) is the
+last small win. Gap C (slot machine a11y) is the biggest
+single win but 4-8 hours of careful work — worth saving for
+a focused session.
 
 ---
 
@@ -426,6 +464,10 @@ of careful work — worth saving for a focused session.
 - `client/src/lib/haptics.ts` — haptics helper (Gap B,
   shipped in `2bcd909`)
 - `client/src/lib/haptics.test.ts` — 16 haptics tests
+- `client/src/hooks/useKeyboardShortcuts.ts` — global
+  shortcut hook (Gap D, shipped in `b042674`)
+- `client/src/hooks/useKeyboardShortcuts.test.ts` — 24
+  shortcut tests
 - `client/src/components/ErrorBoundary.tsx` — friendly
   error UI (Gap E, shipped in `d99cf81`)
 - `client/src/components/SlotMachine.tsx` — `PayTable`
