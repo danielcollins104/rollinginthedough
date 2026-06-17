@@ -163,7 +163,7 @@ function findNearMiss(reels: SymbolId[][], winLines: WinLine[]): { reelIdx: numb
 }
 
 // Physics-based spinning reel strip with elastic slam stop
-function ReelStrip({ symbols, spinning, done, size = 36, reelIndex = 0 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number; reelIndex?: number }) {
+function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number; reelIndex?: number }) {
   // For spinning: we use a continuous strip that translates Y
   // For stopped: show the final 3 symbols
   const [translateY, setTranslateY] = useState(0);
@@ -1161,19 +1161,19 @@ export default function SlotMachine({
         )}
 
         {/* Reels */}
-        <div className="grid gap-1 sm:gap-1.5" style={{ gridTemplateColumns: "repeat(5, 1fr)", minHeight: "120px" }}>
+        <div className="grid gap-2 sm:gap-3" style={{ gridTemplateColumns: "repeat(5, 1fr)", minHeight: "200px" }}>
           {displayGrid.map((reel, reelIdx) => (
             <div
               key={reelIdx}
               className={`reel-container rounded relative ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
               style={{
-                minHeight: "120px",
+                minHeight: "200px",
                 height: "100%",
-                maxHeight: "300px",
+                maxHeight: "500px",
                 transition: "box-shadow 0.3s ease",
                 boxShadow: reelDone[reelIdx] && showWin && !cascadeActive && reel.some((_, rowIdx) => isWinningCell(reelIdx, rowIdx, winLines))
-                  ? "0 0 20px rgba(255,215,0,0.6), inset 0 0 15px rgba(255,215,0,0.1)"
-                  : "inset 0 0 20px rgba(0,0,0,0.8), 0 0 10px rgba(212,175,55,0.2)",
+                  ? "0 0 30px rgba(255,215,0,0.7), inset 0 0 20px rgba(255,215,0,0.15)"
+                  : "inset 0 0 30px rgba(0,0,0,0.9), 0 0 15px rgba(212,175,55,0.3)",
               }}
             >
               {/* Spinning blur overlay */}
@@ -1244,7 +1244,7 @@ export default function SlotMachine({
                     {symId !== 'empty' && (
                       <SymbolIcon
                           symbolId={symId}
-                          size={32}
+                          size={56}
                           className={`${isWin ? 'symbol-win-pop symbol-bounce' : ''}`}
                           style={{
                             filter: isWin
