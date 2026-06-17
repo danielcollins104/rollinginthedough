@@ -13,7 +13,6 @@ import CoinParticles from "@/components/CoinParticles";
 import JackpotOverlay from "@/components/JackpotOverlay";
 import CoinShop from "@/components/CoinShop";
 import BonusGameOverlay from "@/components/BonusGameOverlay";
-// Debug panel removed for production
 import CurrencyToggle, { type CurrencyType } from "@/components/CurrencyToggle";
 import BottomNavBar from "@/components/BottomNavBar";
 import AppFooter from "@/components/AppFooter";
@@ -67,7 +66,6 @@ export default function Home() {
   const [showParticles, setShowParticles] = useState(false);
   const [showCoinShop, setShowCoinShop] = useState(false);
   const [coinShopCurrency, setCoinShopCurrency] = useState<'gold' | 'green'>('gold');
-  const [freePlayMode, setFreePlayMode] = useState(false);
   const [activeCurrency, setActiveCurrency] = useState<CurrencyType>("gold");
   const [externalShowDeals, setExternalShowDeals] = useState(false);
   const [externalShowScratch, setExternalShowScratch] = useState(false);
@@ -116,19 +114,6 @@ export default function Home() {
     setActiveCurrency(currency);
     setSelectedCurrency(currency);
   };
-  const [debugStats, setDebugStats] = useState({
-    totalSpins: 0,
-    totalWins: 0,
-    winRate: 0,
-    totalCoinsWon: 0,
-    totalCoinsBet: 0,
-    netProfit: 0,
-    rtp: 0,
-    cascades: 0,
-    bonusGames: 0,
-    freeSpinsTriggered: 0,
-    jackpotsHit: 0,
-  });
 
   // Show daily login bonus modal on app open (once per day)
   useEffect(() => {
@@ -378,7 +363,6 @@ export default function Home() {
           gameType={bonusGameType}
           onClose={(reward) => {
             setBonusGameType(null);
-            setDebugStats((prev) => ({ ...prev, bonusGames: prev.bonusGames + 1 }));
             // Award bonus game coins to the active currency
             if (reward > 0) {
               if (selectedCurrency === 'gold') {

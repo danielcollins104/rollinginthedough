@@ -28,6 +28,11 @@ export function registerOAuthRoutes(app: Express) {
 
     try {
       // Exchange code for Supabase session
+      if (!supabaseAdmin) {
+        console.error("[OAuth/Supabase] Supabase not configured, falling back to Manus OAuth");
+        res.redirect("/?auth_error=supabase_not_configured");
+        return;
+      }
       const { data: sessionData, error: sbError } =
         await supabaseAdmin.auth.exchangeCodeForSession(code);
 
@@ -96,10 +101,16 @@ export function registerOAuthRoutes(app: Express) {
       return;
     }
 
+    if (!supabaseAdmin) {
+      console.error("[OAuth/Authorize] Supabase not configured");
+      res.status(500).json({ error: "Supabase not configured for OAuth" });
+      return;
+    }
+
     const { data, error } = await supabaseAdmin.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo,
+        redirectTo: redirectUri,
         skipBrowserRedirect: true,
         scopes: provider === "google"
           ? "openid email profile"

@@ -1201,12 +1201,91 @@ export default function SlotMachine({
           border: "2px solid #D4AF37",
           borderTop: "none",
           borderRadius: "0 0 0.75rem 0.75rem",
-          padding: "8px",
+          padding: "6px",
           width: "100%",
         }}
       >
+        {/* ── Compact bet/lines row (mobile: horizontal scroll, desktop: grid) ── */}
+        <div className="mb-2 flex flex-col sm:flex-row gap-2 sm:items-center">
+          {/* Bet Per Line - compact */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+              <span className="text-[0.55rem] font-numbers uppercase tracking-widest whitespace-nowrap" style={{ color: "rgba(212,175,55,0.7)" }}>
+                💰 BET/LINE
+              </span>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => { const nb = Math.max(10, bet - BET_DECREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
+                  disabled={spinning || cascadeActive}
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded text-xs sm:text-sm font-bold flex items-center justify-center transition-all flex-shrink-0"
+                  style={{
+                    background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
+                    border: "1px solid rgba(212,175,55,0.4)",
+                    color: spinning || cascadeActive ? "#444" : "#C8860A",
+                  }}
+                >−</button>
+                <div className="flex gap-0.5 overflow-x-auto scrollbar-hide pb-1 flex-1 min-w-0">
+                  {BET_OPTIONS.map((b) => (
+                    <button
+                      key={b}
+                      onClick={() => { if (!spinning && !cascadeActive) { setBet(b); if (soundEnabled) playSound("button_click"); } }}
+                      disabled={spinning || cascadeActive}
+                      className="flex-shrink-0 px-2 py-1 rounded font-numbers font-bold text-xs transition-all hover:scale-105 whitespace-nowrap"
+                      style={{
+                        background: bet === b ? "linear-gradient(135deg, #C8860A, #D4AF37)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
+                        border: `1px solid ${bet === b ? "#F5E6C8" : "rgba(212,175,55,0.3)"}`,
+                        color: bet === b ? "#0a0a1a" : "#D4AF37",
+                        boxShadow: bet === b ? "0 0 8px rgba(212,175,55,0.5)" : "none",
+                        opacity: spinning || cascadeActive ? 0.5 : 1,
+                        minWidth: "2.2rem",
+                      }}
+                    >{b}</button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { const nb = Math.min(200, bet + BET_INCREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
+                  disabled={spinning || cascadeActive}
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded text-xs sm:text-sm font-bold flex items-center justify-center transition-all flex-shrink-0"
+                  style={{
+                    background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
+                    border: "1px solid rgba(212,175,55,0.4)",
+                    color: spinning || cascadeActive ? "#444" : "#C8860A",
+                  }}
+                >+</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Paylines - compact */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+              <span className="text-[0.55rem] font-numbers uppercase tracking-widest whitespace-nowrap" style={{ color: "rgba(76,175,80,0.7)" }}>
+                📊 LINES
+              </span>
+              <div className="flex gap-0.5 overflow-x-auto scrollbar-hide pb-1 flex-1 min-w-0">
+                {PAYLINE_OPTIONS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => { if (!spinning && !cascadeActive && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
+                    disabled={spinning || cascadeActive}
+                    className="flex-shrink-0 px-2 py-1 rounded font-numbers font-bold text-xs transition-all hover:scale-105 whitespace-nowrap"
+                    style={{
+                      background: paylines === p ? "linear-gradient(135deg, #1a5a1a, #2a8a2a)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
+                      border: `1px solid ${paylines === p ? "#90EE90" : "rgba(76,175,80,0.3)"}`,
+                      color: paylines === p ? "#90EE90" : "#D4AF37",
+                      boxShadow: paylines === p ? "0 0 8px rgba(144,238,144,0.4)" : "none",
+                      opacity: spinning || cascadeActive ? 0.5 : 1,
+                      minWidth: "2rem",
+                    }}
+                  >{p}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* ── DOMINANT SPIN BUTTON — Professional casino standard ── */}
-        <div className="mb-3">
+        <div className="mb-2">
           <button
             onClick={() => {
               if (canSpin) {
@@ -1231,8 +1310,8 @@ export default function SlotMachine({
               e.currentTarget.style.transform = "translateY(0)";
             }}
             style={{
-              padding: "clamp(12px, 2.5vw, 18px) clamp(16px, 4vw, 32px)",
-              fontSize: "clamp(1.1rem, 3.5vw, 1.6rem)",
+              padding: "clamp(10px, 2.5vw, 16px) clamp(14px, 4vw, 28px)",
+              fontSize: "clamp(1rem, 3.5vw, 1.5rem)",
               background: canSpin
                 ? "linear-gradient(135deg, #8B5E0A 0%, #C8860A 25%, #FFD700 50%, #C8860A 75%, #8B5E0A 100%)"
                 : "linear-gradient(135deg, #1a1a2a, #2a2a3a)",
@@ -1274,19 +1353,20 @@ export default function SlotMachine({
           </button>
         </div>
 
-        {/* ── Secondary action buttons ── */}
-        <div className="flex gap-1.5 mb-3">
+        {/* ── Secondary action buttons (compact, wrap on mobile) ── */}
+        <div className="flex flex-wrap gap-1.5 justify-center">
           <button
             onClick={() => {
               setShowDealsModal(true);
               if (soundEnabled) playSound("button_click");
             }}
-            className="flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
+            className="sm:flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
             style={{
               background: "linear-gradient(135deg, #1a3a5a, #2a5a7a)",
               border: "2px solid rgba(100,180,255,0.5)",
               color: "#88CCFF",
               boxShadow: "0 0 10px rgba(100,180,255,0.2)",
+              flex: "1 1 45%",
             }}
           >
             🎁 DEALS
@@ -1296,12 +1376,13 @@ export default function SlotMachine({
               setShowScratchGame(true);
               if (soundEnabled) playSound("button_click");
             }}
-            className="flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
+            className="sm:flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
             style={{
               background: "linear-gradient(135deg, #5a2a1a, #7a3a2a)",
               border: "2px solid rgba(255,107,107,0.5)",
               color: "#FFB6B6",
               boxShadow: "0 0 10px rgba(255,107,107,0.2)",
+              flex: "1 1 45%",
             }}
           >
             🎰 SCRATCH
@@ -1311,7 +1392,7 @@ export default function SlotMachine({
               setAutoplay(!autoplay);
               if (soundEnabled) playSound("button_click");
             }}
-            className="flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
+            className="sm:flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
             style={{
               background: autoplay
                 ? "linear-gradient(135deg, #1a3a1a, #2a5a2a)"
@@ -1319,155 +1400,22 @@ export default function SlotMachine({
               border: `2px solid ${autoplay ? "rgba(76,175,80,0.6)" : "rgba(212,175,55,0.3)"}`,
               color: autoplay ? "#90EE90" : "#D4AF37",
               boxShadow: autoplay ? "0 0 10px rgba(76,175,80,0.3)" : "none",
+              flex: "1 1 100%",
             }}
           >
             {autoplay ? "■ STOP" : "▶ AUTO"}
           </button>
         </div>
 
-        {/* ── Bet Controls — Desktop ── */}
-        <div className="hidden sm:block mb-3">
-          <div className="grid grid-cols-2 gap-3">
-            {/* Bet */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="text-xs font-numbers uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.7)" }}>
-                  💰 Bet Per Line
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => { const nb = Math.max(10, bet - BET_DECREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
-                    disabled={spinning || cascadeActive}
-                    className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center transition-all"
-                    style={{
-                      background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
-                      border: "1px solid rgba(212,175,55,0.4)",
-                      color: spinning || cascadeActive ? "#444" : "#C8860A",
-                    }}
-                  >−</button>
-                  <button
-                    onClick={() => { const nb = Math.min(200, bet + BET_INCREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
-                    disabled={spinning || cascadeActive}
-                    className="w-6 h-6 rounded text-sm font-bold flex items-center justify-center transition-all"
-                    style={{
-                      background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
-                      border: "1px solid rgba(212,175,55,0.4)",
-                      color: spinning || cascadeActive ? "#444" : "#C8860A",
-                    }}
-                  >+</button>
-                </div>
-              </div>
-              <div className="flex gap-1">
-                {BET_OPTIONS.map((b) => (
-                  <button
-                    key={b}
-                    onClick={() => { if (!spinning && !cascadeActive) { setBet(b); if (soundEnabled) playSound("button_click"); } }}
-                    disabled={spinning || cascadeActive}
-                    className="flex-1 py-1.5 text-xs rounded font-numbers font-bold transition-all hover:scale-105"
-                    style={{
-                      background: bet === b ? "linear-gradient(135deg, #C8860A, #D4AF37)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
-                      border: `1px solid ${bet === b ? "#F5E6C8" : "rgba(212,175,55,0.3)"}`,
-                      color: bet === b ? "#0a0a1a" : "#D4AF37",
-                      boxShadow: bet === b ? "0 0 10px rgba(212,175,55,0.5)" : "none",
-                      opacity: spinning || cascadeActive ? 0.5 : 1,
-                    }}
-                  >{b}</button>
-                ))}
-              </div>
-            </div>
-
-            {/* Paylines */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="text-xs font-numbers uppercase tracking-widest" style={{ color: "rgba(76,175,80,0.7)" }}>
-                  📊 Paylines
-                </div>
-                <button
-                  onClick={() => { if (!spinning && !cascadeActive) { setBet(200); if (soundEnabled) playSound("button_click"); } }}
-                  disabled={spinning || cascadeActive}
-                  className="px-2 py-0.5 rounded text-xs font-numbers font-bold transition-all"
-                  style={{
-                    background: "linear-gradient(135deg, #2a1a00, #3a2a00)",
-                    border: "1px solid rgba(212,175,55,0.4)",
-                    color: "#C8860A",
-                    opacity: spinning || cascadeActive ? 0.5 : 1,
-                  }}
-                >MAX BET</button>
-              </div>
-              <div className="flex gap-1">
-                {PAYLINE_OPTIONS.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => { if (!spinning && !cascadeActive && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
-                    disabled={spinning || cascadeActive}
-                    className="flex-1 py-1.5 text-xs rounded font-numbers font-bold transition-all hover:scale-105"
-                    style={{
-                      background: paylines === p ? "linear-gradient(135deg, #1a5a1a, #2a8a2a)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
-                      border: `1px solid ${paylines === p ? "#90EE90" : "rgba(76,175,80,0.3)"}`,
-                      color: paylines === p ? "#90EE90" : "#D4AF37",
-                      boxShadow: paylines === p ? "0 0 10px rgba(144,238,144,0.4)" : "none",
-                      opacity: spinning || cascadeActive ? 0.5 : 1,
-                    }}
-                  >{p}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Mobile Bet/Paylines ── */}
-        <div className="sm:hidden grid grid-cols-2 gap-2 mb-2">
-          <div>
-            <div className="text-xs font-numbers uppercase tracking-widest mb-1" style={{ color: "rgba(212,175,55,0.6)", fontSize: "0.6rem" }}>💰 BET</div>
-            <div className="flex gap-0.5 flex-wrap">
-              {[10, 25, 50, 100, 200].map((b) => (
-                <button
-                  key={b}
-                  onClick={() => { if (!spinning && !cascadeActive) { setBet(b); if (soundEnabled) playSound("button_click"); } }}
-                  disabled={spinning || cascadeActive}
-                  className="flex-1 min-w-[2rem] py-1 text-xs rounded font-numbers font-bold"
-                  style={{
-                    background: bet === b ? "linear-gradient(135deg, #C8860A, #D4AF37)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
-                    border: `1px solid ${bet === b ? "#F5E6C8" : "rgba(212,175,55,0.3)"}`,
-                    color: bet === b ? "#0a0a1a" : "#D4AF37",
-                    opacity: spinning || cascadeActive ? 0.5 : 1,
-                    fontSize: "0.65rem",
-                  }}
-                >{b}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-numbers uppercase tracking-widest mb-1" style={{ color: "rgba(76,175,80,0.6)", fontSize: "0.6rem" }}>📊 LINES</div>
-            <div className="flex gap-0.5 flex-wrap">
-              {[1, 5, 10, 15, 20, 25].map((p) => (
-                <button
-                  key={p}
-                  onClick={() => { if (!spinning && !cascadeActive && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
-                  disabled={spinning || cascadeActive}
-                  className="flex-1 min-w-[2rem] py-1 text-xs rounded font-numbers font-bold"
-                  style={{
-                    background: paylines === p ? "linear-gradient(135deg, #1a5a1a, #2a8a2a)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
-                    border: `1px solid ${paylines === p ? "#90EE90" : "rgba(76,175,80,0.3)"}`,
-                    color: paylines === p ? "#90EE90" : "#D4AF37",
-                    opacity: spinning || cascadeActive ? 0.5 : 1,
-                    fontSize: "0.65rem",
-                  }}
-                >{p}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Bottom utility row ── */}
-        <div className="hidden sm:flex gap-1.5">
+        {/* ── Bottom utility row (mobile: stack, desktop: row) ── */}
+        <div className="flex flex-wrap gap-1.5 justify-center mt-2">
           <button
             onClick={() => {
               const newMuted = !soundMuted;
               setSoundMuted(newMuted);
               soundManager.setMuted(newMuted);
             }}
-            className="px-3 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all"
+            className="flex-1 min-w-[100px] py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all"
             style={{
               background: soundMuted ? "linear-gradient(135deg, #3a1a1a, #5a2a2a)" : "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
               border: soundMuted ? "1px solid rgba(255,107,107,0.5)" : "1px solid rgba(76,175,80,0.5)",
@@ -1479,7 +1427,7 @@ export default function SlotMachine({
           {onCoinShop && (
             <button
               onClick={onCoinShop}
-              className="flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105"
+              className="flex-1 min-w-[100px] py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105"
               style={{
                 background: "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
                 border: "1px solid rgba(76,175,80,0.5)",
@@ -1494,7 +1442,7 @@ export default function SlotMachine({
               const btn = document.querySelector('[data-paytable-toggle]');
               if (btn) (btn as HTMLButtonElement).click();
             }}
-            className="flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105"
+            className="flex-1 min-w-[100px] py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105"
             style={{
               background: "linear-gradient(135deg, #1a1a3a, #2a2a4a)",
               border: "1px solid rgba(212,175,55,0.4)",
@@ -1505,7 +1453,6 @@ export default function SlotMachine({
           </button>
         </div>
       </div>
-
       {/* ── Paytable ── */}
       <PayTable />
 
@@ -1819,6 +1766,15 @@ export default function SlotMachine({
         }
         .empty-cell {
           animation: emptyCellFade 0.3s ease-out forwards;
+        }
+
+        /* Scrollbar hide utility for mobile bet/lines scroll */
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
     </div>

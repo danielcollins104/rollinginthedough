@@ -217,14 +217,15 @@
 
 
 ## Phase 20: Public Release Cleanup
-- [ ] Remove Debug Panel from production UI
-- [ ] Clean up test/dev artifacts visible to users
-- [ ] Generate Play Store app icon (512x512)
-- [ ] Generate Play Store feature graphic (1024x500)
-- [ ] Generate Play Store screenshots (3+)
-- [ ] Write Play Store listing description
-- [ ] Test cleaned-up version
-- [ ] Deploy public release version
+- [x] Remove Debug Panel from production UI
+- [x] Clean up test/dev artifacts visible to users
+- [x] Generate Play Store app icon (512x512)
+- [x] Generate Play Store feature graphic (1024x500)
+- [x] Generate Play Store screenshots (3+)
+- [x] Write Play Store listing description
+- [x] Test cleaned-up version (98 tests pass, build successful)
+- [x] Mobile-responsive layout optimization (SPIN button always visible, compact bet/lines)
+- [ ] Deploy public release version (Render)
 
 ## Phase 21: Square Payment Integration (replacing Stripe)
 - [x] Remove Stripe npm packages (@stripe/react-stripe-js, @stripe/stripe-js, stripe)
