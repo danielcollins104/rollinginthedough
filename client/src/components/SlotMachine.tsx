@@ -974,6 +974,20 @@ export default function SlotMachine({
 
       {/* ── Machine Top Banner ── */}
       <div className="w-full relative">
+        {/* Scrolling marquee - moved to top */}
+        <div
+          className="overflow-hidden"
+          style={{
+            background: "linear-gradient(90deg, #050510, #0d0a00, #050510)",
+            borderBottom: "1px solid rgba(212,175,55,0.2)",
+            padding: "2px 0",
+          }}
+        >
+          <div className="marquee-text text-xs font-numbers px-4" style={{ color: "#C8860A", fontSize: "0.65rem" }}>
+            ◆ FREE SWEEPSTAKES GAME — NO REAL MONEY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🍀 WILD CLOVER SUBSTITUTES ALL ◆ ⭐ 3 SCATTERS = 10 FREE SPINS ◆ ⭐ 5 SCATTERS = JACKPOT ◆ 🗡️ 3 HUNTRESS = BONUS ROUND ◆ JACKPOT GROWS WITH EVERY SPIN ◆
+          </div>
+        </div>
+
         {/* Free spins badge */}
         <FreeSpinsDisplay freeSpins={freeSpins} />
 
@@ -1006,20 +1020,6 @@ export default function SlotMachine({
               </div>
             </div>
             <ArtDecoOrnament flip />
-          </div>
-
-          {/* Scrolling marquee */}
-          <div
-            className="overflow-hidden"
-            style={{
-              background: "linear-gradient(90deg, #050510, #0d0a00, #050510)",
-              borderTop: "1px solid rgba(212,175,55,0.2)",
-              padding: "2px 0",
-            }}
-          >
-            <div className="marquee-text text-xs font-numbers px-4" style={{ color: "#C8860A", fontSize: "0.65rem" }}>
-              ◆ FREE SWEEPSTAKES GAME — NO REAL MONEY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🍀 WILD CLOVER SUBSTITUTES ALL ◆ ⭐ 3 SCATTERS = 10 FREE SPINS ◆ ⭐ 5 SCATTERS = JACKPOT ◆ 🗡️ 3 HUNTRESS = BONUS ROUND ◆ JACKPOT GROWS WITH EVERY SPIN ◆
-            </div>
           </div>
         </div>
       </div>
