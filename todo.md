@@ -225,7 +225,7 @@
 - [x] Write Play Store listing description
 - [x] Test cleaned-up version (98 tests pass, build successful)
 - [x] Mobile-responsive layout optimization (SPIN button always visible, compact bet/lines)
-- [ ] Deploy public release version (Render)
+- [x] Deploy public release version (Render) — pushed to origin/master, auto-deploy triggered
 
 ## Phase 21: Square Payment Integration (replacing Stripe)
 - [x] Remove Stripe npm packages (@stripe/react-stripe-js, @stripe/stripe-js, stripe)
