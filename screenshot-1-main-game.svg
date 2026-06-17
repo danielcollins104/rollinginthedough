@@ -1,0 +1,168 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0A0A1A"/>
+      <stop offset="100%" stop-color="#1A0A2E"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFD700"/>
+      <stop offset="50%" stop-color="#F5E040"/>
+      <stop offset="100%" stop-color="#D4AF37"/>
+    </linearGradient>
+    <linearGradient id="reelGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1A1A2E"/>
+      <stop offset="50%" stop-color="#0A0A1A"/>
+      <stop offset="100%" stop-color="#1A1A2E"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="url(#bgGrad)"/>
+  
+  <!-- Top bar - Balance & Jackpots -->
+  <rect x="0" y="0" width="1080" height="120" fill="#0A0A1A" opacity="0.9"/>
+  <text x="60" y="65" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="url(#goldGrad)">Rolling in the Dough</text>
+  <text x="60" y="95" font-family="Arial, sans-serif" font-size="16" fill="#E8D5B7">Sweepstakes Slots</text>
+  
+  <!-- Balance display -->
+  <g transform="translate(700, 30)">
+    <rect x="0" y="0" width="320" height="60" rx="12" fill="#1A1A2E" stroke="#3A2A1A" stroke-width="2"/>
+    <text x="20" y="22" font-family="Arial, sans-serif" font-size="14" fill="#B8A080">Gold Coins</text>
+    <text x="20" y="50" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#FFD700">10,000</text>
+    <text x="180" y="22" font-family="Arial, sans-serif" font-size="14" fill="#60B060">Sweeps Coins</text>
+    <text x="180" y="50" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#90EE90">500</text>
+  </g>
+  
+  <!-- Jackpot meters -->
+  <g transform="translate(60, 150)">
+    <text x="0" y="20" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#FFD700">JACKPOTS</text>
+    <g font-family="Arial, sans-serif" font-size="14" fill="#E8D5B7">
+      <text x="0" y="50">GRAND: $12,450</text>
+      <text x="0" y="75">MAJOR: $5,230</text>
+      <text x="0" y="100">MINOR: $1,180</text>
+      <text x="0" y="125">MINI: $245</text>
+    </g>
+  </g>
+  
+  <!-- Reel area -->
+  <g transform="translate(60, 300)">
+    <!-- Reel background -->
+    <rect x="0" y="0" width="960" height="700" rx="20" fill="url(#reelGrad)" stroke="#3A2A1A" stroke-width="3"/>
+    
+    <!-- Paylines indicator -->
+    <text x="20" y="30" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#FFD700">LINES: 25</text>
+    <text x="300" y="30" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#FFD700">BET: 50</text>
+    <text x="600" y="30" font_family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#FFD700">TOTAL: 1,250</text>
+    
+    <!-- 5 Reels -->
+    <g font-family="Arial, sans-serif" font-size="48">
+      <!-- Reel 1 -->
+      <g transform="translate(60, 80)">
+        <rect x="0" y="0" width="150" height="520" rx="10" fill="#0A0A1A" stroke="#2A2A3E" stroke-width="2"/>
+        <text x="30" y="150" fill="#FFD700" text-anchor="middle">🍞</text>
+        <text x="30" y="260" fill="#FFD700" text-anchor="middle" font-weight="bold">👑</text>
+        <text x="30" y="370" fill="#E8A830" text-anchor="middle">🥨</text>
+        <text x="30" y="480" fill="#E8A020" text-anchor="middle">🥐</text>
+      </g>
+      <!-- Reel 2 -->
+      <g transform="translate(230, 80)">
+        <rect x="0" y="0" width="150" height="520" rx="10" fill="#0A0A1A" stroke="#2A2A3E" stroke-width="2"/>
+        <text x="30" y="150" fill="#E8A830" text-anchor="middle">🥖</text>
+        <text x="30" y="260" fill="#FFD700" text-anchor="middle" font-weight="bold">👑</text>
+        <text x="30" y="370" fill="#FF6B8A" text-anchor="middle">🧁</text>
+        <text x="30" y="480" fill="#E8A020" text-anchor="middle">🍞</text>
+      </g>
+      <!-- Reel 3 -->
+      <g transform="translate(400, 80)">
+        <rect x="0" y="0" width="150" height="520" rx="10" fill="#0A0A1A" stroke="#2A2A3E" stroke-width="2"/>
+        <text x="30" y="150" fill="#E8A020" text-anchor="middle">🍪</text>
+        <text x="30" y="260" fill="#FFD700" text-anchor="middle" font-weight="bold">👑</text>
+        <text x="30" y="370" fill="#2244AA" text-anchor="middle">🫐</text>
+        <text x="30" y="480" fill="#90EE90" text-anchor="middle">🫓</text>
+      </g>
+      <!-- Reel 4 -->
+      <g transform="translate(570, 80)">
+        <rect x="0" y="0" width="150" height="520" rx="10" fill="#0A0A1A" stroke="#2A2A3E" stroke-width="2"/>
+        <text x="30" y="150" fill="#E8A830" text-anchor="middle">🥨</text>
+        <text x="30" y="260" fill="#FFD700" text-anchor="middle" font-weight="bold">👑</text>
+        <text x="30" y="370" fill="#E8A020" text-anchor="middle">🍞</text>
+        <text x="30" y="480" fill="#FF6B8A" text-anchor="middle">🧁</text>
+      </g>
+      <!-- Reel 5 -->
+      <g transform="translate(740, 80)">
+        <rect x="0" y="0" width="150" height="520" rx="10" fill="#0A0A1A" stroke="#2A2A3E" stroke-width="2"/>
+        <text x="30" y="150" fill="#FFD700" text-anchor="middle">🍞</text>
+        <text x="30" y="260" fill="#FFD700" text-anchor="middle" font-weight="bold">👑</text>
+        <text x="30" y="370" fill="#E8A020" text-anchor="middle">🥐</text>
+        <text x="30" y="480" fill="#E8A830" text-anchor="middle">🥖</text>
+      </g>
+    </g>
+    
+    <!-- Win line highlight (middle row) -->
+    <path d="M20 340 L940 340" stroke="#FFD700" stroke-width="4" stroke-dasharray="10,5" opacity="0.8"/>
+    <text x="480" y="330" font-size="16" fill="#FFD700" text-anchor="middle">WIN LINE - 3 QUEENS!</text>
+  </g>
+  
+  <!-- SPIN Button (huge, dominant) -->
+  <g transform="translate(340, 1050)">
+    <ellipse cx="200" cy="80" rx="160" ry="70" fill="url(#goldGrad)" stroke="#D4AF37" stroke-width="4"/>
+    <ellipse cx="200" cy="80" rx="150" ry="60" fill="#D4AF37"/>
+    <text x="200" y="95" font-family="Arial, sans-serif" font-size="36" font-weight="bold" fill="#0A0A1A" text-anchor="middle">SPIN</text>
+    <!-- Gold shimmer -->
+    <ellipse cx="200" cy="60" rx="100" ry="20" fill="url(#goldGrad)" opacity="0.3"/>
+  </g>
+  
+  <!-- Bet controls -->
+  <g transform="translate(60, 1200)">
+    <text x="0" y="20" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#E8D5B7">BET PER LINE</text>
+    <g transform="translate(0, 40)">
+      <rect x="0" y="0" width="60" height="50" rx="8" fill="#1A1A2E" stroke="#3A2A1A" stroke-width="2"/>
+      <text x="30" y="32" font-size="24" fill="#FFD700" text-anchor="middle">50</text>
+    </g>
+    <g transform="translate(80, 40)">
+      <rect x="0" y="0" width="60" height="50" rx="8" fill="#3A2A1A" stroke="#D4AF37" stroke-width="2"/>
+      <text x="30" y="32" font-size="24" fill="#FFD700" text-anchor="middle">+</text>
+    </g>
+    <g transform="translate(-80, 40)">
+      <rect x="0" y="0" width="60" height="50" rx="8" fill="#3A2A1A" stroke="#D4AF37" stroke-width="2"/>
+      <text x="30" y="32" font-size="28" fill="#FFD700" text-anchor="middle">-</text>
+    </g>
+  </g>
+  
+  <g transform="translate(800, 1200)">
+    <text x="0" y="20" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#E8D5B7">LINES</text>
+    <g transform="translate(0, 40)">
+      <rect x="0" y="0" width="60" height="50" rx="8" fill="#1A1A2E" stroke="#3A2A1A" stroke-width="2"/>
+      <text x="30" y="32" font-size="24" fill="#FFD700" text-anchor="middle">25</text>
+    </g>
+    <g transform="translate(80, 40)">
+      <rect x="0" y="0" width="60" height="50" rx="8" fill="#3A2A1A" stroke="#D4AF37" stroke-width="2"/>
+      <text x="30" y="32" font-size="24" fill="#FFD700" text-anchor="middle">+</text>
+    </g>
+    <g transform="translate(-80, 40)">
+      <rect x="0" y="0" width="60" height="50" rx="8" fill="#3A2A1A" stroke="#D4AF37" stroke-width="2"/>
+      <text x="30" y="32" font-size="28" fill="#FFD700" text-anchor="middle">-</text>
+    </g>
+  </g>
+  
+  <!-- Currency toggle -->
+  <g transform="translate(390, 1300)">
+    <rect x="0" y="0" width="300" height="60" rx="30" fill="#1A1A2E" stroke="#3A2A1A" stroke-width="2"/>
+    <rect x="2" y="2" width="146" height="56" rx="28" fill="url(#goldGrad)"/>
+    <text x="75" y="38" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#0A0A1A" text-anchor="middle">GOLD</text>
+    <text x="225" y="38" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#E8D5B7" text-anchor="middle">SWEEPS</text>
+  </g>
+  
+  <!-- Bottom nav -->
+  <g transform="translate(0, 1800)">
+    <rect x="0" y="0" width="1080" height="120" fill="#0A0A1A" opacity="0.95"/>
+    <g font-family="Arial, sans-serif" font-size="24" fill="#E8D5B7" text-anchor="middle">
+      <text x="180" y="65">🏠 LOBBY</text>
+      <text x="540" y="65">🛍️ SHOP</text>
+      <text x="900" y="65">🎁 REWARDS</text>
+    </g>
+  </g>
+  
+  <!-- Device frame label -->
+  <text x="540" y="1890" font-family="Arial, sans-serif" font-size="14" fill="#5A4A3A" text-anchor="middle">Rolling in the Dough - Main Game Screen</text>
+</svg>

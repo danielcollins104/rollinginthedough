@@ -162,39 +162,145 @@ function findNearMiss(reels: SymbolId[][], winLines: WinLine[]): { reelIdx: numb
   });
 }
 
-// Spinning reel strip with blur effect
+// Physics-based spinning reel strip with elastic slam stop
 function ReelStrip({ symbols, spinning, done, size = 36 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number }) {
-  const [blurSymbols, setBlurSymbols] = useState<SymbolId[]>([]);
+  // For spinning: we use a continuous strip that translates Y
+  // For stopped: show the final 3 symbols
+  const [translateY, setTranslateY] = useState(0);
+  const [velocity, setVelocity] = useState(0);
+  const [animFrame, setAnimFrame] = useState<number | null>(null);
+  const [stripSymbols, setStripSymbols] = useState<SymbolId[]>(() => {
+    // Generate a long strip of random symbols for smooth spinning
+    return Array.from({ length: 20 }, () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].id);
+  });
 
   useEffect(() => {
     if (spinning && !done) {
-      const interval = setInterval(() => {
-        setBlurSymbols(
-          Array.from({ length: 5 }, () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].id)
-        );
-      }, 60);
-      return () => clearInterval(interval);
+      // Start spinning: accelerate to cruise speed, then maintain
+      const startTime = Date.now();
+      const targetVelocity = size * 22; // pixels per frame at 60fps = ~1300 px/s
+      const acceleration = targetVelocity / 15; // accelerate over ~15 frames
+      
+      let currentVelocity = 0;
+      let currentY = 0;
+      
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const frameId = requestAnimationFrame(animate);
+        setAnimFrame(frameId);
+        
+        // Acceleration phase (first 250ms)
+        if (elapsed < 250) {
+          currentVelocity = Math.min(currentVelocity + acceleration, targetVelocity);
+        } else {
+          // Cruise with slight variation for organic feel
+          currentVelocity = targetVelocity + Math.sin(elapsed * 0.01) * 50;
+        }
+        
+        currentY += currentVelocity / 60; // convert to per-frame
+        setTranslateY(currentY);
+        setVelocity(currentVelocity);
+      };
+      
+      const frameId = requestAnimationFrame(animate);
+      setAnimFrame(frameId);
+      
+      return () => {
+        if (frameId) cancelAnimationFrame(frameId);
+      };
+    } else if (done && spinning === false) {
+      // Elastic deceleration & slam stop
+      // We need to align the strip so the target symbols land in the viewport
+      const targetIndex = 10; // Position where symbols[0] should land
+      const symbolHeight = size;
+      const targetY = -targetIndex * symbolHeight;
+      
+      let currentY = translateY;
+      let currentV = velocity > 0 ? velocity : -targetY * 0.03; // initial velocity toward target
+      
+      const animateStop = () => {
+        // Spring physics: F = -k*x - c*v
+        const stiffness = 0.08; // spring stiffness
+        const damping = 0.12;   // damping for elastic overshoot
+        const displacement = currentY - targetY;
+        
+        const acceleration = -stiffness * displacement - damping * currentV;
+        currentV += acceleration;
+        currentY += currentV / 60;
+        
+        // Check if we've settled near target
+        const settled = Math.abs(displacement) < 0.5 && Math.abs(currentV) < 0.5;
+        
+        setTranslateY(currentY);
+        setVelocity(currentV);
+        
+        if (!settled) {
+          const frameId = requestAnimationFrame(animateStop);
+          setAnimFrame(frameId);
+        } else {
+          // Snap exactly to target
+          setTranslateY(targetY);
+          setVelocity(0);
+          
+          // Trigger impact effects
+          window.dispatchEvent(new CustomEvent('reel-slam', { 
+            detail: { reelIndex: 0 } // Will be overridden by parent
+          }));
+        }
+      };
+      
+      const frameId = requestAnimationFrame(animateStop);
+      setAnimFrame(frameId);
+      
+      return () => {
+        if (frameId) cancelAnimationFrame(frameId);
+      };
     }
-  }, [spinning, done]);
+  }, [spinning, done, size, translateY, velocity]);
 
-  if (spinning && !done) {
+  // When done, show static symbols in viewport
+  if (done && !spinning) {
     return (
-      <div className="absolute inset-0 z-20 flex flex-col" style={{ background: "rgba(5,5,16,0.05)" }}>
-        {blurSymbols.map((symId, i) => {
+      <div className="absolute inset-0 flex flex-col overflow-hidden">
+        {symbols.map((symId, i) => (
+          <div key={i} className="flex-1 flex items-center justify-center">
+            <SymbolIcon symbolId={symId} size={Math.floor(size * 0.9)} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Spinning: render the continuous strip translating
+  if (spinning) {
+    // Find which symbols are in viewport
+    const startIdx = Math.max(0, Math.floor(-translateY / size));
+    const visibleCount = Math.ceil(360 / size) + 2; // 3 visible + buffer
+    
+    return (
+      <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ transform: `translateY(${translateY}px)` }}>
+        {Array.from({ length: visibleCount }, (_, i) => {
+          const idx = (startIdx + i) % stripSymbols.length;
+          const symId = stripSymbols[idx];
           const sym = getSymbol(symId);
+          const blur = Math.min(Math.abs(velocity) / (size * 22), 1) * 4;
           return (
             <div
               key={i}
               className="flex-1 flex items-center justify-center"
-              style={{ filter: "blur(2px)", opacity: 0.5 }}
+              style={{ 
+                filter: `blur(${blur}px)`, 
+                opacity: Math.max(0.3, 1 - blur * 0.15)
+              }}
             >
-              <SymbolIcon symbolId={sym.id} size={Math.floor(size * 0.55)} />
+              <SymbolIcon symbolId={sym.id} size={Math.floor(size * 0.9)} />
             </div>
           );
         })}
       </div>
     );
   }
+
   return null;
 }
 

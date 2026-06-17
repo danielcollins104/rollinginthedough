@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle for app icon -->
+  <circle cx="24" cy="24" r="24" fill="#0A0A1A" />
+  <!-- Dollar coin -->
+  <circle cx="24" cy="24" r="17" fill="#FFD700" />
+  <circle cx="24" cy="24" r="15" fill="#F5E040" />
+  <circle cx="24" cy="24" r="13" fill="#FFD700" stroke="#D4AF37" stroke-width="1" />
+  <!-- Dollar sign -->
+  <path d="M24 14 L24 34 M20 18 Q24 16 28 18 Q24 21 20 22 Q24 24 28 24 Q24 27 20 28 Q24 30 28 30"
+    stroke="#B8860A" stroke-width="2.5" fill="none" stroke-linecap="round" />
+  <!-- Inner ring details -->
+  <circle cx="24" cy="24" r="11" fill="none" stroke="#D4AF37" stroke-width="0.5" opacity="0.5" />
+  <!-- Star sparkles -->
+  <path d="M8 12 L9 14 L11 14 L9.5 15.5 L10 17.5 L8 16 L6 17.5 L6.5 15.5 L5 14 L7 14 Z"
+    fill="#FFF0A0" opacity="0.8" />
+  <path d="M38 34 L39 36 L41 36 L39.5 37.5 L40 39.5 L38 38 L36 39.5 L36.5 37.5 L35 36 L37 36 Z"
+    fill="#FFF0A0" opacity="0.7" />
+  <path d="M40 10 L41 12 L43 12 L41.5 13.5 L42 15.5 L40 14 L38 15.5 L38.5 13.5 L37 12 L39 12 Z"
+    fill="#FFF0A0" opacity="0.6" />
+  <!-- Outer glow -->
+  <circle cx="24" cy="24" r="17" fill="none" stroke="#FFD700" stroke-width="1" opacity="0.4" />
+</svg>

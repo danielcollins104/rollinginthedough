@@ -1,0 +1,67 @@
+<svg width="1024" height="500" viewBox="0 0 1024 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1024" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0A0A1A"/>
+      <stop offset="50%" stop-color="#1A0A2E"/>
+      <stop offset="100%" stop-color="#0A0A1A"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFD700"/>
+      <stop offset="50%" stop-color="#F5E040"/>
+      <stop offset="100%" stop-color="#D4AF37"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1024" height="500" fill="url(#bgGrad)"/>
+  
+  <!-- Decorative sparkles -->
+  <circle cx="100" cy="100" r="3" fill="#FFD700" opacity="0.6"/>
+  <circle cx="900" cy="80" r="2" fill="#FFD700" opacity="0.5"/>
+  <circle cx="150" cy="420" r="2.5" fill="#FFD700" opacity="0.5"/>
+  <circle cx="880" cy="440" r="2" fill="#FFD700" opacity="0.4"/>
+  <circle cx="512" cy="50" r="1.5" fill="#FFD700" opacity="0.3"/>
+  <circle cx="300" cy="200" r="1" fill="#FFD700" opacity="0.4"/>
+  <circle cx="720" cy="200" r="1" fill="#FFD700" opacity="0.4"/>
+  
+  <!-- Left side - App Icon (large) -->
+  <g transform="translate(140, 110)">
+    <circle cx="140" cy="140" r="120" fill="url(#goldGrad)"/>
+    <circle cx="140" cy="140" r="105" fill="#F5E040"/>
+    <circle cx="140" cy="140" r="95" fill="url(#goldGrad)" stroke="#D4AF37" stroke-width="4"/>
+    <!-- Dollar sign -->
+    <path d="M140 50 L140 230 M85 85 Q140 70 195 85 Q140 120 85 130 Q140 150 195 150 Q140 180 85 180 Q140 210 195 210"
+      stroke="#B8860A" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <!-- Inner ring -->
+    <circle cx="140" cy="140" r="80" fill="none" stroke="#D4AF37" stroke-width="2" opacity="0.5"/>
+    <!-- Sparkles -->
+    <path d="M55 35 L65 55 L85 55 L75 70 L80 90 L55 75 L30 90 L35 70 L25 55 L45 55 Z"
+      fill="#FFF0A0" opacity="0.9"/>
+    <path d="M235 235 L245 255 L265 255 L255 270 L260 290 L235 275 L210 290 L215 270 L205 255 L225 255 Z"
+      fill="#FFF0A0" opacity="0.8"/>
+    <path d="M245 35 L255 55 L275 55 L265 70 L270 90 L245 75 L220 90 L225 70 L215 55 L235 55 Z"
+      fill="#FFF0A0" opacity="0.7"/>
+    <!-- Outer glow -->
+    <circle cx="140" cy="140" r="120" fill="none" stroke="#FFD700" stroke-width="4" opacity="0.4"/>
+  </g>
+  
+  <!-- Right side - Text -->
+  <text x="540" y="180" font-family="Georgia, serif" font-size="56" font-weight="bold" fill="url(#goldGrad)" text-anchor="start">Rolling in the Dough</text>
+  <text x="540" y="250" font-family="Arial, sans-serif" font-size="24" fill="#E8D5B7" text-anchor="start">Sweepstakes Slots</text>
+  
+  <!-- Tagline -->
+  <text x="540" y="310" font-family="Arial, sans-serif" font-size="20" fill="#C8A878" text-anchor="start">Spin Win Cash Out Real Prizes</text>
+  
+  <!-- Feature highlights -->
+  <g font-family="Arial, sans-serif" font-size="16" fill="#B8A080">
+    <text x="540" y="360" text-anchor="start">Dual Currency: Gold Coins Free + Green Coins Cash Out</text>
+    <text x="540" y="385" text-anchor="start">5 Reels 25 Paylines 4 Bonus Games Cascading Wins</text>
+    <text x="540" y="410" text-anchor="start">Progressive Jackpots Daily Streaks Missions XP</text>
+    <text x="540" y="435" text-anchor="start">Square Payments Secure Sweepstakes Compliant</text>
+  </g>
+  
+  <!-- Bottom accent line -->
+  <path d="M540 460 Q782 460 782 480" stroke="url(#goldGrad)" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M540 460 Q298 460 298 480" stroke="url(#goldGrad)" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg>

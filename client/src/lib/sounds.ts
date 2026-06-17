@@ -174,22 +174,31 @@ export function playSound(name: SoundName) {
 
   switch (name) {
     case "spin":
-      // Research-backed spin: mechanical whirring + ascending pitch = anticipation
-      // Rising tones create tension and encourage quick decision-making (120+ BPM effect)
-      playNoise(0.2, 0.08, 0, 1800);             // Mechanical whirring
-      playTone(100, 0.2, "sine", 0.1, 0, 160);   // Rising bass sweep
-      playTone(200, 0.15, "sine", 0.08, 0.05, 300); // Rising mid sweep
-      playTone(300, 0.1, "sine", 0.06, 0.1, 400);   // Rising high sweep
+      // Professional casino spin: motor whir + gear meshing + rising anticipation
+      // Three phases: motor start, gear engagement, steady cruise
+      playNoise(0.15, 0.18, 0, 800);             // Motor startup whine
+      playTone(80, 0.2, "sine", 0.25, 0, 140);   // Motor spool-up (rising bass)
+      playTone(140, 0.18, "sine", 0.15, 0.05, 220); // Gear meshing
+      playNoise(0.3, 0.06, 0.1, 1200);           // Gears catching
+      // Cruise phase - steady motor hum with harmonic richness
+      playTone(180, 0.6, "sine", 0.08, 0.2);     // Motor fundamental
+      playTone(360, 0.5, "sine", 0.05, 0.25);    // 2nd harmonic
+      playTone(540, 0.4, "sine", 0.03, 0.3);     // 3rd harmonic
+      playNoise(0.8, 0.025, 0.3, 2000);          // Steady gear whir
       break;
 
     case "reel_stop":
-      // Research-backed reel stop: satisfying mechanical click with harmonic resonance
-      // Triggers reward sensation through multi-frequency engagement
-      playTone(200, 0.12, "sine", 0.22);        // Deep thunk (warmth)
-      playTone(400, 0.08, "sine", 0.18, 0.02);  // Harmonic ring (clarity)
-      playTone(600, 0.06, "sine", 0.12, 0.04);  // Upper harmonic
-      playNoise(0.08, 0.05, 0.02, 2500);        // Mechanical texture
-      playTone(1200, 0.04, "sine", 0.08, 0.05); // Subtle sparkle
+      // Professional casino reel stop: heavy mechanical "clunk" with resonant tail
+      // Based on real mechanical slot machine physics - weighted reel catches on stop pin
+      playTone(85, 0.18, "sine", 0.5);           // Heavy thunk - primary impact (felt in chest)
+      playTone(120, 0.15, "sine", 0.35, 0.02);   // Secondary mass resonance
+      playTone(180, 0.12, "sine", 0.25, 0.04);   // Tertiary harmonic
+      playNoise(0.035, 0.12, 0, 1800);           // Sharp mechanical click - pawl engaging stop pin
+      playNoise(0.08, 0.04, 0.02, 3500);         // Metal-on-metal texture
+      // Resonant tail - the cabinet rings
+      playTone(220, 0.25, "sine", 0.15, 0.06);   // Cabinet resonance
+      playTone(330, 0.2, "sine", 0.1, 0.1);      // Higher resonance
+      playTone(80, 0.4, "sine", 0.12, 0.15);     // Deep sub-bass thump
       break;
 
     case "small_win":
