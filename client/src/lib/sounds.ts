@@ -174,17 +174,16 @@ export function playSound(name: SoundName) {
 
   switch (name) {
     case "spin":
-      // Professional casino spin: motor whir + gear meshing + rising anticipation
-      // Three phases: motor start, gear engagement, steady cruise
-      playNoise(0.15, 0.18, 0, 800);             // Motor startup whine
-      playTone(80, 0.2, "sine", 0.25, 0, 140);   // Motor spool-up (rising bass)
-      playTone(140, 0.18, "sine", 0.15, 0.05, 220); // Gear meshing
-      playNoise(0.3, 0.06, 0.1, 1200);           // Gears catching
-      // Cruise phase - steady motor hum with harmonic richness
-      playTone(180, 0.6, "sine", 0.08, 0.2);     // Motor fundamental
-      playTone(360, 0.5, "sine", 0.05, 0.25);    // 2nd harmonic
-      playTone(540, 0.4, "sine", 0.03, 0.3);     // 3rd harmonic
-      playNoise(0.8, 0.025, 0.3, 2000);          // Steady gear whir
+      // Psychologically effective spin: brief mechanical whoosh + subtle anticipation build
+      // Research: Short, punchy sounds maintain engagement; continuous drones cause fatigue/annoyance
+      // Frequency mix: Bass warmth (120Hz) + mechanical texture + subtle rising pitch = anticipation
+      playNoise(0.08, 0.15, 0, 1500);            // Sharp mechanical "whoosh" - air displacement
+      playTone(120, 0.18, "sine", 0.25, 0, 200);  // Rising bass sweep (warmth, felt not heard)
+      playTone(220, 0.15, "sine", 0.15, 0.03, 300); // Mid sweep (clarity)
+      playNoise(0.12, 0.06, 0.05, 2500);         // Gear catch texture (brief)
+      // Subtle anticipation tail: major 3rd interval = positive expectation
+      playTone(330, 0.12, "sine", 0.1, 0.15);    // E4 - resolved, pleasant
+      playTone(415, 0.1, "sine", 0.08, 0.18);    // G#4 - major 3rd, optimistic
       break;
 
     case "reel_stop":
