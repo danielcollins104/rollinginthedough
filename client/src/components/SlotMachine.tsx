@@ -1,14 +1,13 @@
 /**
  * Rolling in the Dough — Slot Machine Component
- * PROFESSIONAL CASINO STANDARDS: Matches Jackpot Party / Chumba Casino / LuckyLand
- * Features: Dominant SPIN button, jackpot meters, win overlays, payline animations,
- *           reel blur effects, idle animations, bottom nav, animated win counters,
- *           cascade system, scatter anticipation, sticky wilds, near-miss tension
+ * AUTHENTIC CASINO CABINET UI based on real video slot machines
+ * Features: Physical cabinet with LED edge lighting, 7-segment displays,
+ *           glass bezel, prominent SPIN button, gold/black aesthetic
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
-import { playSound, playWinSound } from "@/lib/sounds";
+import { playSound } from "@/lib/sounds";
 import { WinParticles } from "./WinParticles";
 import { soundManager } from "@/lib/soundManager";
 import ScratchGame from "./ScratchGame";
@@ -23,10 +22,7 @@ import PaylineHighlight from "./PaylineHighlight";
 
 const BET_OPTIONS = [10, 25, 50, 100, 200];
 const PAYLINE_OPTIONS = [1, 5, 10, 15, 20, 25];
-const BET_INCREMENT = 10;
-const BET_DECREMENT = 10;
 
-// Cascade multiplier per level (0-indexed: level 1 = 1x, level 5 = 5x)
 const CASCADE_MULTIPLIERS = [1, 2, 3, 4, 5];
 const MAX_CASCADE_LEVEL = 5;
 
@@ -81,105 +77,219 @@ function getPaylinePath(paylineIndex: number): number[] {
   return paylines[paylineIndex % paylines.length];
 }
 
-// Check if a symbol is a wild
 function isWildSymbol(id: SymbolId): boolean {
   const sym = getSymbol(id);
   return sym.isWild || false;
 }
 
-// Check if a symbol is a scatter
 function isScatterSymbol(id: SymbolId): boolean {
   const sym = getSymbol(id);
   return sym.isScatter || false;
 }
 
-// Generate a random symbol (for cascade spawning)
 function getRandomSymbolId(): SymbolId {
   return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].id;
 }
 
-// Check for near-miss: 2 matching + 1 "almost" on a payline
-function findNearMiss(reels: SymbolId[][], winLines: WinLine[]): { reelIdx: number; rowIdx: number }[] {
-  const nearMisses: { reelIdx: number; rowIdx: number }[] = [];
-  
-  // For each payline
-  winLines.forEach((line) => {
-    if (line.row < 0 || line.row >= 25) return;
-    const path = getPaylinePath(line.row);
-    
-    // Collect symbols on this payline
-    const paylineSymbols = reels.map((reel, reelIdx) => ({
-      symId: reel[path[reelIdx]],
-      reelIdx,
-      rowIdx: path[reelIdx]
-    }));
-    
-    // Count symbol frequencies
-    const counts: Record<string, number> = {};
-    paylineSymbols.forEach(cell => {
-      const id = cell.symId;
-      if (!isWildSymbol(id) && !isScatterSymbol(id)) {
-        counts[id] = (counts[id] || 0) + 1;
-      }
-    });
-    
-    // Find pairs (2 matching, not already a win)
-    const pairs = Object.entries(counts).filter(([_, count]) => count >= 2);
-    
-    // For each pair, check if there's a "near miss" (almost 3)
-    pairs.forEach(([symId, count]) => {
-      // Already has 3 = actual win, skip
-      if (count >= 3) return;
+// ─── Cabinet Frame Components ─────────────────────────────────────────────────
+
+function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
+  return (
+    <div className="relative" style={{
+      background: "linear-gradient(180deg, #1a1005 0%, #2d1f0a 40%, #3d2a0f 100%)",
+      borderBottom: "3px solid #D4AF37",
+      borderRadius: "1rem 1rem 0 0",
+      padding: "12px 16px 8px",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* Cabinet edge lighting - top */}
+      <div className="absolute top-0 left-0 right-0 h-1" style={{
+        background: "linear-gradient(90deg, #D4AF37, #F5E6C8, #FFD700, #F5E6C8, #D4AF37)",
+        boxShadow: "0 0 20px #FFD700, 0 0 40px #D4AF37",
+        animation: "cabinetGlow 3s ease-in-out infinite",
+      }} />
       
-      // Find the reel/row that would complete the triple
-      // Look for symbols adjacent to the pair that are "almost" matching
-      paylineSymbols.forEach(cell => {
-        if (cell.symId === symId) return; // Already matched
-        if (isWildSymbol(cell.symId) || isScatterSymbol(cell.symId)) return; // Not a near miss for wild/scatter
-        
-        const cellSym = getSymbol(cell.symId);
-        // Check if this symbol has similar properties (could be near miss)
-        const targetSym = getSymbol(symId as SymbolId);
-        
-        // Consider it a near miss if same "tier" of payouts
-        if (cellSym.payouts[0] > 0 && 
-            cellSym.payouts[0] <= targetSym.payouts[0] * 2 &&
-            cellSym.payouts[0] >= targetSym.payouts[0] / 2) {
-          // This is a close call - same tier, could have won with different symbol
-          nearMisses.push({ reelIdx: cell.reelIdx, rowIdx: cell.rowIdx });
-        }
-      });
-    });
-  });
+      {/* Game title area */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          {/* Side cabinet ornament */}
+          <div className="w-10 h-10" style={{
+            background: "linear-gradient(135deg, #8B5E0A, #C8860A, #FFD700, #C8860A, #8B5E0A)",
+            borderRadius: "50%",
+            boxShadow: "0 0 15px rgba(212,175,55,0.8), inset 0 2px 4px rgba(255,255,255,0.3)",
+            border: "2px solid #F5E6C8",
+          }} />
+          <div className="text-center">
+            <div className="font-display font-black tracking-widest uppercase text-gold-gradient" 
+                 style={{ fontSize: "clamp(1rem, 3.5vw, 1.5rem)", letterSpacing: "0.1em", textShadow: "0 0 20px rgba(212,175,55,0.8)" }}>
+              Rolling in the Dough
+            </div>
+            <div className="font-numbers tracking-wider uppercase" style={{ fontSize: "clamp(0.6rem, 1.5vw, 0.8rem)", color: "#C8860A" }}>
+              ◆ Sweepstakes Slots ◆
+            </div>
+          </div>
+          <div className="w-10 h-10" style={{
+            background: "linear-gradient(135deg, #8B5E0A, #C8860A, #FFD700, #C8860A, #8B5E0A)",
+            borderRadius: "50%",
+            boxShadow: "0 0 15px rgba(212,175,55,0.8), inset 0 2px 4px rgba(255,255,255,0.3)",
+            border: "2px solid #F5E6C8",
+            transform: "scaleX(-1)",
+          }} />
+        </div>
+      </div>
+
+      {/* Free spins badge */}
+      <FreeSpinsDisplay freeSpins={freeSpins} />
+
+      {/* Scrolling marquee - legal disclaimer */}
+      <div className="overflow-hidden" style={{
+        background: "linear-gradient(90deg, #0a0500, #1a1000, #0a0500)",
+        border: "1px solid rgba(212,175,55,0.3)",
+        borderRadius: "0.5rem",
+        padding: "4px 8px",
+        marginTop: "8px",
+      }}>
+        <div className="marquee-text text-xs font-numbers px-2" style={{ color: "#C8860A", fontSize: "0.6rem" }}>
+          ◆ FREE SWEEPSTAKES GAME — NO PURCHASE NECESSARY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🍀 WILD SUBSTITUTES ALL ◆ ⭐ 3 SCATTERS = 10 FREE SPINS ◆ ⭐ 5 SCATTERS = JACKPOT ◆ 🗡️ 3 HUNTRESS = BONUS ROUND ◆ JACKPOT GROWS WITH EVERY SPIN ◆
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LEDDisplay({ label, value, color = "#FFD700", labelColor = "rgba(212,175,55,0.6)", animated = false, animatedValue = 0 }: { 
+  label: string; 
+  value: number; 
+  color?: string; 
+  labelColor?: string; 
+  animated?: boolean;
+  animatedValue?: number;
+}) {
+  const displayValue = animated && animatedValue > 0 ? animatedValue : value;
   
-  // Deduplicate
-  const seen = new Set<string>();
-  return nearMisses.filter(nm => {
-    const key = `${nm.reelIdx}-${nm.rowIdx}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return (
+    <div className="relative" style={{
+      background: "linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%)",
+      border: "2px solid #333",
+      borderRadius: "8px",
+      padding: "8px 12px",
+      boxShadow: "inset 0 0 20px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.5)",
+      minWidth: "120px",
+    }}>
+      <div className="text-[0.6rem] font-numbers uppercase tracking-widest mb-1" style={{ color: labelColor }}>
+        {label}
+      </div>
+      <div 
+        className="font-numbers tabular-nums text-center"
+        style={{ 
+          fontSize: "clamp(1.2rem, 4vw, 2rem)", 
+          color,
+          textShadow: `0 0 10px ${color}, 0 0 20px ${color}`,
+          fontFamily: '"Orbitron", "Share Tech Mono", monospace',
+          letterSpacing: "0.05em",
+        }}
+      >
+        {displayValue.toLocaleString()}
+      </div>
+      {/* LED glow effect */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: `radial-gradient(ellipse at center, ${color}20 0%, transparent 70%)`,
+        borderRadius: "6px",
+        opacity: animated ? 1 : 0.3,
+        animation: animated ? "ledPulse 1s ease-in-out infinite alternate" : "none",
+      }} />
+    </div>
+  );
+}
+
+function CabinetJackpotMeters({ jackpotPool = 5000 }: { jackpotPool?: number }) {
+  const tiers = [
+    { name: "GRAND", value: jackpotPool, color: "#FFD700", bg: "linear-gradient(180deg, #3a2a00, #1a1500)" },
+    { name: "MAJOR", value: Math.floor(jackpotPool * 0.4), color: "#FFA500", bg: "linear-gradient(180deg, #3a2000, #1a1000)" },
+    { name: "MINOR", value: Math.floor(jackpotPool * 0.15), color: "#FF6B35", bg: "linear-gradient(180deg, #3a1500, #1a0a00)" },
+    { name: "MINI", value: Math.floor(jackpotPool * 0.05), color: "#FFD700", bg: "linear-gradient(180deg, #2a2a00, #151500)" },
+  ];
+
+  return (
+    <div className="w-full grid grid-cols-4 gap-2 mb-2">
+      {tiers.map((tier, i) => (
+        <div 
+          key={tier.name}
+          className="relative rounded"
+          style={{
+            background: tier.bg,
+            border: `2px solid ${tier.color}`,
+            borderRadius: "8px",
+            padding: "8px 4px",
+            boxShadow: `0 0 20px ${tier.color}40, inset 0 0 20px rgba(0,0,0,0.5)`,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Tier name */}
+          <div className="font-numbers text-[0.55rem] uppercase tracking-widest text-center mb-1" style={{ color: tier.color }}>
+            {tier.name}
+          </div>
+          {/* Amount */}
+          <div className="font-numbers tabular-nums text-center" style={{ 
+            fontSize: "clamp(0.85rem, 3vw, 1.2rem)",
+            color: tier.color,
+            textShadow: `0 0 8px ${tier.color}`,
+            fontFamily: '"Orbitron", monospace',
+          }}>
+            {tier.value.toLocaleString()}
+          </div>
+          {/* Glow accent */}
+          <div className="absolute top-0 left-0 right-0 h-1" style={{
+            background: `linear-gradient(90deg, transparent, ${tier.color}, transparent)`,
+            opacity: 0.6,
+          }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GameInfoPanel({ freeSpins }: { freeSpins: number }) {
+  const infoLines = [
+    "🍀 WILD substitutes all except scatter",
+    "⭐ 3 SCATTERS = 10 FREE SPINS",
+    "⭐ 5 SCATTERS = JACKPOT",
+    "🗡️ 3+ HUNTRESS = BONUS ROUND",
+    "🔥 CASCADING WINS multiply up to 5x!",
+  ];
+
+  return (
+    <div className="w-full" style={{ marginTop: "8px" }}>
+      <div className="overflow-hidden" style={{
+        background: "linear-gradient(90deg, #1a1000, #0a0500, #1a1000)",
+        border: "1px solid rgba(212,175,55,0.2)",
+        borderRadius: "6px",
+        padding: "6px 12px",
+      }}>
+        <div className="marquee-text text-xs font-numbers" style={{ color: "#C8860A", fontSize: "0.6rem", fontWeight: 500 }}>
+          {infoLines.join("  ◆  ")}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Physics-based spinning reel strip with elastic slam stop
 function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number; reelIndex?: number }) {
-  // For spinning: we use a continuous strip that translates Y
-  // For stopped: show the final 3 symbols
   const [translateY, setTranslateY] = useState(0);
   const [velocity, setVelocity] = useState(0);
   const [animFrame, setAnimFrame] = useState<number | null>(null);
   const [stripSymbols, setStripSymbols] = useState<SymbolId[]>(() => {
-    // Generate a long strip of random symbols for smooth spinning
     return Array.from({ length: 20 }, () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].id);
   });
 
   useEffect(() => {
     if (spinning && !done) {
-      // Start spinning: accelerate to cruise speed, then maintain
       const startTime = Date.now();
-      const targetVelocity = size * 22; // pixels per frame at 60fps = ~1300 px/s
-      const acceleration = targetVelocity / 15; // accelerate over ~15 frames
+      const targetVelocity = size * 22;
+      const acceleration = targetVelocity / 15;
       
       let currentVelocity = 0;
       let currentY = 0;
@@ -189,15 +299,13 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
         const frameId = requestAnimationFrame(animate);
         setAnimFrame(frameId);
         
-        // Acceleration phase (first 250ms)
         if (elapsed < 250) {
           currentVelocity = Math.min(currentVelocity + acceleration, targetVelocity);
         } else {
-          // Cruise with slight variation for organic feel
           currentVelocity = targetVelocity + Math.sin(elapsed * 0.01) * 50;
         }
         
-        currentY += currentVelocity / 60; // convert to per-frame
+        currentY += currentVelocity / 60;
         setTranslateY(currentY);
         setVelocity(currentVelocity);
       };
@@ -205,30 +313,24 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
       const frameId = requestAnimationFrame(animate);
       setAnimFrame(frameId);
       
-      return () => {
-        if (frameId) cancelAnimationFrame(frameId);
-      };
+      return () => { if (frameId) cancelAnimationFrame(frameId); };
     } else if (done && spinning === false) {
-      // Elastic deceleration & slam stop
-      // We need to align the strip so the target symbols land in the viewport
-      const targetIndex = 10; // Position where symbols[0] should land
+      const targetIndex = 10;
       const symbolHeight = size;
       const targetY = -targetIndex * symbolHeight;
       
       let currentY = translateY;
-      let currentV = velocity > 0 ? velocity : -targetY * 0.03; // initial velocity toward target
+      let currentV = velocity > 0 ? velocity : -targetY * 0.03;
       
       const animateStop = () => {
-        // Spring physics: F = -k*x - c*v
-        const stiffness = 0.08; // spring stiffness
-        const damping = 0.12;   // damping for elastic overshoot
+        const stiffness = 0.08;
+        const damping = 0.12;
         const displacement = currentY - targetY;
         
         const acceleration = -stiffness * displacement - damping * currentV;
         currentV += acceleration;
         currentY += currentV / 60;
         
-        // Check if we've settled near target
         const settled = Math.abs(displacement) < 0.5 && Math.abs(currentV) < 0.5;
         
         setTranslateY(currentY);
@@ -238,27 +340,19 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
           const frameId = requestAnimationFrame(animateStop);
           setAnimFrame(frameId);
         } else {
-          // Snap exactly to target
           setTranslateY(targetY);
           setVelocity(0);
-          
-          // Trigger impact effects with reel index
-          window.dispatchEvent(new CustomEvent('reel-slam', { 
-            detail: { reelIndex } 
-          }));
+          window.dispatchEvent(new CustomEvent('reel-slam', { detail: { reelIndex } }));
         }
       };
       
       const frameId = requestAnimationFrame(animateStop);
       setAnimFrame(frameId);
       
-      return () => {
-        if (frameId) cancelAnimationFrame(frameId);
-      };
+      return () => { if (frameId) cancelAnimationFrame(frameId); };
     }
   }, [spinning, done, size, translateY, velocity, reelIndex]);
 
-  // When done, show static symbols in viewport
   if (done && !spinning) {
     return (
       <div className="absolute inset-0 flex flex-col overflow-hidden">
@@ -271,11 +365,9 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
     );
   }
 
-  // Spinning: render the continuous strip translating
   if (spinning) {
-    // Find which symbols are in viewport
     const startIdx = Math.max(0, Math.floor(-translateY / size));
-    const visibleCount = Math.ceil(360 / size) + 2; // 3 visible + buffer
+    const visibleCount = Math.ceil(360 / size) + 2;
     
     return (
       <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ transform: `translateY(${translateY}px)` }}>
@@ -304,117 +396,431 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
   return null;
 }
 
-// Animated win counter
-function AnimatedWinCounter({ target, active }: { target: number; active: boolean }) {
-  const [display, setDisplay] = useState(0);
-  const animRef = useRef<number | null>(null);
+function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActive, cascadeWinningCells, cascadeAnimatingCells, cascadeGrid, stickyWildCells, wildLockAnimating, nearMissCells, nearMissAnimating, scatterSlowdownActive, lastWinType, scatterFanfareActive }: any) {
+  const displayGrid = cascadeGrid || reels;
 
-  useEffect(() => {
-    if (!active || target === 0) {
-      setDisplay(target);
-      return;
-    }
-    const start = Date.now();
-    const duration = Math.min(1200, 400 + target / 10);
-    const animate = () => {
-      const elapsed = Date.now() - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(Math.floor(eased * target));
-      if (progress < 1) {
-        animRef.current = requestAnimationFrame(animate);
-      } else {
-        setDisplay(target);
-      }
-    };
-    animRef.current = requestAnimationFrame(animate);
-    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [target, active]);
-
-  return <>{display.toLocaleString()}</>;
-}
-
-// Payline indicator dots on sides
-function PaylineIndicators({ paylines = 1 }: { paylines?: number }) {
-  const indicators = Math.min(paylines, 25);
   return (
-    <>
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-5 flex flex-col gap-0.5 z-10">
-        {Array.from({ length: Math.min(indicators, 12) }).map((_, i) => (
+    <div className="relative" style={{
+      background: "linear-gradient(180deg, #030308 0%, #080814 50%, #030308 100%)",
+      border: "4px solid #1a1005",
+      borderRadius: "8px",
+      boxShadow: "inset 0 0 60px rgba(0,0,0,0.9), inset 0 2px 0 rgba(212,175,55,0.1), 0 0 30px rgba(212,175,55,0.1)",
+      padding: "8px",
+      position: "relative",
+    }}>
+      {/* Reel glass bezel - inner glow */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        border: "2px solid rgba(212,175,55,0.15)",
+        borderRadius: "4px",
+        boxShadow: "inset 0 0 40px rgba(212,175,55,0.05)",
+      }} />
+
+      {/* Payline indicator dots on sides */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 flex flex-col gap-1 z-10">
+        {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={`left-${i}`}
-            className="w-2 h-2 rounded-full"
+            className="w-1.5 h-1.5 rounded-full"
             style={{
               background: `hsl(${(i * 30) % 360}, 100%, 55%)`,
-              boxShadow: `0 0 6px hsl(${(i * 30) % 360}, 100%, 55%)`,
-              animation: `paylinePulse 1.2s ease-in-out ${i * 0.08}s infinite`,
+              boxShadow: `0 0 8px hsl(${(i * 30) % 360}, 100%, 55%)`,
+              animation: `paylinePulse 1.5s ease-in-out ${i * 0.1}s infinite`,
+              opacity: 0.6,
             }}
           />
         ))}
       </div>
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-5 flex flex-col gap-0.5 z-10">
-        {Array.from({ length: Math.min(indicators, 12) }).map((_, i) => (
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 flex flex-col gap-1 z-10">
+        {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={`right-${i}`}
-            className="w-2 h-2 rounded-full"
+            className="w-1.5 h-1.5 rounded-full"
             style={{
               background: `hsl(${(i * 30) % 360}, 100%, 55%)`,
-              boxShadow: `0 0 6px hsl(${(i * 30) % 360}, 100%, 55%)`,
-              animation: `paylinePulse 1.2s ease-in-out ${i * 0.08}s infinite`,
+              boxShadow: `0 0 8px hsl(${(i * 30) % 360}, 100%, 55%)`,
+              animation: `paylinePulse 1.5s ease-in-out ${i * 0.1}s infinite`,
+              opacity: 0.6,
             }}
           />
         ))}
       </div>
-    </>
-  );
-}
 
-// Floating coin shower on win
-function CoinShower({ show }: { show: boolean }) {
-  if (!show) return null;
-  return (
-    <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
-      {Array.from({ length: 16 }).map((_, i) => (
+      {/* Scatter fanfare overlay */}
+      {scatterFanfareActive && (
         <div
-          key={i}
-          className="absolute"
+          className="absolute inset-0 pointer-events-none z-25 rounded"
           style={{
-            left: `${5 + (i * 6) % 90}%`,
-            top: "-10%",
-            animation: `coinShower ${1.5 + (i % 4) * 0.3}s ease-in ${i * 0.1}s forwards`,
-            fontSize: "clamp(1rem, 2.5vw, 1.5rem)",
+            background: "radial-gradient(ellipse at center, rgba(255,107,107,0.2) 0%, transparent 60%)",
+            animation: "scatterFanfare 0.5s ease-out",
+            borderRadius: "4px",
           }}
-        >
-          🪙
-        </div>
+        />
+      )}
+
+      {/* Reels */}
+      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
+        {displayGrid.map((reel, reelIdx) => (
+          <div
+            key={reelIdx}
+            className={`reel-container rounded relative ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
+            style={{
+              minHeight: "200px",
+              height: "100%",
+              maxHeight: "500px",
+              transition: "box-shadow 0.3s ease",
+              background: "linear-gradient(180deg, #050510 0%, #0a0a1a 50%, #050510 100%)",
+              border: "2px solid rgba(212,175,55,0.1)",
+              borderRadius: "6px",
+              boxShadow: reelDone[reelIdx] && showWin && !cascadeActive && reel.some((_, rowIdx) => isWinningCell(reelIdx, rowIdx, winLines))
+                ? "0 0 30px rgba(255,215,0,0.7), inset 0 0 20px rgba(255,215,0,0.15)"
+                : "inset 0 0 30px rgba(0,0,0,0.9), 0 0 15px rgba(212,175,55,0.3)",
+            }}
+          >
+            {/* Reel frame highlight when stopped with win */}
+            {reelDone[reelIdx] && showWin && !cascadeActive && reel.some((_, rowIdx) => isWinningCell(reelIdx, rowIdx, winLines)) && (
+              <div className="absolute inset-0 pointer-events-none" style={{
+                border: "2px solid #FFD700",
+                borderRadius: "4px",
+                boxShadow: "0 0 20px rgba(255,215,0,0.8), inset 0 0 20px rgba(255,215,0,0.2)",
+                animation: "reelWinGlow 1s ease-in-out infinite alternate",
+              }} />
+            )}
+
+            {/* Spinning blur overlay */}
+            <ReelStrip symbols={reel} spinning={spinning} done={reelDone[reelIdx]} reelIndex={reelIdx} />
+
+            {/* Symbols */}
+            {reel.map((symId, rowIdx) => {
+              const isWin = showWin && !cascadeActive && isWinningCell(reelIdx, rowIdx, winLines);
+              const isCascadeWinner = cascadeWinningCells.has(`${reelIdx}-${rowIdx}`);
+              const isCascadeAnimating = cascadeAnimatingCells.has(`${reelIdx}-${rowIdx}`);
+              const isStickyWild = stickyWildCells.has(`${reelIdx}-${rowIdx}`);
+              const isNearMiss = nearMissCells.has(`${reelIdx}-${rowIdx}`);
+              const sym = getSymbol(symId);
+
+              return (
+                <div
+                  key={rowIdx}
+                  className={`
+                    flex items-center justify-center transition-all duration-300 
+                    ${isWin ? "cell-win-glow symbol-win" : ""}
+                    ${isCascadeWinner ? "cascade-disappear" : ""}
+                    ${isCascadeAnimating && !isCascadeWinner ? "cascade-fall" : ""}
+                    ${isStickyWild && wildLockAnimating ? "sticky-wild-lock" : ""}
+                    ${isStickyWild && !wildLockAnimating ? "sticky-wild-glow" : ""}
+                    ${isNearMiss && nearMissAnimating ? "near-miss-gold" : ""}
+                    ${symId === 'empty' ? "empty-cell" : ""}
+                  `}
+                  style={{
+                    flex: "1 1 0%",
+                    minHeight: 0,
+                    background: isWin
+                      ? `radial-gradient(circle at center, ${sym.bgColor}ff 0%, #050510 100%)`
+                      : isCascadeWinner
+                      ? `radial-gradient(circle at center, ${sym.bgColor}66 0%, #050510 100%)`
+                      : `radial-gradient(circle at center, ${sym.bgColor}55 0%, #030308 100%)`,
+                    borderBottom: rowIdx < 2 ? "1px solid rgba(212,175,55,0.1)" : "none",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {isWin && (
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: `radial-gradient(circle, ${sym.color}30, transparent 70%)`,
+                        animation: "winCellPulse 0.8s ease-in-out infinite alternate",
+                      }}
+                    />
+                  )}
+                  {isStickyWild && (
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: "radial-gradient(circle, rgba(76,175,80,0.4), transparent 70%)",
+                        animation: "stickyWildPulse 0.8s ease-in-out infinite",
+                      }}
+                    />
+                  )}
+                  {isNearMiss && nearMissAnimating && (
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: "radial-gradient(circle, rgba(255,215,0,0.5), transparent 70%)",
+                      }}
+                    />
+                  )}
+                  {symId !== 'empty' && (
+                    <SymbolIcon
+                      symbolId={symId}
+                      size={56}
+                      className={`${isWin ? 'symbol-win-pop symbol-bounce' : ''}`}
+                      style={{
+                        filter: isWin ? "brightness(1.3) drop-shadow(0 0 8px #FFD700)" : "none",
+                        zIndex: 1,
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Win line highlight overlay */}
+      <WinLineHighlight winLines={winLines} show={showWin && !cascadeActive} />
+      
+      {/* Payline highlights for each winning line */}
+      {showWin && winLines.map((line, idx) => (
+        <PaylineHighlight key={idx} paylineIndex={line.row} isActive={true} reelCount={5} rowCount={3} />
       ))}
+
+      {/* Idle animations */}
+      <IdleAnimations spinning={spinning} lastSpinTime={Date.now()} />
     </div>
   );
 }
 
-// Cascade multiplier display
-function CascadeMultiplierDisplay({ level, active }: { level: number; active: boolean }) {
-  if (!active || level <= 1) return null;
-  
+function CabinetButtonPanel({ 
+  bet, setBet, paylines, setPaylines, spin, autoplay, setAutoplay, 
+  canSpin, totalBet, coins, onCoinShop, soundEnabled, setSoundMuted, soundMuted, 
+  spinButtonPulse, shakeIntensity, selectedCurrency 
+}: any) {
   return (
-    <div
-      className="absolute inset-0 pointer-events-none z-25 flex items-center justify-center"
-      style={{ animation: "cascadeMultiplierPopup 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both" }}
-    >
-      <div
-        className="font-display font-black"
-        style={{
-          fontSize: "clamp(1.5rem, 5vw, 3rem)",
-          color: level >= 4 ? "#FF6B35" : level >= 3 ? "#FFD700" : "#D4AF37",
-          textShadow: `0 0 20px ${level >= 4 ? "rgba(255,107,53,0.9)" : level >= 3 ? "rgba(255,215,0,0.9)" : "rgba(212,175,55,0.8)"}`,
-          animation: "cascadeMultiplierPulse 0.5s ease-in-out infinite alternate",
-        }}
-      >
-        {level}x CASCADE!
+    <div className="w-full px-2 pb-4" style={{
+      background: "linear-gradient(180deg, #0a0a12 0%, #050510 100%)",
+      borderRadius: "0 0 16px 16px",
+      padding: "16px 0 8px",
+      boxShadow: "inset 0 2px 0 rgba(0, 150, 255, 0.2), 0 -4px 20px rgba(0,0,0,0.5)",
+      borderTop: "1px solid rgba(212,175,55,0.1)",
+    }}>
+      {/* Bet / Lines Row */}
+      <div className="flex items-center justify-between gap-3 mb-3 px-2 overflow-x-auto scrollbar-hide" style={{ minWidth: 0 }}>
+        {/* Bet controls */}
+        <div className="flex items-center gap-2 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
+          <button
+            onClick={() => setBet(Math.max(10, bet - 10))}
+            disabled={spinning || bet <= 10}
+            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
+            style={{
+              background: "linear-gradient(180deg, #3a2a00, #1a1500)",
+              border: "2px solid #D4AF37",
+              color: "#FFD700",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+            }}
+            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            −
+          </button>
+          <div className="w-20 text-center font-numbers tabular-nums" style={{ 
+            fontSize: "1.1rem", 
+            color: "#FFD700",
+            textShadow: "0 0 10px rgba(212,175,55,0.5)",
+          }}>
+            {bet}
+          </div>
+          <button
+            onClick={() => setBet(Math.min(200, bet + 10))}
+            disabled={spinning || bet >= 200}
+            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
+            style={{
+              background: "linear-gradient(180deg, #3a2a00, #1a1500)",
+              border: "2px solid #D4AF37",
+              color: "#FFD700",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+            }}
+            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Paylines controls */}
+        <div className="flex items-center gap-2 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
+          <button
+            onClick={() => setPaylines?.(Math.max(1, (paylines || 1) - 1))}
+            disabled={spinning || (paylines || 1) <= 1}
+            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
+            style={{
+              background: "linear-gradient(180deg, #2a1a00, #1a1000)",
+              border: "2px solid #FFA500",
+              color: "#FFD700",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+            }}
+            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            −
+          </button>
+          <div className="w-16 text-center font-numbers tabular-nums" style={{ 
+            fontSize: "1.1rem", 
+            color: "#FFD700",
+            textShadow: "0 0 10px rgba(212,175,55,0.5)",
+          }}>
+            {paylines || 1} LINES
+          </div>
+          <button
+            onClick={() => setPaylines?.(Math.min(25, (paylines || 1) + 1))}
+            disabled={spinning || (paylines || 1) >= 25}
+            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
+            style={{
+              background: "linear-gradient(180deg, #2a1a00, #1a1000)",
+              border: "2px solid #FFA500",
+              color: "#FFD700",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+            }}
+            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Total Bet Display */}
+        <div className="flex-1 min-w-0" style={{ marginLeft: "auto" }}>
+          <div className="text-right">
+            <div className="text-[0.55rem] font-numbers uppercase tracking-widest mb-1" style={{ color: "rgba(212,175,55,0.5)" }}>
+              TOTAL BET
+            </div>
+            <div className="font-numbers tabular-nums" style={{ 
+              fontSize: "clamp(1rem, 3vw, 1.4rem)",
+              color: selectedCurrency === 'gold' ? "#FFD700" : "#90EE90",
+              textShadow: selectedCurrency === 'gold' ? "0 0 10px rgba(255,215,0,0.8)" : "0 0 10px rgba(144,238,144,0.8)",
+              fontFamily: '"Orbitron", monospace',
+            }}>
+              {totalBet.toLocaleString()}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Button Row */}
+      <div className="flex items-center justify-between gap-3 px-2">
+        {/* Coin Shop */}
+        <button
+          onClick={onCoinShop}
+          className="flex items-center gap-2 px-4 py-3 rounded-lg shrink-0 transition-all"
+          style={{
+            background: "linear-gradient(180deg, #3a2a00, #2a1a00)",
+            border: "2px solid #D4AF37",
+            color: "#FFD700",
+            boxShadow: "0 4px 15px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+            fontWeight: 600,
+            fontSize: "0.85rem",
+          }}
+          onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.97)"; }}
+          onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+        >
+          <span style={{ fontSize: "1.2rem" }}>💰</span>
+          <span className="font-numbers">COINS</span>
+        </button>
+
+        {/* AUTOSPIN */}
+        <button
+          onClick={() => setAutoplay(!autoplay)}
+          disabled={spinning}
+          className={`flex items-center gap-2 px-4 py-3 rounded-lg shrink-0 transition-all ${autoplay ? 'ring-2' : ''}`}
+          style={{
+            background: autoplay 
+              ? "linear-gradient(180deg, #3a002a, #2a001a)" 
+              : "linear-gradient(180deg, #1a2a1a, #0d1a0d)",
+            border: `2px solid ${autoplay ? "#FF6B6B" : "#4CAF50"}`,
+            color: autoplay ? "#FF6B6B" : "#90EE90",
+            boxShadow: `0 4px 15px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), ${autoplay ? "0 0 20px rgba(255,107,107,0.5)" : "0 0 20px rgba(76,175,80,0.3)"}`,
+            fontWeight: 600,
+            fontSize: "0.85rem",
+            opacity: spinning ? 0.5 : 1,
+          }}
+          onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.97)"; }}
+          onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+        >
+          <span style={{ fontSize: "1.2rem" }}>{autoplay ? "⏹" : "▶"}</span>
+          <span className="font-numbers">AUTO</span>
+        </button>
+
+        {/* SPIN BUTTON - MASSIVE, DOMINANT */}
+        <button
+          onClick={spin}
+          disabled={!canSpin}
+          className="flex-1 flex items-center justify-center gap-3 py-5 px-8 rounded-xl transition-all min-h-[80px]"
+          style={{
+            background: canSpin 
+              ? "linear-gradient(180deg, #8B5E0A 0%, #D4AF37 30%, #FFD700 50%, #D4AF37 70%, #8B5E0A 100%)" 
+              : "linear-gradient(180deg, #3a2a00, #2a1a00)",
+            border: "3px solid #FFD700",
+            borderRadius: "20px",
+            color: "#1a1000",
+            boxShadow: `
+              0 8px 30px rgba(0,0,0,0.6),
+              0 0 40px rgba(212,175,55,0.6),
+              0 0 80px rgba(212,175,55,0.3),
+              inset 0 2px 4px rgba(255,255,255,0.3),
+              inset 0 -2px 4px rgba(0,0,0,0.3)
+            `,
+            fontWeight: 900,
+            fontSize: "clamp(1.5rem, 5vw, 2.5rem)",
+            letterSpacing: "0.1em",
+            textShadow: "0 2px 4px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.2)",
+            opacity: canSpin ? 1 : 0.4,
+            transform: spinButtonPulse ? "scale(1.02)" : "scale(1)",
+            animation: spinButtonPulse ? "spinPulse 1.5s ease-in-out infinite" : "none",
+          }}
+          onMouseDown={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(0.96)"; }}
+          onMouseUp={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(1)"; }}
+          onMouseLeave={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(1)"; }}
+        >
+          <span style={{ fontSize: "2rem", animation: "spinIconRotate 0.8s linear infinite", display: spinning ? "inline-block" : "none" }}>⟳</span>
+          <span className="font-display font-black" style={{ display: spinning ? "none" : "inline" }}>SPIN</span>
+          <span style={{ fontSize: "2rem", display: spinning ? "none" : "inline-block" }}>⟳</span>
+        </button>
+
+        {/* Sound Toggle */}
+        <button
+          onClick={() => setSoundMuted(!soundMuted)}
+          className="w-14 h-14 rounded-xl shrink-0 transition-all flex items-center justify-center"
+          style={{
+            background: soundMuted ? "linear-gradient(180deg, #2a0000, #1a0000)" : "linear-gradient(180deg, #1a1a2a, #0d0d1a)",
+            border: `2px solid ${soundMuted ? "#FF6B6B" : "#D4AF37"}`,
+            color: soundMuted ? "#FF6B6B" : "#FFD700",
+            boxShadow: `0 4px 15px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
+          }}
+          onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+          onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+        >
+          <span style={{ fontSize: "1.5rem" }}>{soundMuted ? "🔇" : "🔊"}</span>
+        </button>
+      </div>
+
+      {/* Cabinet base - bill validator / ticket printer simulation */}
+      <div className="w-full mt-4 flex items-center justify-center gap-8 px-2" style={{ opacity: 0.6 }}>
+        <div className="flex items-center gap-2" style={{ color: "rgba(212,175,55,0.5)", fontSize: "0.7rem" }}>
+          <span>💵</span>
+          <span className="font-numbers">BILL ACCEPTOR</span>
+        </div>
+        <div className="flex items-center gap-2" style={{ color: "rgba(212,175,55,0.5)", fontSize: "0.7rem" }}>
+          <span>🎫</span>
+          <span className="font-numbers">TICKET OUT</span>
+        </div>
+        <div className="flex items-center gap-2" style={{ color: "rgba(212,175,55,0.5)", fontSize: "0.7rem" }}>
+          <span>💳</span>
+          <span className="font-numbers">PLAYER CARD</span>
+        </div>
       </div>
     </div>
   );
 }
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function SlotMachine({
   reels,
@@ -476,28 +882,20 @@ export default function SlotMachine({
   const [nearMissCells, setNearMissCells] = useState<Set<string>>(new Set());
   const [nearMissAnimating, setNearMissAnimating] = useState(false);
 
-  // Sync external triggers for DEALS and SCRATCH from BottomNavBar
-  useEffect(() => {
-    if (externalShowDeals) setShowDealsModal(true);
-  }, [externalShowDeals]);
+  // Sync external triggers
+  useEffect(() => { if (externalShowDeals) setShowDealsModal(true); }, [externalShowDeals]);
+  useEffect(() => { if (externalShowScratch) setShowScratchGame(true); }, [externalShowScratch]);
 
-  useEffect(() => {
-    if (externalShowScratch) setShowScratchGame(true);
-  }, [externalShowScratch]);
-
-  // Listen for reel slam events from ReelStrip components
+  // Listen for reel slam events
   useEffect(() => {
     const handleReelSlam = (event: CustomEvent<{ reelIndex: number }>) => {
       const { reelIndex } = event.detail;
       if (!soundEnabled) return;
       
-      // Screen shake on each reel slam - heavier for later reels
       const shakeIntensity: 'light' | 'medium' | 'heavy' = reelIndex >= 3 ? 'heavy' : reelIndex >= 2 ? 'medium' : 'light';
       setShakeIntensity(shakeIntensity);
       const shakeDuration = shakeIntensity === 'heavy' ? 400 : shakeIntensity === 'medium' ? 300 : 200;
       setTimeout(() => setShakeIntensity('none'), shakeDuration);
-      
-      // Heavy impact sound on each reel stop
       playSound("reel_stop");
     };
     
@@ -515,162 +913,91 @@ export default function SlotMachine({
     }
   }, [spinning, cascadeActive, lastSpinTime]);
 
-  // Compute current display grid (cascade grid takes precedence)
   const displayGrid = cascadeGrid || reels;
 
-  // Check for scatter anticipation needs
   const checkScatterAnticipation = useCallback((grid: SymbolId[][], doneReels: boolean[]) => {
-    if (!doneReels.every(d => d)) return; // Only check when all reels stopped
+    if (!doneReels.every(d => d)) return;
     
     let scatterCount = 0;
-    const scatterPositions: { reelIdx: number; rowIdx: number }[] = [];
-    
     for (let reelIdx = 0; reelIdx < 5; reelIdx++) {
       for (let rowIdx = 0; rowIdx < 3; rowIdx++) {
-        if (isScatterSymbol(grid[reelIdx][rowIdx])) {
-          scatterCount++;
-          scatterPositions.push({ reelIdx, rowIdx });
-        }
+        if (isScatterSymbol(grid[reelIdx][rowIdx])) scatterCount++;
       }
     }
     
-    if (scatterCount === 2) {
-      // 2 scatters visible - trigger anticipation on next spin
-      setScatterSlowdownActive(true);
-    } else if (scatterCount >= 3) {
-      // 3+ scatters - fanfare!
+    if (scatterCount === 2) setScatterSlowdownActive(true);
+    else if (scatterCount >= 3) {
       setScatterFanfareActive(true);
       if (soundEnabled) playSound("scatter_win");
       setTimeout(() => setScatterFanfareActive(false), 2000);
     }
   }, [soundEnabled]);
 
-  // Find wild cells in winning combos
   const findStickyWilds = useCallback((grid: SymbolId[][], lines: WinLine[]): Set<string> => {
     const wilds = new Set<string>();
-    
     lines.forEach(line => {
       if (line.row < 0 || line.row >= 25) return;
       const path = getPaylinePath(line.row);
-      
       for (let reelIdx = 0; reelIdx < 5; reelIdx++) {
         const rowIdx = path[reelIdx];
-        if (isWildSymbol(grid[reelIdx][rowIdx])) {
-          wilds.add(`${reelIdx}-${rowIdx}`);
-        }
+        if (isWildSymbol(grid[reelIdx][rowIdx])) wilds.add(`${reelIdx}-${rowIdx}`);
       }
     });
-    
     return wilds;
   }, []);
 
-  // Process cascade - remove winners, drop symbols, spawn new ones
   const processCascade = useCallback((grid: SymbolId[][], winningCells: Set<string>): SymbolId[][] => {
     const newGrid: SymbolId[][] = grid.map(reel => [...reel]);
-    
-    // Sort winning cells by row (top to bottom) for proper dropping
-    const sortedWinners = Array.from(winningCells)
-      .map(key => {
-        const [reelIdx, rowIdx] = key.split('-').map(Number);
-        return { reelIdx, rowIdx };
-      })
-      .sort((a, b) => a.rowIdx - b.rowIdx);
-    
-    // For each reel with winners
     const affectedReels = new Set<number>();
-    sortedWinners.forEach(({ reelIdx }) => affectedReels.add(reelIdx));
     
-    // Remove winning symbols
-    sortedWinners.forEach(({ reelIdx, rowIdx }) => {
+    Array.from(winningCells).map(key => {
+      const [reelIdx, rowIdx] = key.split('-').map(Number);
+      affectedReels.add(reelIdx);
       newGrid[reelIdx][rowIdx] = 'empty';
     });
     
-    // Drop symbols down (gravity)
     affectedReels.forEach(reelIdx => {
       const column = newGrid[reelIdx];
-      // Collect non-empty symbols
-      const symbols: SymbolId[] = [];
-      for (let rowIdx = 0; rowIdx < 3; rowIdx++) {
-        if (column[rowIdx] !== 'empty') {
-          symbols.push(column[rowIdx]);
-        }
-      }
-      
-      // Fill from bottom with existing symbols
+      const symbols: SymbolId[] = column.filter(s => s !== 'empty');
       const emptyCount = 3 - symbols.length;
       const newColumn: SymbolId[] = [];
-      
-      // Add new symbols at top
-      for (let i = 0; i < emptyCount; i++) {
-        newColumn.push(getRandomSymbolId());
-      }
-      
-      // Add existing symbols below
-      for (const sym of symbols) {
-        newColumn.push(sym);
-      }
-      
+      for (let i = 0; i < emptyCount; i++) newColumn.push(getRandomSymbolId());
+      for (const sym of symbols) newColumn.push(sym);
       newGrid[reelIdx] = newColumn;
     });
-    
     return newGrid;
   }, []);
 
-  // Cascade win check (simplified - in real app this would come from game logic)
   const checkCascadeWin = useCallback((grid: SymbolId[][]): { hasWin: boolean; winLines: WinLine[]; multiplier: number } => {
-    // For cascade, we'd normally call the same win detection as the parent
-    // Here we'll do a simplified check based on SYMBOLS matching
-    // This matches the pattern used in useGameState
-    
     const activeLines = paylines || 1;
     const allWinLines: WinLine[] = [];
-    
     for (let lineIdx = 0; lineIdx < activeLines && lineIdx < 25; lineIdx++) {
       const path = getPaylinePath(lineIdx);
       const cells = path.map((rowIdx, reelIdx) => ({ reelIdx, rowIdx, symId: grid[reelIdx][rowIdx] }));
-      
-      // Count matching symbols
       const first = cells[0];
-      if (isWildSymbol(first.symId)) {
-        // Wild on first position - check if rest match
-        const second = cells[1];
-        if (isWildSymbol(second.symId) || cells.every(c => 
-          c.symId === first.symId || isWildSymbol(c.symId))) {
-          // All match or are wild
-          allWinLines.push({ row: lineIdx, cells: cells.map(c => ({ reelIdx: c.reelIdx, rowIdx: c.rowIdx })), symbols: cells.map(c => c.symId), amount: 0, count: cells.length });
-        }
-      } else if (cells.every(c => c.symId === first.symId || isWildSymbol(c.symId))) {
-        // All match
+      if (isWildSymbol(first.symId) || cells.every(c => c.symId === first.symId || isWildSymbol(c.symId))) {
         allWinLines.push({ row: lineIdx, cells: cells.map(c => ({ reelIdx: c.reelIdx, rowIdx: c.rowIdx })), symbols: cells.map(c => c.symId), amount: 0, count: cells.length });
       }
     }
-    
     const hasWin = allWinLines.length > 0;
     const multiplier = hasWin ? CASCADE_MULTIPLIERS[Math.min(cascadeLevel, MAX_CASCADE_LEVEL - 1)] : 1;
-    
     return { hasWin, winLines: allWinLines, multiplier };
   }, [paylines, cascadeLevel]);
 
-  // Start cascade sequence
   const startCascade = useCallback((initialGrid: SymbolId[][], initialWins: WinLine[]) => {
     if (initialWins.length === 0) return;
-    
     setCascadeActive(true);
     setCascadeLevel(1);
     setCascadeGrid(initialGrid);
     
-    // Calculate winning cells
     const winningCells = new Set<string>();
     initialWins.forEach(line => {
       const path = getPaylinePath(line.row);
-      path.forEach((rowIdx, reelIdx) => {
-        winningCells.add(`${reelIdx}-${rowIdx}`);
-      });
+      path.forEach((rowIdx, reelIdx) => winningCells.add(`${reelIdx}-${rowIdx}`));
     });
     setCascadeWinningCells(winningCells);
     setCascadeAnimatingCells(winningCells);
     
-    // Check for sticky wilds
     const wilds = findStickyWilds(initialGrid, initialWins);
     if (wilds.size > 0) {
       setWildLockAnimating(true);
@@ -679,75 +1006,42 @@ export default function SlotMachine({
       setTimeout(() => setWildLockAnimating(false), 800);
     }
     
-    // Check for near misses (before we clear the grid)
-    const misses = findNearMiss(initialGrid, initialWins);
-    if (misses.length > 0) {
-      setNearMissCells(new Set(misses.map(m => `${m.reelIdx}-${m.rowIdx}`)));
-      setNearMissAnimating(true);
-      setTimeout(() => setNearMissAnimating(false), 1000);
-    }
-    
-    // Cascade animation duration
     const animationDuration = 600;
-    
     setTimeout(() => {
-      // Clear winning cells visually
       setCascadeWinningCells(new Set());
-      
       setTimeout(() => {
-        // Process the cascade
         const newGrid = processCascade(initialGrid, winningCells);
         setCascadeGrid(newGrid);
-        
-        // Show cascade multiplier if level > 1
         if (cascadeLevel >= 2) {
           setShowCascadeMultiplier(true);
           setTimeout(() => setShowCascadeMultiplier(false), 1000);
         }
-        
-        // Check for new wins
         setTimeout(() => {
           const result = checkCascadeWin(newGrid);
-          
           if (result.hasWin && cascadeLevel < MAX_CASCADE_LEVEL) {
-            // Continue cascade
             setCascadeLevel(prev => prev + 1);
-            
-            // Calculate new winning cells
             const newWinningCells = new Set<string>();
             result.winLines.forEach(line => {
               const path = getPaylinePath(line.row);
-              path.forEach((rowIdx, reelIdx) => {
-                newWinningCells.add(`${reelIdx}-${rowIdx}`);
-              });
+              path.forEach((rowIdx, reelIdx) => newWinningCells.add(`${reelIdx}-${rowIdx}`));
             });
             setCascadeWinningCells(newWinningCells);
             setCascadeAnimatingCells(newWinningCells);
-            
-            // Check for wilds in new wins
             const newWilds = findStickyWilds(newGrid, result.winLines);
             if (newWilds.size > 0) {
               setWildLockAnimating(true);
-              setStickyWildCells(prev => {
-                const merged = new Set(prev);
-                newWilds.forEach(w => merged.add(w));
-                return merged;
-              });
+              setStickyWildCells(prev => { const merged = new Set(prev); newWilds.forEach(w => merged.add(w)); return merged; });
               if (soundEnabled) playSound("wild_lock");
               setTimeout(() => setWildLockAnimating(false), 800);
             }
-            
-            // Loop back for more cascades
             setTimeout(() => {
               setCascadeWinningCells(new Set());
               setTimeout(() => {
                 const nextGrid = processCascade(newGrid, newWinningCells);
                 setCascadeGrid(nextGrid);
-                
                 setTimeout(() => {
                   const nextResult = checkCascadeWin(nextGrid);
                   if (!nextResult.hasWin || cascadeLevel >= MAX_CASCADE_LEVEL) {
-                    // End cascade
                     setCascadeActive(false);
                     setCascadeLevel(0);
                     setCascadeGrid(null);
@@ -757,7 +1051,6 @@ export default function SlotMachine({
               }, 50);
             }, animationDuration);
           } else {
-            // End cascade
             setCascadeActive(false);
             setCascadeLevel(0);
             setCascadeGrid(null);
@@ -785,59 +1078,34 @@ export default function SlotMachine({
 
       if (soundEnabled) playSound("spin");
 
-      // Count initial scatters for anticipation
       let initialScatterCount = 0;
-      reels.forEach(reel => {
-        reel.forEach(symId => {
-          if (isScatterSymbol(symId)) initialScatterCount++;
-        });
-      });
+      reels.forEach(reel => reel.forEach(symId => { if (isScatterSymbol(symId)) initialScatterCount++; }));
 
-      // Determine reel stop timing with scatter anticipation
       const getReelStopDelay = (reelIdx: number): number => {
         const baseDelay = 500 + reelIdx * 220;
-        
-        // Scatter anticipation: if 2 scatters visible and this is reel 2 or 3, slow down
         if (initialScatterCount === 2 && (reelIdx === 2 || reelIdx === 3)) {
-          // Dramatic slowdown for scatter anticipation
           return baseDelay + (reelIdx === 2 ? 400 : 600);
         }
-        
         return baseDelay;
       };
 
-      // Stagger reel stops with scatter anticipation timing
       [0, 1, 2, 3, 4].forEach((i) => {
         setTimeout(() => {
-          setReelDone((prev) => {
-            const next = [...prev];
-            next[i] = true;
-            return next;
-          });
-          
+          setReelDone(prev => { const next = [...prev]; next[i] = true; return next; });
           if (soundEnabled) {
             const reelSymbols = reels[i];
-            
-            // Check for scatter on this reel
             const hasScatter = reelSymbols.some(s => isScatterSymbol(s));
             const hasWild = reelSymbols.some(s => isWildSymbol(s));
-            
             if (hasScatter && scatterSlowdownActive) {
-              // This reel has scatter during anticipation - fanfare!
               playSound("scatter_land");
               setScatterFanfareActive(true);
               setTimeout(() => setScatterFanfareActive(false), 1500);
             } else if (hasWild) {
               playSound("wild_land");
             }
-            // Generic reel_stop sound now handled by reel-slam event listener
           }
-          
-          // After all reels done, check for scatter anticipation on next spin
           if (i === 4) {
-            setTimeout(() => {
-              checkScatterAnticipation(reels, [true, true, true, true, true]);
-            }, 100);
+            setTimeout(() => checkScatterAnticipation(reels, [true, true, true, true, true]), 100);
           }
         }, getReelStopDelay(i));
       });
@@ -845,7 +1113,7 @@ export default function SlotMachine({
     prevSpinning.current = spinning;
   }, [spinning, soundEnabled, reels, checkScatterAnticipation, scatterSlowdownActive]);
 
-  // Show win after spinning stops (and trigger cascades)
+  // Show win after spinning stops
   useEffect(() => {
     if (!spinning && spinCount !== prevSpinCount.current) {
       prevSpinCount.current = spinCount;
@@ -859,96 +1127,41 @@ export default function SlotMachine({
           setTimeout(() => setWinFlash(false), 2500);
           setTimeout(() => setShowCoinShower(false), 3000);
 
-          // Screen shake based on win tier
           const shakeMap: Record<string, 'light' | 'medium' | 'heavy'> = {
-            JACKPOT: 'heavy',
-            MEGA_WIN: 'heavy',
-            BIG_WIN: 'medium',
-            SMALL_WIN: 'light',
-            HUNTRESS_BONUS: 'medium',
+            JACKPOT: 'heavy', MEGA_WIN: 'heavy', BIG_WIN: 'medium', SMALL_WIN: 'light', HUNTRESS_BONUS: 'medium',
           };
           const shake = lastWinType ? (shakeMap[lastWinType] || 'light') : 'none';
           setShakeIntensity(shake);
           const shakeDuration = shake === 'heavy' ? 800 : shake === 'medium' ? 500 : 300;
           setTimeout(() => setShakeIntensity('none'), shakeDuration);
 
-          // Show big win overlay for significant wins
           if (lastWinType === "BIG_WIN" || lastWinType === "MEGA_WIN" || lastWinType === "JACKPOT") {
             setTimeout(() => setShowBigWin(true), 600);
           }
 
           if (!soundMuted) {
             const winLineCount = winLines.length;
-            if (lastWinType === "JACKPOT") {
-              playSound("jackpot");
-              soundManager.playJackpot();
-            } else if (lastWinType === "MEGA_WIN") {
-              playSound("mega_win");
-              soundManager.playBigWin();
-              if (winLineCount >= 3) {
-                setTimeout(() => playSound("multi_win"), 400);
-              }
-            } else if (lastWinType === "BIG_WIN") {
-              playSound("big_win");
-              soundManager.playBigWin();
-              if (winLineCount >= 2) {
-                setTimeout(() => playSound("multi_win"), 400);
-              }
-            } else {
-              playWinSound(winLineCount);
-              soundManager.playSmallWin();
-            }
+            if (lastWinType === "JACKPOT") { playSound("jackpot"); soundManager.playJackpot(); }
+            else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); soundManager.playBigWin(); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
+            else if (lastWinType === "BIG_WIN") { playSound("big_win"); soundManager.playBigWin(); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
+            else { playWinSound(winLines.length); soundManager.playSmallWin(); }
           }
 
-          // Trigger cascade system
-          if (winLines.length > 0) {
-            startCascade(reels, winLines);
-          }
+          if (winLines.length > 0) startCascade(reels, winLines);
         } else {
-          // No win - check for near miss for "almost" excitement
           const misses = findNearMiss(reels, []);
           if (misses.length > 0 && !spinning) {
             setNearMissCells(new Set(misses.map(m => `${m.reelIdx}-${m.rowIdx}`)));
             setNearMissAnimating(true);
-            setTimeout(() => {
-              setNearMissAnimating(false);
-              setTimeout(() => setNearMissCells(new Set()), 300);
-            }, 800);
+            setTimeout(() => { setNearMissAnimating(false); setTimeout(() => setNearMissCells(new Set()), 300); }, 800);
           }
         }
-        // No sound on losing spins — silence only
       }, 400);
     }
-  }, [spinning, spinCount, winAmount, lastWinType, soundEnabled, reels, winLines, startCascade, findNearMiss, soundMuted]);
+  }, [spinning, spinCount, winAmount, lastWinType, soundEnabled, reels, winLines, startCascade, soundMuted]);
 
   const canSpin = !spinning && !cascadeActive && (coins >= bet || freeSpins > 0);
   const totalBet = bet * (paylines || 1);
-
-  const winTypeLabel: Record<string, string> = {
-    SMALL_WIN: "✨ Winner! ✨",
-    BIG_WIN: "🔥 BIG WIN! 🔥",
-    MEGA_WIN: "⚡ MEGA WIN! ⚡",
-    JACKPOT: "🌟 JACKPOT! 🌟",
-    HUNTRESS_BONUS: "👑 HUNTRESS BONUS! 👑",
-  };
-
-
-  const winTypeColor: Record<string, string> = {
-    SMALL_WIN: "#D4AF37",
-    BIG_WIN: "#FFA500",
-    MEGA_WIN: "#FF6B35",
-    JACKPOT: "#FFD700",
-    HUNTRESS_BONUS: "#FF6B6B",
-  };
-
-
-  const winTypeGlow: Record<string, string> = {
-    SMALL_WIN: "rgba(212,175,55,0.5)",
-    BIG_WIN: "rgba(255,165,0,0.6)",
-    MEGA_WIN: "rgba(255,107,53,0.7)",
-    JACKPOT: "rgba(255,215,0,0.9)",
-    HUNTRESS_BONUS: "rgba(255,107,107,0.7)",
-  };
 
   return (
     <div 
@@ -956,868 +1169,192 @@ export default function SlotMachine({
       style={{ minHeight: "450px" }}
     >
       {/* Win Particle Animations */}
-      <WinParticles trigger={particleTrigger} winAmount={winAmount} isJackpot={lastWinType === "JACKPOT"} />
+      <WinParticles trigger={particleTrigger} winAmount={winAmount} isJackpot={lastWinType === "JACKPOT" } />
 
       {/* Big Win Overlay */}
       {showBigWin && (lastWinType === "BIG_WIN" || lastWinType === "MEGA_WIN" || lastWinType === "JACKPOT") && (
-        <BigWinOverlay
-          winType={lastWinType}
-          winAmount={winAmount}
-          onDismiss={() => setShowBigWin(false)}
-        />
+        <BigWinOverlay winType={lastWinType} winAmount={winAmount} onDismiss={() => setShowBigWin(false)} />
       )}
 
-      {/* ── Jackpot Meters ── */}
-      <div className="w-full px-2 pt-2 pb-1">
-        <JackpotMeters jackpotPool={jackpotPool} />
-      </div>
-
-      {/* ── Machine Top Banner ── */}
-      <div className="w-full relative">
-        {/* Scrolling marquee - moved to top */}
-        <div
-          className="overflow-hidden"
-          style={{
-            background: "linear-gradient(90deg, #050510, #0d0a00, #050510)",
-            borderBottom: "1px solid rgba(212,175,55,0.2)",
-            padding: "2px 0",
-          }}
-        >
-          <div className="marquee-text text-xs font-numbers px-4" style={{ color: "#C8860A", fontSize: "0.65rem" }}>
-            ◆ FREE SWEEPSTAKES GAME — NO REAL MONEY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🍀 WILD CLOVER SUBSTITUTES ALL ◆ ⭐ 3 SCATTERS = 10 FREE SPINS ◆ ⭐ 5 SCATTERS = JACKPOT ◆ 🗡️ 3 HUNTRESS = BONUS ROUND ◆ JACKPOT GROWS WITH EVERY SPIN ◆
-          </div>
-        </div>
-
-        {/* Free spins badge */}
-        <FreeSpinsDisplay freeSpins={freeSpins} />
-
-        <div
-          style={{
-            background: "linear-gradient(180deg, #06060f 0%, #0d0d22 100%)",
-            border: "2px solid #D4AF37",
-            borderBottom: "none",
-            borderRadius: "0.75rem 0.75rem 0 0",
-          }}
-        >
-          {/* Gold top line */}
-          <div className="h-0.5" style={{ background: "linear-gradient(90deg, transparent, #D4AF37, #F5E6C8, #D4AF37, transparent)" }} />
-
-          {/* Logo area — compact */}
-          <div className="py-1 px-3 flex items-center justify-between">
-            <ArtDecoOrnament />
-            <div className="text-center flex-1">
-              <div
-                className="font-display font-black tracking-widest uppercase text-gold-gradient"
-                style={{ fontSize: "clamp(0.9rem, 3vw, 1.5rem)", letterSpacing: "0.12em" }}
-              >
-                Rolling in the Dough
-              </div>
-              <div
-                className="font-numbers tracking-[0.35em] uppercase"
-                style={{ fontSize: "clamp(0.5rem, 1.2vw, 0.65rem)", color: "#C8860A" }}
-              >
-                ◆ Sweepstakes Slots ◆
-              </div>
-            </div>
-            <ArtDecoOrnament flip />
-          </div>
-        </div>
-      </div>
-
-      {/* ── PROFESSIONAL INFO DISPLAY PANEL ── */}
-      <div
-        style={{
-          background: "linear-gradient(180deg, #0a0a1a 0%, #050510 100%)",
-          border: "2px solid #D4AF37",
-          borderTop: "none",
-          borderBottom: "none",
-          padding: "4px 8px",
-          width: "100%",
-        }}
-        className="grid grid-cols-3 gap-2"
-      >
-        {/* Balance */}
-        <div
-          className="rounded text-center py-1.5 px-2"
-          style={{
-            background: "linear-gradient(135deg, #1a1a3a, #0d0d20)",
-            border: "1px solid rgba(212,175,55,0.35)",
-          }}
-        >
-          <div className="text-xs font-numbers uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.55)", fontSize: "0.6rem" }}>
-            💰 Balance
-          </div>
-          <div className="font-numbers font-bold" style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.2rem)", color: "#FFD700" }}>
-            {coins.toLocaleString()}
-          </div>
-        </div>
-
-        {/* Total Bet */}
-        <div
-          className="rounded text-center py-1.5 px-2"
-          style={{
-            background: selectedCurrency === 'gold'
-              ? "linear-gradient(135deg, #2a1a00, #3a2500)"
-              : "linear-gradient(135deg, #1a2a1a, #0d1a0d)",
-            border: selectedCurrency === 'gold'
-              ? "1px solid rgba(255,215,0,0.35)"
-              : "1px solid rgba(76,175,80,0.35)",
-          }}
-        >
-          <div className="text-xs font-numbers uppercase tracking-widest" style={{
-            color: selectedCurrency === 'gold' ? "rgba(255,215,0,0.55)" : "rgba(76,175,80,0.55)",
-            fontSize: "0.6rem"
-          }}>
-            🎲 Total Bet
-          </div>
-          <div className="font-numbers font-bold" style={{
-            fontSize: "clamp(0.85rem, 2.5vw, 1.2rem)",
-            color: selectedCurrency === 'gold' ? "#FFD700" : "#90EE90"
-          }}>
-            {totalBet.toLocaleString()}
-          </div>
-        </div>
-
-        {/* Win Amount with animated counter */}
-        <div
-          className="rounded text-center py-1.5 px-2 transition-all duration-300"
-          style={{
-            background: showWin && winAmount > 0
-              ? "linear-gradient(135deg, #2a1a00, #3a2500)"
-              : "linear-gradient(135deg, #1a1a2a, #0d0d1a)",
-            border: showWin && winAmount > 0 ? "1px solid rgba(255,215,0,0.7)" : "1px solid rgba(212,175,55,0.2)",
-            boxShadow: showWin && winAmount > 0 ? "0 0 15px rgba(255,215,0,0.4)" : "none",
-          }}
-        >
-          <div className="text-xs font-numbers uppercase tracking-widest" style={{ color: showWin && winAmount > 0 ? "rgba(255,215,0,0.7)" : "rgba(212,175,55,0.4)", fontSize: "0.6rem" }}>
-            🏆 Win
-          </div>
-          <div
-            className="font-numbers font-bold"
-            style={{
-              fontSize: "clamp(0.85rem, 2.5vw, 1.2rem)",
-              color: showWin && winAmount > 0 ? "#FFD700" : "#555",
-              textShadow: showWin && winAmount > 0 ? "0 0 10px rgba(255,215,0,0.8)" : "none",
-            }}
-          >
-            {showWin && winAmount > 0 ? (
-              <>+<AnimatedWinCounter target={winAmount} active={showWin} /></>
-            ) : "—"}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Reel Window ── */}
-      <div
-        className="w-full relative"
-        style={{
-          background: "linear-gradient(180deg, #04040e 0%, #080818 50%, #04040e 100%)",
-          border: "2px solid #D4AF37",
-          borderTop: "none",
-          borderBottom: "none",
-          padding: "4px 4px",
-        }}
-      >
-        {/* Payline indicators */}
-        <PaylineIndicators paylines={paylines} />
-
-        {/* Coin shower on win */}
-        <CoinShower show={showCoinShower} />
-
-        {/* Win flash overlay */}
-        {winFlash && (
-          <div
-            className="absolute inset-0 pointer-events-none z-30 rounded"
-            style={{
-              background: "radial-gradient(ellipse at center, rgba(255,215,0,0.12) 0%, transparent 70%)",
-              animation: "flashPulse 0.4s ease-in-out 3",
-            }}
-          />
-        )}
-
-        {/* Cascade multiplier popup */}
-        <CascadeMultiplierDisplay level={cascadeLevel} active={showCascadeMultiplier} />
-
-        {/* Win line highlight overlay */}
-        <WinLineHighlight winLines={winLines} show={showWin && !cascadeActive} />
-
-        {/* Payline highlights for each winning line */}
-        {showWin && winLines.map((line, idx) => (
-          <PaylineHighlight key={idx} paylineIndex={line.row} isActive={true} reelCount={5} rowCount={3} />
-        ))}
-
-        {/* Idle animations */}
-        <IdleAnimations spinning={spinning} lastSpinTime={lastSpinTime} />
-
-        {/* Scatter fanfare overlay */}
-        {scatterFanfareActive && (
-          <div
-            className="absolute inset-0 pointer-events-none z-25 rounded"
-            style={{
-              background: "radial-gradient(ellipse at center, rgba(255,107,107,0.15) 0%, transparent 60%)",
-              animation: "scatterFanfare 0.5s ease-out",
-            }}
-          />
-        )}
-
-        {/* Reels */}
-        <div className="grid gap-2 sm:gap-3" style={{ gridTemplateColumns: "repeat(5, 1fr)", minHeight: "200px" }}>
-          {displayGrid.map((reel, reelIdx) => (
-            <div
-              key={reelIdx}
-              className={`reel-container rounded relative ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
-              style={{
-                minHeight: "200px",
-                height: "100%",
-                maxHeight: "500px",
-                transition: "box-shadow 0.3s ease",
-                boxShadow: reelDone[reelIdx] && showWin && !cascadeActive && reel.some((_, rowIdx) => isWinningCell(reelIdx, rowIdx, winLines))
-                  ? "0 0 30px rgba(255,215,0,0.7), inset 0 0 20px rgba(255,215,0,0.15)"
-                  : "inset 0 0 30px rgba(0,0,0,0.9), 0 0 15px rgba(212,175,55,0.3)",
-              }}
-            >
-              {/* Spinning blur overlay */}
-              <ReelStrip symbols={reel} spinning={spinning} done={reelDone[reelIdx]} reelIndex={reelIdx} />
-
-              {/* Symbols */}
-              {reel.map((symId, rowIdx) => {
-                const isWin = showWin && !cascadeActive && isWinningCell(reelIdx, rowIdx, winLines);
-                const isCascadeWinner = cascadeWinningCells.has(`${reelIdx}-${rowIdx}`);
-                const isCascadeAnimating = cascadeAnimatingCells.has(`${reelIdx}-${rowIdx}`);
-                const isStickyWild = stickyWildCells.has(`${reelIdx}-${rowIdx}`);
-                const isNearMiss = nearMissCells.has(`${reelIdx}-${rowIdx}`);
-                const isWild = isWildSymbol(symId);
-                const sym = getSymbol(symId);
-                const cellKey = `${reelIdx}-${rowIdx}`;
-                
-                return (
-                  <div
-                    key={rowIdx}
-                    className={`
-                      flex items-center justify-center transition-all duration-300 
-                      ${isWin ? "cell-win-glow symbol-win" : ""}
-                      ${isCascadeWinner ? "cascade-disappear" : ""}
-                      ${isCascadeAnimating && !isCascadeWinner ? "cascade-fall" : ""}
-                      ${isStickyWild && wildLockAnimating ? "sticky-wild-lock" : ""}
-                      ${isStickyWild && !wildLockAnimating ? "sticky-wild-glow" : ""}
-                      ${isNearMiss && nearMissAnimating ? "near-miss-gold" : ""}
-                      ${symId === 'empty' ? "empty-cell" : ""}
-                    `}
-                    style={{
-                      flex: "1 1 0%",
-                      minHeight: 0,
-                      background: isWin
-                        ? `radial-gradient(circle at center, ${sym.bgColor}ff 0%, #050510 100%)`
-                        : isCascadeWinner
-                        ? `radial-gradient(circle at center, ${sym.bgColor}66 0%, #050510 100%)`
-                        : `radial-gradient(circle at center, ${sym.bgColor}55 0%, #030310 100%)`,
-                      borderBottom: rowIdx < 2 ? "1px solid rgba(212,175,55,0.1)" : "none",
-                      position: "relative",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {isWin && (
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background: `radial-gradient(circle, ${sym.color}30, transparent 70%)`,
-                        }}
-                      />
-                    )}
-                    {isStickyWild && (
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background: "radial-gradient(circle, rgba(76,175,80,0.4), transparent 70%)",
-                          animation: "stickyWildPulse 0.8s ease-in-out infinite",
-                        }}
-                      />
-                    )}
-                    {isNearMiss && nearMissAnimating && (
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background: "radial-gradient(circle, rgba(255,215,0,0.5), transparent 70%)",
-                        }}
-                      />
-                    )}
-                    {symId !== 'empty' && (
-                      <SymbolIcon
-                          symbolId={symId}
-                          size={56}
-                          className={`${isWin ? 'symbol-win-pop symbol-bounce' : ''}`}
-                          style={{
-                            filter: isWin
-                              ? `drop-shadow(0 0 8px ${sym.color}) drop-shadow(0 0 16px ${sym.color}88) brightness(1.5)`
-                              : isStickyWild
-                              ? `drop-shadow(0 0 12px #90EE90) drop-shadow(0 0 24px #90EE90)`
-                              : isNearMiss && nearMissAnimating
-                              ? `drop-shadow(0 0 10px #FFD700) brightness(1.3)`
-                              : 'none',
-                            transition: 'filter 0.3s ease',
-                          }}
-                        />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-
-        {/* Win display below reels */}
-        <div className="mt-0.5 text-center min-h-[1.5rem] flex items-center justify-center">
-          {showWin && winAmount > 0 && lastWinType ? (
-            <div
-              className="flex items-center gap-2"
-              style={{ animation: `winBanner ${lastWinType === "SMALL_WIN" ? "0.4s" : "0.6s"} cubic-bezier(0.175, 0.885, 0.32, 1.275) both` }}
-            >
-              <div
-                className="font-display font-black win-message"
-                style={{
-                  fontSize: "clamp(1.1rem, 3vw, 1.6rem)",
-                  color: winTypeColor[lastWinType],
-                  textShadow: `0 0 10px ${winTypeGlow[lastWinType]}, 0 0 20px ${winTypeGlow[lastWinType]}`,
-                  animation: lastWinType === "MEGA_WIN" ? "megaWinPulse 1s ease-in-out infinite" :
-                              lastWinType === "JACKPOT" ? "jackpotPulse 0.8s ease-in-out infinite" :
-                              `winBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s both`,
-                }}
-              >
-                {winTypeLabel[lastWinType]}
-              </div>
-              <div
-                className="font-numbers font-bold"
-                style={{
-                  fontSize: "clamp(1.3rem, 4vw, 2rem)",
-                  color: "#FFD700",
-                  textShadow: "0 0 15px rgba(255,215,0,0.8), 0 0 30px rgba(255,215,0,0.4)",
-                  animation: "winBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.25s both",
-                }}
-              >
-                +<AnimatedWinCounter target={winAmount} active={showWin} /> 🪙
-              </div>
-            </div>
-          ) : cascadeActive && cascadeLevel > 0 ? (
-            <div
-              className="font-display font-black"
-              style={{
-                fontSize: "clamp(1rem, 2.5vw, 1.4rem)",
-                color: cascadeLevel >= 4 ? "#FF6B35" : cascadeLevel >= 3 ? "#FFD700" : "#D4AF37",
-                textShadow: `0 0 15px ${cascadeLevel >= 4 ? "rgba(255,107,53,0.8)" : cascadeLevel >= 3 ? "rgba(255,215,0,0.8)" : "rgba(212,175,55,0.6)"}`,
-                animation: "cascadeLevelPulse 0.6s ease-in-out infinite",
-              }}
-            >
-              🔥 {cascadeLevel}x CASCADE! 🔥
-            </div>
-          ) : spinning ? (
-            <SpinningDots />
-          ) : (
-            <div className="text-xs font-body italic" style={{ color: "rgba(212,175,55,0.3)" }}>
-              {coins < bet && freeSpins === 0 ? "⚠ Not enough coins" : cascadeActive ? "Cascading..." : "Press SPIN to play"}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── PROFESSIONAL CONTROLS PANEL ── */}
-      <div
-        style={{
-          background: "linear-gradient(180deg, #0a0a1a 0%, #060610 100%)",
-          border: "2px solid #D4AF37",
-          borderTop: "none",
-          borderRadius: "0 0 0.75rem 0.75rem",
-          padding: "6px",
-          width: "100%",
-        }}
-      >
-        {/* ── Compact bet/lines row (mobile: horizontal scroll, desktop: grid) ── */}
-        <div className="mb-2 flex flex-col sm:flex-row gap-2 sm:items-center">
-          {/* Bet Per Line - compact */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-              <span className="text-[0.55rem] font-numbers uppercase tracking-widest whitespace-nowrap" style={{ color: "rgba(212,175,55,0.7)" }}>
-                💰 BET/LINE
-              </span>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button
-                  onClick={() => { const nb = Math.max(10, bet - BET_DECREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
-                  disabled={spinning || cascadeActive}
-                  className="w-6 h-6 sm:w-7 sm:h-7 rounded text-xs sm:text-sm font-bold flex items-center justify-center transition-all flex-shrink-0"
-                  style={{
-                    background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
-                    border: "1px solid rgba(212,175,55,0.4)",
-                    color: spinning || cascadeActive ? "#444" : "#C8860A",
-                  }}
-                >−</button>
-                <div className="flex gap-0.5 overflow-x-auto scrollbar-hide pb-1 flex-1 min-w-0">
-                  {BET_OPTIONS.map((b) => (
-                    <button
-                      key={b}
-                      onClick={() => { if (!spinning && !cascadeActive) { setBet(b); if (soundEnabled) playSound("button_click"); } }}
-                      disabled={spinning || cascadeActive}
-                      className="flex-shrink-0 px-2 py-1 rounded font-numbers font-bold text-xs transition-all hover:scale-105 whitespace-nowrap"
-                      style={{
-                        background: bet === b ? "linear-gradient(135deg, #C8860A, #D4AF37)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
-                        border: `1px solid ${bet === b ? "#F5E6C8" : "rgba(212,175,55,0.3)"}`,
-                        color: bet === b ? "#0a0a1a" : "#D4AF37",
-                        boxShadow: bet === b ? "0 0 8px rgba(212,175,55,0.5)" : "none",
-                        opacity: spinning || cascadeActive ? 0.5 : 1,
-                        minWidth: "2.2rem",
-                      }}
-                    >{b}</button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => { const nb = Math.min(200, bet + BET_INCREMENT); setBet(nb); if (soundEnabled) playSound("button_click"); }}
-                  disabled={spinning || cascadeActive}
-                  className="w-6 h-6 sm:w-7 sm:h-7 rounded text-xs sm:text-sm font-bold flex items-center justify-center transition-all flex-shrink-0"
-                  style={{
-                    background: spinning || cascadeActive ? "#222" : "linear-gradient(135deg, #2a1a00, #3a2a00)",
-                    border: "1px solid rgba(212,175,55,0.4)",
-                    color: spinning || cascadeActive ? "#444" : "#C8860A",
-                  }}
-                >+</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Paylines - compact */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-              <span className="text-[0.55rem] font-numbers uppercase tracking-widest whitespace-nowrap" style={{ color: "rgba(76,175,80,0.7)" }}>
-                📊 LINES
-              </span>
-              <div className="flex gap-0.5 overflow-x-auto scrollbar-hide pb-1 flex-1 min-w-0">
-                {PAYLINE_OPTIONS.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => { if (!spinning && !cascadeActive && setPaylines) { setPaylines(p); if (soundEnabled) playSound("button_click"); } }}
-                    disabled={spinning || cascadeActive}
-                    className="flex-shrink-0 px-2 py-1 rounded font-numbers font-bold text-xs transition-all hover:scale-105 whitespace-nowrap"
-                    style={{
-                      background: paylines === p ? "linear-gradient(135deg, #1a5a1a, #2a8a2a)" : "linear-gradient(135deg, #0d0d20, #1a1a35)",
-                      border: `1px solid ${paylines === p ? "#90EE90" : "rgba(76,175,80,0.3)"}`,
-                      color: paylines === p ? "#90EE90" : "#D4AF37",
-                      boxShadow: paylines === p ? "0 0 8px rgba(144,238,144,0.4)" : "none",
-                      opacity: spinning || cascadeActive ? 0.5 : 1,
-                      minWidth: "2rem",
-                    }}
-                  >{p}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── DOMINANT SPIN BUTTON — Professional casino standard ── */}
-        <div className="mb-2">
-          <button
-            onClick={() => {
-              if (canSpin) {
-                spin();
-                if (soundEnabled) playSound("button_click");
-                setSpinButtonPulse(false);
-              }
-            }}
-            disabled={!canSpin}
-            className="w-full rounded-full font-display font-black tracking-wider transition-all relative overflow-hidden"
-            onPointerDown={() => canSpin && soundEnabled && playSound("button_click")}
-            onMouseDown={(e) => {
-              if (canSpin) {
-                e.currentTarget.style.transform = "translateY(2px)";
-                e.currentTarget.style.boxShadow = "0 0 40px rgba(255,215,0,1), 0 0 80px rgba(255,215,0,0.7), 0 2px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 3px rgba(0,0,0,0.3)";
-              }
-            }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-            }}
-            style={{
-              padding: "clamp(10px, 2.5vw, 16px) clamp(14px, 4vw, 28px)",
-              fontSize: "clamp(1rem, 3.5vw, 1.5rem)",
-              background: canSpin
-                ? "linear-gradient(135deg, #8B5E0A 0%, #C8860A 25%, #FFD700 50%, #C8860A 75%, #8B5E0A 100%)"
-                : "linear-gradient(135deg, #1a1a2a, #2a2a3a)",
-              border: `3px solid ${canSpin ? "#F5E6C8" : "rgba(212,175,55,0.2)"}`,
-              color: canSpin ? "#0a0a1a" : "#444",
-              boxShadow: canSpin
-                ? spinButtonPulse
-                  ? "0 0 50px rgba(255,215,0,1), 0 0 100px rgba(255,215,0,0.7), 0 8px 30px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -3px 6px rgba(0,0,0,0.3)"
-                  : "0 0 30px rgba(255,215,0,0.8), 0 0 60px rgba(255,215,0,0.4), 0 6px 20px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.2)"
-                : "none",
-              cursor: canSpin ? "pointer" : "not-allowed",
-              textShadow: canSpin ? "0 2px 4px rgba(0,0,0,0.4)" : "none",
-              animation: canSpin && spinButtonPulse ? "spinBtnPulse 1.2s ease-in-out infinite" : "none",
-              letterSpacing: "0.15em",
-              transform: "translateY(0)",
-              transition: "transform 0.08s ease, box-shadow 0.15s ease",
-            }}
-            title="Click to spin the reels"
-          >
-            {/* Inner shine overlay */}
-            <span
-              style={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: "inherit",
-                background: canSpin
-                  ? "linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 40%, rgba(0,0,0,0.08) 100%)"
-                  : "none",
-                pointerEvents: "none",
-              }}
-            />
-            {cascadeActive
-              ? `⟳ CASCADE ${cascadeLevel}x...`
-              : freeSpins > 0
-              ? `🎁 FREE SPIN (${freeSpins})`
-              : spinning
-              ? "⟳ SPINNING..."
-              : "✦ SPIN ✦"}
-          </button>
-        </div>
-
-        {/* ── Secondary action buttons (compact, wrap on mobile) ── */}
-        <div className="flex flex-wrap gap-1.5 justify-center">
-          <button
-            onClick={() => {
-              setShowDealsModal(true);
-              if (soundEnabled) playSound("button_click");
-            }}
-            className="sm:flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
-            style={{
-              background: "linear-gradient(135deg, #1a3a5a, #2a5a7a)",
-              border: "2px solid rgba(100,180,255,0.5)",
-              color: "#88CCFF",
-              boxShadow: "0 0 10px rgba(100,180,255,0.2)",
-              flex: "1 1 45%",
-            }}
-          >
-            🎁 DEALS
-          </button>
-          <button
-            onClick={() => {
-              setShowScratchGame(true);
-              if (soundEnabled) playSound("button_click");
-            }}
-            className="sm:flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
-            style={{
-              background: "linear-gradient(135deg, #5a2a1a, #7a3a2a)",
-              border: "2px solid rgba(255,107,107,0.5)",
-              color: "#FFB6B6",
-              boxShadow: "0 0 10px rgba(255,107,107,0.2)",
-              flex: "1 1 45%",
-            }}
-          >
-            🎰 SCRATCH
-          </button>
-          <button
-            onClick={() => {
-              setAutoplay(!autoplay);
-              if (soundEnabled) playSound("button_click");
-            }}
-            className="sm:flex-1 py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105 active:scale-95"
-            style={{
-              background: autoplay
-                ? "linear-gradient(135deg, #1a3a1a, #2a5a2a)"
-                : "linear-gradient(135deg, #1a1a2a, #2a2a3a)",
-              border: `2px solid ${autoplay ? "rgba(76,175,80,0.6)" : "rgba(212,175,55,0.3)"}`,
-              color: autoplay ? "#90EE90" : "#D4AF37",
-              boxShadow: autoplay ? "0 0 10px rgba(76,175,80,0.3)" : "none",
-              flex: "1 1 100%",
-            }}
-          >
-            {autoplay ? "■ STOP" : "▶ AUTO"}
-          </button>
-        </div>
-
-        {/* ── Bottom utility row (mobile: stack, desktop: row) ── */}
-        <div className="flex flex-wrap gap-1.5 justify-center mt-2">
-          <button
-            onClick={() => {
-              const newMuted = !soundMuted;
-              setSoundMuted(newMuted);
-              soundManager.setMuted(newMuted);
-            }}
-            className="flex-1 min-w-[100px] py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all"
-            style={{
-              background: soundMuted ? "linear-gradient(135deg, #3a1a1a, #5a2a2a)" : "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
-              border: soundMuted ? "1px solid rgba(255,107,107,0.5)" : "1px solid rgba(76,175,80,0.5)",
-              color: soundMuted ? "#FF6B6B" : "#90EE90",
-            }}
-          >
-            {soundMuted ? "🔇 MUTE" : "🔊 SOUND"}
-          </button>
-          {onCoinShop && (
-            <button
-              onClick={onCoinShop}
-              className="flex-1 min-w-[100px] py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105"
-              style={{
-                background: "linear-gradient(135deg, #1a3a1a, #2a5a2a)",
-                border: "1px solid rgba(76,175,80,0.5)",
-                color: "#90EE90",
-              }}
-            >
-              💰 SHOP
-            </button>
-          )}
-          <button
-            onClick={() => {
-              const btn = document.querySelector('[data-paytable-toggle]');
-              if (btn) (btn as HTMLButtonElement).click();
-            }}
-            className="flex-1 min-w-[100px] py-2 rounded-lg font-numbers font-bold text-xs tracking-wider transition-all hover:scale-105"
-            style={{
-              background: "linear-gradient(135deg, #1a1a3a, #2a2a4a)",
-              border: "1px solid rgba(212,175,55,0.4)",
-              color: "#D4AF37",
-            }}
-          >
-            📖 RULES
-          </button>
-        </div>
-      </div>
-      {/* ── Paytable ── */}
-      <PayTable />
-
-      {/* Scratch Game Modal */}
-      {showScratchGame && (
-        <ScratchGame
-          onClose={() => {
-            setShowScratchGame(false);
-            onScratchClose?.();
-          }}
-          onWin={(amount) => {
-            if (soundEnabled) playSound('big_win');
-            soundManager.playBigWin();
-          }}
-        />
-      )}
-
-      {/* Deals Modal */}
-      {showDealsModal && (
-        <DealsModal onClose={() => {
-          setShowDealsModal(false);
-          onDealsClose?.();
+      {/* ── Physical Cabinet Structure ── */}
+      <div className="w-full relative" style={{
+        background: "linear-gradient(180deg, #0a0a12 0%, #050510 50%, #030308 100%)",
+        borderRadius: "16px 16px 0 0",
+        boxShadow: `
+          inset 0 0 60px rgba(0,0,0,0.8),
+          0 0 40px rgba(0, 100, 255, 0.15),
+          0 0 80px rgba(0, 80, 200, 0.1),
+          inset 0 2px 0 rgba(0, 150, 255, 0.3),
+          inset 0 -2px 0 rgba(0, 150, 255, 0.1)
+        `,
+        border: "none",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        {/* Blue LED edge strips - left & right */}
+        <div className="absolute inset-y-0 left-0 w-1 pointer-events-none" style={{
+          background: "linear-gradient(180deg, transparent, #0066ff, #0088ff, #00aaff, #0088ff, #0066ff, transparent)",
+          boxShadow: "0 0 20px #0088ff, 0 0 40px #0066ff",
+          opacity: 0.8,
+          animation: "ledPulse 3s ease-in-out infinite alternate",
         }} />
-      )}
+        <div className="absolute inset-y-0 right-0 w-1 pointer-events-none" style={{
+          background: "linear-gradient(180deg, transparent, #0066ff, #0088ff, #00aaff, #0088ff, #0066ff, transparent)",
+          boxShadow: "0 0 20px #0088ff, 0 0 40px #0066ff",
+          opacity: 0.8,
+          animation: "ledPulse 3s ease-in-out infinite alternate-reverse",
+        }} />
 
-      {/* CSS Animations */}
-      <style>{`
-        @keyframes coinShower {
-          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(120%) rotate(360deg); opacity: 0; }
-        }
-        @keyframes flashPulse {
-          0%, 100% { opacity: 0; }
+        {/* ── Top Glass ── */}
+        <CabinetTopGlass freeSpins={freeSpins} />
+
+        {/* ── Jackpot Meters ── */}
+        <div className="w-full px-4 mb-3">
+          <CabinetJackpotMeters jackpotPool={jackpotPool} />
+        </div>
+
+        {/* ── Game Info Panel ── */}
+        <div className="w-full px-4 mb-2">
+          <GameInfoPanel freeSpins={freeSpins} />
+        </div>
+
+        {/* ── LED Credit/Bet/Win Displays ── */}
+        <div className="w-full grid grid-cols-3 gap-3 px-4 mb-3">
+          <LEDDisplay 
+            label="CREDIT" 
+            value={coins} 
+            color="#FFD700" 
+            labelColor="rgba(212,175,55,0.6)" 
+            animated={showWin && winAmount > 0}
+            animatedValue={coins}
+          />
+          <LEDDisplay 
+            label="BET" 
+            value={totalBet} 
+            color={selectedCurrency === 'gold' ? "#FFD700" : "#90EE90"} 
+            labelColor={selectedCurrency === 'gold' ? "rgba(255,215,0,0.6)" : "rgba(144,238,144,0.6)"}
+          />
+          <LEDDisplay 
+            label="WIN" 
+            value={winAmount} 
+            color="#FFD700" 
+            labelColor="rgba(255,215,0,0.7)"
+            animated={showWin && winAmount > 0}
+            animatedValue={winAmount}
+          />
+        </div>
+
+        {/* ── Reel Window ── */}
+        <div className="w-full px-4 mb-3">
+          <ReelWindow 
+            reels={reels}
+            spinning={spinning}
+            reelDone={reelDone}
+            winLines={winLines}
+            showWin={showWin}
+            cascadeActive={cascadeActive}
+            cascadeWinningCells={cascadeWinningCells}
+            cascadeAnimatingCells={cascadeAnimatingCells}
+            cascadeGrid={cascadeGrid}
+            stickyWildCells={stickyWildCells}
+            wildLockAnimating={wildLockAnimating}
+            nearMissCells={nearMissCells}
+            nearMissAnimating={nearMissAnimating}
+            scatterSlowdownActive={scatterSlowdownActive}
+            lastWinType={lastWinType}
+            scatterFanfareActive={scatterFanfareActive}
+          />
+        </div>
+
+        {/* ── Cascade Multiplier Display ── */}
+        {showCascadeMultiplier && cascadeLevel > 1 && (
+          <div className="w-full px-4 mb-2 flex justify-center pointer-events-none z-20">
+            <div className="font-display font-black" style={{
+              fontSize: "clamp(1.5rem, 5vw, 3rem)",
+              color: cascadeLevel >= 4 ? "#FF6B35" : cascadeLevel >= 3 ? "#FFD700" : "#D4AF37",
+              textShadow: `0 0 30px ${cascadeLevel >= 4 ? "rgba(255,107,53,0.9)" : cascadeLevel >= 3 ? "rgba(255,215,0,0.9)" : "rgba(212,175,55,0.8)"}`,
+              animation: "cascadeMultiplierPopup 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both",
+            }}>
+              {cascadeLevel}x CASCADE!
+            </div>
+          </div>
+        )}
+
+        {/* ── Button Panel ── */}
+        <CabinetButtonPanel
+          bet={bet}
+          setBet={setBet}
+          paylines={paylines}
+          setPaylines={setPaylines}
+          spin={spin}
+          autoplay={autoplay}
+          setAutoplay={setAutoplay}
+          canSpin={canSpin}
+          totalBet={totalBet}
+          coins={coins}
+          onCoinShop={onCoinShop}
+          soundEnabled={soundEnabled}
+          setSoundMuted={setSoundMuted}
+          soundMuted={soundMuted}
+          spinButtonPulse={spinButtonPulse}
+          shakeIntensity={shakeIntensity}
+          selectedCurrency={selectedCurrency}
+        />
+      </div>
+
+      {/* Global styles */}
+      <style jsx global>{`
+        @keyframes cabinetGlow {
+          0%, 100% { opacity: 0.8; }
           50% { opacity: 1; }
+        }
+        @keyframes ledPulse {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+        @keyframes ledPulse {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0; }
+        }
+        @keyframes spinPulse {
+          0%, 100% { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.6), 0 0 80px rgba(212,175,55,0.3), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3); }
+          50% { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 60px rgba(212,175,55,0.9), 0 0 120px rgba(212,175,55,0.5), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3); }
+        }
+        @keyframes spinIconRotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         @keyframes paylinePulse {
           0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.4); }
+          50% { opacity: 1; transform: scale(1.2); }
         }
-        @keyframes spinBtnPulse {
-          0%, 100% {
-            box-shadow: 0 0 25px rgba(255,215,0,0.7), 0 0 50px rgba(255,215,0,0.3), 0 6px 20px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.3);
-          }
-          50% {
-            box-shadow: 0 0 45px rgba(255,215,0,1), 0 0 90px rgba(255,215,0,0.6), 0 8px 30px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.4);
-          }
-        }
-        @keyframes winBounce {
-          0% { transform: scale(1); }
-          15% { transform: scale(1.3); }
-          30% { transform: scale(0.92); }
-          45% { transform: scale(1.12); }
-          60% { transform: scale(0.97); }
-          75% { transform: scale(1.05); }
-          100% { transform: scale(1); }
-        }
-        @keyframes winFlashBg {
-          0%, 100% { opacity: 0; }
-          10%, 30%, 50%, 70%, 90% { opacity: 1; }
-          20%, 40%, 60%, 80% { opacity: 0; }
-        }
-        @keyframes winFlashReel {
-          0%, 100% { filter: brightness(1); }
-          50% { filter: brightness(2.5) saturate(1.5); }
-        }
-        @keyframes screenShakeLight {
-          0%, 100% { transform: translate(0, 0); }
-          25% { transform: translate(-2px, -1px); }
-          50% { transform: translate(2px, 1px); }
-          75% { transform: translate(-1px, 2px); }
-        }
-        @keyframes screenShakeMedium {
-          0%, 100% { transform: translate(0, 0); }
-          10% { transform: translate(-4px, -3px); }
-          20% { transform: translate(4px, 3px); }
-          30% { transform: translate(-4px, 3px); }
-          40% { transform: translate(4px, -3px); }
-          50% { transform: translate(-3px, 2px); }
-          60% { transform: translate(3px, -2px); }
-          70% { transform: translate(-2px, 3px); }
-          80% { transform: translate(2px, -3px); }
-          90% { transform: translate(-1px, 1px); }
-        }
-        @keyframes screenShakeHeavy {
-          0%, 100% { transform: translate(0, 0); }
-          5% { transform: translate(-8px, -6px) rotate(-1deg); }
-          10% { transform: translate(8px, 6px) rotate(1deg); }
-          15% { transform: translate(-8px, 4px) rotate(-0.5deg); }
-          20% { transform: translate(8px, -4px) rotate(0.5deg); }
-          25% { transform: translate(-6px, -5px); }
-          30% { transform: translate(6px, 5px); }
-          35% { transform: translate(-5px, 3px); }
-          40% { transform: translate(5px, -3px); }
-          45% { transform: translate(-4px, 4px); }
-          50% { transform: translate(4px, -4px); }
-          55% { transform: translate(-3px, 2px); }
-          60% { transform: translate(3px, -2px); }
-          65% { transform: translate(-2px, 3px); }
-          70% { transform: translate(2px, -3px); }
-          75% { transform: translate(-2px, 2px); }
-          80% { transform: translate(2px, -2px); }
-          85% { transform: translate(-1px, 1px); }
-          90% { transform: translate(1px, -1px); }
-        }
-        .screen-shake-light { animation: screenShakeLight 0.3s ease-in-out; }
-        .screen-shake-medium { animation: screenShakeMedium 0.5s ease-in-out; }
-        .screen-shake-heavy { animation: screenShakeHeavy 0.8s ease-in-out; }
-        .screen-shake-heavy svg { transform-origin: center; }
-        @keyframes winBanner {
-          0% { opacity: 0; transform: scale(0.5) translateY(-20px); }
-          40% { opacity: 1; transform: scale(1.15) translateY(0); }
-          65% { transform: scale(0.97); }
-          80% { transform: scale(1.03); }
-          100% { opacity: 1; transform: scale(1); }
-        }
-        @keyframes winBannerBig {
-          0% { opacity: 0; transform: scale(0.3) rotate(-8deg); }
-          35% { opacity: 1; transform: scale(1.2) rotate(3deg); }
-          55% { transform: scale(0.95) rotate(-1deg); }
-          70% { transform: scale(1.04) rotate(0.5deg); }
-          85% { transform: scale(0.99) rotate(0deg); }
-          100% { opacity: 1; transform: scale(1) rotate(0deg); }
-        }
-        @keyframes symbolPopWin {
-          0% { transform: scale(1); }
-          40% { transform: scale(1.45); filter: brightness(2); }
-          65% { transform: scale(0.88); }
-          82% { transform: scale(1.08); }
-          100% { transform: scale(1); filter: brightness(1); }
-        }
-        @keyframes bigWinTrail {
-          0% { opacity: 0; transform: scale(0.5); }
-          40% { opacity: 1; transform: scale(1.3); }
-          100% { opacity: 0; transform: scale(2); }
-        }
-        @keyframes megaWinPulse {
-          0%, 100% { text-shadow: 0 0 20px rgba(255,107,53,0.8), 0 0 40px rgba(255,107,53,0.4); }
-          50% { text-shadow: 0 0 40px rgba(255,107,53,1), 0 0 80px rgba(255,107,53,0.7); }
-        }
-        @keyframes jackpotPulse {
-          0%, 100% { text-shadow: 0 0 30px rgba(255,215,0,0.9), 0 0 60px rgba(255,215,0,0.5); }
-          50% { text-shadow: 0 0 60px rgba(255,215,0,1), 0 0 120px rgba(255,215,0,0.8), 0 0 200px rgba(255,215,0,0.5); }
-        }
-        .symbol-win-pop {
-          animation: symbolPopWin 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
-        }
-        @keyframes symbolBounce {
-          0% { transform: scale(1); }
-          15% { transform: scale(1.3); }
-          30% { transform: scale(0.9); }
-          45% { transform: scale(1.15); }
-          60% { transform: scale(0.95); }
-          75% { transform: scale(1.05); }
-          100% { transform: scale(1); }
-        }
-        .symbol-bounce {
-          animation: symbolBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-        }
-        @keyframes symbolFlash {
-          0% { filter: brightness(1) saturate(1); }
-          30% { filter: brightness(3) saturate(0); }
-          100% { filter: brightness(1) saturate(1); }
-        }
-        .symbol-flash {
-          animation: symbolFlash 0.4s ease-out;
+        @keyframes scatterFanfare {
+          0% { opacity: 0; transform: scale(0.9); }
+          50% { opacity: 1; transform: scale(1.02); }
+          100% { opacity: 0; transform: scale(1); }
         }
         @keyframes reelWinGlow {
-          0%, 100% { box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 10px rgba(212,175,55,0.2); }
-          50% { box-shadow: inset 0 0 30px rgba(0,0,0,0.4), 0 0 40px rgba(255,215,0,0.8), 0 0 80px rgba(255,215,0,0.4); }
+          0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.8), inset 0 0 20px rgba(255,215,0,0.2); }
+          50% { box-shadow: 0 0 40px rgba(255,215,0,1), inset 0 0 40px rgba(255,215,0,0.4); }
         }
-        
-        /* ── Cascade Animations ── */
-        @keyframes cascadeDisappear {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.2); opacity: 0.8; }
-          100% { transform: scale(0); opacity: 0; }
+        @keyframes winCellPulse {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
         }
-        .cascade-disappear {
-          animation: cascadeDisappear 0.4s ease-in forwards;
-        }
-        
-        @keyframes cascadeFall {
-          0% { transform: translateY(-100%); opacity: 0; }
-          30% { opacity: 0; }
-          60% { transform: translateY(10%); }
-          100% { transform: translateY(0); opacity: 1; }
-        }
-        .cascade-fall {
-          animation: cascadeFall 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-        }
-        
-        @keyframes cascadeSpawn {
-          0% { transform: scale(0.5) translateY(-50%); opacity: 0; }
-          60% { transform: scale(1.1); opacity: 1; }
-          80% { transform: scale(0.95); }
+        @keyframes cascadeMultiplierPopup {
+          0% { transform: scale(0.5); opacity: 0; }
+          50% { transform: scale(1.1); opacity: 1; }
           100% { transform: scale(1); opacity: 1; }
         }
-        .cascade-spawn {
-          animation: cascadeSpawn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .cascade-disappear { animation: cascadeDisappear 0.4s ease-out forwards; }
+        @keyframes cascadeDisappear {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.5); opacity: 0.5; }
+          100% { transform: scale(0); opacity: 0; }
         }
-        
-        @keyframes cascadeMultiplierPopup {
-          0% { transform: scale(0) rotate(-10deg); opacity: 0; }
-          50% { transform: scale(1.2) rotate(5deg); opacity: 1; }
-          70% { transform: scale(0.95) rotate(-2deg); }
-          100% { transform: scale(1) rotate(0deg); opacity: 1; }
-        }
-        
-        @keyframes cascadeMultiplierPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-        
-        @keyframes cascadeLevelPulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.08); opacity: 0.9; }
-        }
-        
-        /* ── Scatter Anticipation Animations ── */
-        @keyframes scatterSlowdown {
-          0% { filter: blur(0px); }
-          30% { filter: blur(4px) brightness(1.3); }
-          60% { filter: blur(6px) brightness(1.5); }
-          80% { filter: blur(3px); }
-          100% { filter: blur(0px); }
-        }
-        .scatter-slowdown-reel {
-          animation: scatterSlowdown 0.8s ease-in-out;
-        }
-        
-        @keyframes scatterFanfare {
-          0% { background: radial-gradient(ellipse at center, rgba(255,107,107,0.3) 0%, transparent 50%); }
-          50% { background: radial-gradient(ellipse at center, rgba(255,215,0,0.2) 0%, transparent 60%); }
-          100% { background: transparent; }
-        }
-        .scatter-fanfare {
-          animation: scatterFanfare 0.5s ease-out;
-        }
-        
-        /* ── Sticky Wild Animations ── */
+        .cascade-fall { animation: cascadeFall 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes cascadeFall { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .sticky-wild-lock { animation: stickyWildLock 0.6s ease-in-out; }
         @keyframes stickyWildLock {
           0%, 100% { transform: translate(0, 0); }
           20% { transform: translate(-3px, 2px); }
@@ -1825,181 +1362,70 @@ export default function SlotMachine({
           60% { transform: translate(-2px, -2px); }
           80% { transform: translate(2px, 2px); }
         }
-        .wild-lock-shake {
-          animation: stickyWildLock 0.6s ease-in-out;
-        }
-        
-        @keyframes stickyWildPulse {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(1.05); }
-        }
-        .sticky-wild-glow {
-          animation: stickyWildPulse 0.8s ease-in-out infinite;
-        }
-        
-        @keyframes stickyWildCelebrate {
-          0% { transform: scale(1); filter: brightness(1); }
-          25% { transform: scale(1.3); filter: brightness(1.5); }
-          50% { transform: scale(1.1); filter: brightness(1.3); }
-          75% { transform: scale(1.2); filter: brightness(1.4); }
-          100% { transform: scale(1); filter: brightness(1); }
-        }
-        .sticky-wild-celebrate {
-          animation: stickyWildCelebrate 0.8s ease-out;
-        }
-        
-        /* ── Near-Miss Animations ── */
-        @keyframes nearMissJiggle {
-          0%, 100% { transform: translateX(0) rotate(0deg); }
-          15% { transform: translateX(-4px) rotate(-2deg); }
-          30% { transform: translateX(4px) rotate(2deg); }
-          45% { transform: translateX(-3px) rotate(-1deg); }
-          60% { transform: translateX(3px) rotate(1deg); }
-          75% { transform: translateX(-2px) rotate(0deg); }
-          90% { transform: translateX(2px) rotate(0deg); }
-        }
-        .near-miss-jiggle {
-          animation: nearMissJiggle 0.6s ease-in-out;
-        }
-        
+        .sticky-wild-glow { animation: stickyWildPulse 0.8s ease-in-out infinite; }
+        @keyframes stickyWildPulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }
+        .sticky-wild-celebrate { animation: stickyWildCelebrate 0.8s ease-out; }
+        @keyframes stickyWildCelebrate { 0% { transform: scale(1); filter: brightness(1); } 25% { transform: scale(1.3); filter: brightness(1.5); } 50% { transform: scale(1.1); filter: brightness(1.3); } 75% { transform: scale(1.2); filter: brightness(1.4); } 100% { transform: scale(1); filter: brightness(1); } }
+        .symbol-win-pop { animation: symbolWinPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes symbolWinPop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        .symbol-bounce { animation: symbolBounce 0.6s ease-out; }
+        @keyframes symbolBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .cell-win-glow { box-shadow: 0 0 30px rgba(255,215,0,0.8), inset 0 0 20px rgba(255,215,0,0.2); animation: winCellPulse 0.8s ease-in-out infinite alternate; }
+        .near-miss-gold { animation: nearMissGold 0.8s ease-out; }
         @keyframes nearMissGold {
-          0% { 
-            box-shadow: 0 0 0 rgba(255,215,0,0);
-            filter: brightness(1);
-          }
-          30% { 
-            box-shadow: 0 0 30px rgba(255,215,0,0.8), inset 0 0 20px rgba(255,215,0,0.4);
-            filter: brightness(1.5);
-          }
-          60% { 
-            box-shadow: 0 0 20px rgba(255,215,0,0.6), inset 0 0 15px rgba(255,215,0,0.3);
-            filter: brightness(1.3);
-          }
-          100% { 
-            box-shadow: 0 0 0 rgba(255,215,0,0);
-            filter: brightness(1);
-          }
+          0% { box-shadow: 0 0 0 rgba(255,215,0,0); filter: brightness(1); }
+          30% { box-shadow: 0 0 30px rgba(255,215,0,0.8), inset 0 0 20px rgba(255,215,0,0.4); filter: brightness(1.5); }
+          60% { box-shadow: 0 0 20px rgba(255,215,0,0.6), inset 0 0 15px rgba(255,215,0,0.3); filter: brightness(1.3); }
+          100% { box-shadow: 0 0 0 rgba(255,215,0,0); filter: brightness(1); }
         }
-        .near-miss-gold {
-          animation: nearMissGold 0.8s ease-out;
-        }
-        
-        /* ── Empty Cell Animation ── */
-        @keyframes emptyCellFade {
-          0% { opacity: 1; }
-          100% { opacity: 0.3; }
-        }
-        .empty-cell {
-          animation: emptyCellFade 0.3s ease-out forwards;
-        }
-
-        /* Scrollbar hide utility for mobile bet/lines scroll */
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
+        .near-miss-jiggle { animation: nearMissJiggle 0.6s ease-in-out; }
+        @keyframes nearMissJiggle { 0%, 100% { transform: translateX(0) rotate(0deg); } 15% { transform: translateX(-4px) rotate(-2deg); } 30% { transform: translateX(4px) rotate(2deg); } 45% { transform: translateX(-3px) rotate(-1deg); } 60% { transform: translateX(3px) rotate(1deg); } 75% { transform: translateX(-2px) rotate(0deg); } 90% { transform: translateX(2px) rotate(0deg); } }
+        .empty-cell { animation: emptyCellFade 0.3s ease-out forwards; }
+        @keyframes emptyCellFade { 0% { opacity: 1; } 100% { opacity: 0.3; } }
+        .wild-lock-shake { animation: stickyWildLock 0.6s ease-in-out; }
+        .scatter-slowdown-reel { animation: scatterSlowdown 0.5s ease-in-out; }
+        @keyframes scatterSlowdown { 0%, 100% { border-color: rgba(255,107,107,0.5); } 50% { border-color: #FF6B6B; box-shadow: 0 0 30px rgba(255,107,107,0.5); } }
+        .screen-shake-light { animation: screenShakeLight 0.3s ease-out; }
+        @keyframes screenShakeLight { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+        .screen-shake-medium { animation: screenShakeMedium 0.5s ease-out; }
+        @keyframes screenShakeMedium { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-5px, -3px); } 40% { transform: translate(5px, 3px); } 60% { transform: translate(-4px, 2px); } 80% { transform: translate(4px, -2px); } }
+        .screen-shake-heavy { animation: screenShakeHeavy 0.8s ease-out; }
+        @keyframes screenShakeHeavy { 0%, 100% { transform: translate(0, 0); } 15% { transform: translate(-8px, -5px) rotate(-1deg); } 30% { transform: translate(8px, 5px) rotate(1deg); } 45% { transform: translate(-6px, 3px) rotate(-1deg); } 60% { transform: translate(6px, -3px) rotate(1deg); } 75% { transform: translate(-4px, 2px) rotate(-1deg); } 90% { transform: translate(4px, -2px) rotate(0deg); } }
+        .marquee-text { display: inline-block; white-space: nowrap; animation: marquee 30s linear infinite; }
+        @keyframes marquee { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        @media (max-width: 480px) {
+          .slot-machine-cabinet { border-radius: 8px 8px 0 0; }
+          .spin-button { font-size: 1.2rem !important; padding: 12px 20px !important; min-height: 60px !important; }
         }
       `}</style>
     </div>
   );
 }
 
-function SpinningDots() {
-  return (
-    <div className="flex gap-2 items-center">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="w-1.5 h-1.5 rounded-full"
-          style={{
-            background: "#D4AF37",
-            animation: `paylinePulse 0.9s ease-in-out ${i * 0.25}s infinite`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function ArtDecoOrnament({ flip = false }: { flip?: boolean }) {
-  return (
-    <div
-      className="flex items-center gap-1 opacity-40"
-      style={{ transform: flip ? "scaleX(-1)" : "none" }}
-    >
-      <div className="w-6 h-px" style={{ background: "linear-gradient(90deg, transparent, #D4AF37)" }} />
-      <div className="text-xs font-numbers" style={{ color: "#D4AF37" }}>◆</div>
-      <div className="w-3 h-px" style={{ background: "#D4AF37" }} />
-      <div className="text-xs font-numbers" style={{ color: "#C8860A" }}>◇</div>
-    </div>
-  );
-}
-
-function PayTable() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="w-full mt-2">
-      <button
-        data-paytable-toggle
-        onClick={() => setOpen((o) => !o)}
-        className="w-full py-2 text-xs font-numbers tracking-widest uppercase transition-all opacity-50 hover:opacity-90"
-        style={{ color: "#D4AF37", background: "transparent", border: "none", cursor: "pointer" }}
-      >
-        {open ? "▲ Hide Paytable" : "▼ View Paytable & Rules"}
-      </button>
-
-      {open && (
-        <div
-          className="rounded-lg overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, #050510, #0a0a1a)",
-            border: "1px solid rgba(212,175,55,0.25)",
-          }}
-        >
-          <div className="p-4">
-            <div className="text-center mb-4">
-              <div className="font-display text-base text-gold-gradient">Paytable</div>
-              <div className="text-xs font-body mt-0.5" style={{ color: "rgba(212,175,55,0.5)" }}>
-                Payouts per 10-coin bet unit · 3 / 4 / 5 matching symbols
-              </div>
-            </div>
-            <div className="space-y-1">
-              {SYMBOLS.map((sym) => (
-                <div
-                  key={sym.id}
-                  className="paytable-row flex items-center gap-3 py-2 px-3 rounded"
-                >
-                  <SymbolIcon symbolId={sym.id} size={22} />
-                  <div className="flex-1">
-                    <div className="text-xs font-numbers font-bold" style={{ color: sym.color }}>
-                      {sym.name}
-                      {sym.isWild && <span className="ml-1 text-xs" style={{ color: "#90EE90" }}>[WILD]</span>}
-                      {sym.isScatter && <span className="ml-1 text-xs" style={{ color: "#FF6B6B" }}>[SCATTER]</span>}
-                    </div>
-                  </div>
-                  <div className="text-xs font-numbers text-right" style={{ color: "rgba(212,175,55,0.7)" }}>
-                    {sym.payouts[0]}x / {sym.payouts[1]}x / {sym.payouts[2]}x
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 pt-3 border-t" style={{ borderColor: "rgba(212,175,55,0.15)" }}>
-              <div className="text-xs font-body space-y-1" style={{ color: "rgba(212,175,55,0.5)" }}>
-                <div>🍀 Wild Clover substitutes for all symbols except scatters</div>
-                <div>⭐ 3+ Scatters = 10 Free Spins · 5 Scatters = Jackpot</div>
-                <div>🗡️ 3+ Huntress = Bonus Round with multiplier rewards</div>
-                <div>All wins multiplied by paylines × bet per line</div>
-                <div className="mt-2" style={{ color: "rgba(255,107,53,0.7)" }}>
-                  🔥 CASCADE SYSTEM: Consecutive wins multiply up to 5x! 🔥
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+// Helper functions (defined outside component to avoid recreating)
+function findNearMiss(reels: SymbolId[][], winLines: WinLine[]): { reelIdx: number; rowIdx: number }[] {
+  const nearMisses: { reelIdx: number; rowIdx: number }[] = [];
+  winLines.forEach((line) => {
+    if (line.row < 0 || line.row >= 25) return;
+    const path = getPaylinePath(line.row);
+    const paylineSymbols = reels.map((reel, reelIdx) => ({ symId: reel[path[reelIdx]], reelIdx, rowIdx: path[reelIdx] }));
+    const counts: Record<string, number> = {};
+    paylineSymbols.forEach(cell => { if (!isWildSymbol(cell.symId) && !isScatterSymbol(cell.symId)) counts[cell.symId] = (counts[cell.symId] || 0) + 1; });
+    const pairs = Object.entries(counts).filter(([_, count]) => count >= 2);
+    pairs.forEach(([symId]) => {
+      paylineSymbols.forEach(cell => {
+        if (cell.symId === symId) return;
+        if (isWildSymbol(cell.symId) || isScatterSymbol(cell.symId)) return;
+        const cellSym = getSymbol(cell.symId);
+        const targetSym = getSymbol(symId as SymbolId);
+        if (cellSym.payouts[0] > 0 && cellSym.payouts[0] <= targetSym.payouts[0] * 2 && cellSym.payouts[0] >= targetSym.payouts[0] / 2) {
+          nearMisses.push({ reelIdx: cell.reelIdx, rowIdx: cell.rowIdx });
+        }
+      });
+    });
+  });
+  const seen = new Set<string>();
+  return nearMisses.filter(nm => { const key = `${nm.reelIdx}-${nm.rowIdx}`; if (seen.has(key)) return false; seen.add(key); return true; });
 }
