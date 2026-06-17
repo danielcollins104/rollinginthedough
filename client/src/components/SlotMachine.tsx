@@ -163,7 +163,7 @@ function findNearMiss(reels: SymbolId[][], winLines: WinLine[]): { reelIdx: numb
 }
 
 // Physics-based spinning reel strip with elastic slam stop
-function ReelStrip({ symbols, spinning, done, size = 36 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number }) {
+function ReelStrip({ symbols, spinning, done, size = 36, reelIndex = 0 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number; reelIndex?: number }) {
   // For spinning: we use a continuous strip that translates Y
   // For stopped: show the final 3 symbols
   const [translateY, setTranslateY] = useState(0);
@@ -242,9 +242,9 @@ function ReelStrip({ symbols, spinning, done, size = 36 }: { symbols: SymbolId[]
           setTranslateY(targetY);
           setVelocity(0);
           
-          // Trigger impact effects
+          // Trigger impact effects with reel index
           window.dispatchEvent(new CustomEvent('reel-slam', { 
-            detail: { reelIndex: 0 } // Will be overridden by parent
+            detail: { reelIndex } 
           }));
         }
       };
@@ -256,7 +256,7 @@ function ReelStrip({ symbols, spinning, done, size = 36 }: { symbols: SymbolId[]
         if (frameId) cancelAnimationFrame(frameId);
       };
     }
-  }, [spinning, done, size, translateY, velocity]);
+  }, [spinning, done, size, translateY, velocity, reelIndex]);
 
   // When done, show static symbols in viewport
   if (done && !spinning) {
@@ -484,6 +484,26 @@ export default function SlotMachine({
   useEffect(() => {
     if (externalShowScratch) setShowScratchGame(true);
   }, [externalShowScratch]);
+
+  // Listen for reel slam events from ReelStrip components
+  useEffect(() => {
+    const handleReelSlam = (event: CustomEvent<{ reelIndex: number }>) => {
+      const { reelIndex } = event.detail;
+      if (!soundEnabled) return;
+      
+      // Screen shake on each reel slam - heavier for later reels
+      const shakeIntensity: 'light' | 'medium' | 'heavy' = reelIndex >= 3 ? 'heavy' : reelIndex >= 2 ? 'medium' : 'light';
+      setShakeIntensity(shakeIntensity);
+      const shakeDuration = shakeIntensity === 'heavy' ? 400 : shakeIntensity === 'medium' ? 300 : 200;
+      setTimeout(() => setShakeIntensity('none'), shakeDuration);
+      
+      // Heavy impact sound on each reel stop
+      playSound("reel_stop");
+    };
+    
+    window.addEventListener('reel-slam', handleReelSlam as EventListener);
+    return () => window.removeEventListener('reel-slam', handleReelSlam as EventListener);
+  }, [soundEnabled]);
 
   // Pulse SPIN button when idle
   useEffect(() => {
@@ -809,9 +829,8 @@ export default function SlotMachine({
               setTimeout(() => setScatterFanfareActive(false), 1500);
             } else if (hasWild) {
               playSound("wild_land");
-            } else {
-              playSound("reel_stop");
             }
+            // Generic reel_stop sound now handled by reel-slam event listener
           }
           
           // After all reels done, check for scatter anticipation on next spin
@@ -1158,7 +1177,7 @@ export default function SlotMachine({
               }}
             >
               {/* Spinning blur overlay */}
-              <ReelStrip symbols={reel} spinning={spinning} done={reelDone[reelIdx]} />
+              <ReelStrip symbols={reel} spinning={spinning} done={reelDone[reelIdx]} reelIndex={reelIdx} />
 
               {/* Symbols */}
               {reel.map((symId, rowIdx) => {
