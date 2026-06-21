@@ -1179,20 +1179,23 @@ export default function SlotMachine({
       )}
 
       {/* ── Physical Cabinet Structure ── */}
-      <div className="w-full relative" style={{
-        background: "linear-gradient(180deg, #0a0a12 0%, #050510 50%, #030308 100%)",
-        borderRadius: "16px 16px 0 0",
-        boxShadow: `
-          inset 0 0 60px rgba(0,0,0,0.8),
-          0 0 40px rgba(0, 100, 255, 0.15),
-          0 0 80px rgba(0, 80, 200, 0.1),
-          inset 0 2px 0 rgba(0, 150, 255, 0.3),
-          inset 0 -2px 0 rgba(0, 150, 255, 0.1)
-        `,
-        border: "none",
-        position: "relative",
-        overflow: "hidden",
-      }}>
+      <div
+        className={`w-full relative ${scatterFanfareActive ? 'bonus-alert bonus-alert-shake' : ''}`}
+        style={{
+          background: "linear-gradient(180deg, #0a0a12 0%, #050510 50%, #030308 100%)",
+          borderRadius: "16px 16px 0 0",
+          boxShadow: `
+            inset 0 0 60px rgba(0,0,0,0.8),
+            0 0 40px rgba(0, 100, 255, 0.15),
+            0 0 80px rgba(0, 80, 200, 0.1),
+            inset 0 2px 0 rgba(0, 150, 255, 0.3),
+            inset 0 -2px 0 rgba(0, 150, 255, 0.1)
+          `,
+          border: "none",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
         {/* Blue LED edge strips - left & right */}
         <div className="absolute inset-y-0 left-0 w-1 pointer-events-none" style={{
           background: "linear-gradient(180deg, transparent, #0066ff, #0088ff, #00aaff, #0088ff, #0066ff, transparent)",
@@ -1424,6 +1427,25 @@ export default function SlotMachine({
           0%   { background-position: 200% 0; }
           100% { background-position: -150% 0; }
         }
+        /* Bonus entry strobe — 5 quick red flashes over 700ms when 3+
+           scatters land (which also triggers the bonus game overlay).
+           Pulses the entire cabinet body border so the alert reads
+           even with peripheral vision. */
+        @keyframes bonusAlertStrobe {
+          0%, 100% { box-shadow: inset 0 0 60px rgba(0,0,0,0.8), 0 0 40px rgba(0, 100, 255, 0.15), 0 0 80px rgba(0, 80, 200, 0.1); }
+          10%, 30%, 50%, 70%, 90% { box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.5), 0 0 60px rgba(255, 50, 50, 0.9), 0 0 120px rgba(255, 30, 30, 0.6); }
+          20%, 40%, 60%, 80%     { box-shadow: inset 0 0 60px rgba(0,0,0,0.8), 0 0 40px rgba(255, 30, 30, 0.3), 0 0 80px rgba(255, 50, 50, 0.2); }
+        }
+        .bonus-alert { animation: bonusAlertStrobe 0.7s ease-in-out 2; }
+        /* Brief screen shake to amplify the alert (~140ms, 2 cycles) */
+        @keyframes bonusAlertShake {
+          0%, 100% { transform: translate(0, 0); }
+          20%      { transform: translate(-4px, 2px); }
+          40%      { transform: translate(4px, -2px); }
+          60%      { transform: translate(-3px, -1px); }
+          80%      { transform: translate(3px, 1px); }
+        }
+        .bonus-alert-shake { animation: bonusAlertShake 0.7s ease-in-out 2; }
         .screen-shake-light { animation: screenShakeLight 0.3s ease-out; }
         @keyframes screenShakeLight { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
         .screen-shake-medium { animation: screenShakeMedium 0.5s ease-out; }
