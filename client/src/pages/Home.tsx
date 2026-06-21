@@ -27,6 +27,7 @@ import { LevelUp } from "@/components/LevelUp";
 import { Missions } from "@/components/Missions";
 import { SessionTimeReward } from "@/components/SessionTimeReward";
 import ReferralScreen, { FloatingReferralBadge } from "@/components/ReferralScreen";
+import { Toasts } from "@/components/Toasts";
 
 export default function Home() {
   const {
@@ -44,6 +45,8 @@ export default function Home() {
     level,
     xp,
     xpToNext,
+    consecutiveWins,
+    maxStreak,
     autoplay,
     setAutoplay,
     spin,
@@ -274,6 +277,8 @@ export default function Home() {
           setAutoplay={setAutoplay}
           spinCount={spinCount}
           soundEnabled={soundEnabled}
+          consecutiveWins={consecutiveWins}
+          maxStreak={maxStreak}
           paylines={paylines}
           setPaylines={setPaylines}
           onCoinShop={() => setShowCoinShop(true)}
@@ -397,6 +402,9 @@ export default function Home() {
       
       {/* Floating referral badge - shows when user has referrals */}
       <FloatingReferralBadge referralCount={0} onClick={() => setShowReferral(true)} />
+
+      {/* Global toast stack — listens for window 'toast' events from anywhere */}
+      <Toasts />
       
       {/* Streak display panel - accessible from game area */}
       <div className="absolute top-20 right-2 z-20 w-40">

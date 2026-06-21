@@ -41,6 +41,8 @@ interface Props {
   setAutoplay: (a: boolean) => void;
   spinCount: number;
   soundEnabled: boolean;
+  consecutiveWins?: number;
+  maxStreak?: number;
   paylines?: number;
   setPaylines?: (p: number) => void;
   onCoinShop?: () => void;
@@ -839,6 +841,8 @@ export default function SlotMachine({
   setAutoplay,
   spinCount,
   soundEnabled,
+  consecutiveWins = 0,
+  maxStreak = 0,
   paylines,
   setPaylines,
   onCoinShop,
@@ -1249,6 +1253,49 @@ export default function SlotMachine({
           />
         </div>
 
+        {/* ── Hot Streak Indicator (Vegas continuation-of-play mechanic) ── */}
+        {/* Hidden until 2+ consecutive wins, then pulses + scales with intensity.
+            "MAX: N" subtitle shows the player's best streak this session. */}
+        {consecutiveWins >= 2 && (
+          <div
+            className="w-full px-4 mb-2 flex justify-center pointer-events-none"
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              className="font-display font-black tracking-widest uppercase select-none"
+              style={{
+                fontSize: "clamp(0.85rem, 2.5vw, 1.15rem)",
+                color: consecutiveWins >= 5 ? "#FF6B35" : "#FFD700",
+                background: consecutiveWins >= 5
+                  ? "linear-gradient(180deg, rgba(255,107,53,0.18) 0%, rgba(0,0,0,0.6) 100%)"
+                  : "linear-gradient(180deg, rgba(255,215,0,0.15) 0%, rgba(0,0,0,0.6) 100%)",
+                border: `2px solid ${consecutiveWins >= 5 ? "#FF6B35" : "#FFD700"}`,
+                borderRadius: "999px",
+                padding: "4px 16px",
+                textShadow: consecutiveWins >= 5
+                  ? "0 0 12px rgba(255,107,53,0.9)"
+                  : "0 0 10px rgba(255,215,0,0.8)",
+                boxShadow: consecutiveWins >= 5
+                  ? "0 0 20px rgba(255,107,53,0.5)"
+                  : "0 0 15px rgba(255,215,0,0.4)",
+                animation: consecutiveWins >= 5
+                  ? "streakPulse 0.5s ease-in-out infinite alternate"
+                  : "streakPulse 1s ease-in-out infinite alternate",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "10px",
+              }}
+            >
+              <span aria-hidden="true">🔥</span>
+              <span>{consecutiveWins}x STREAK!</span>
+              {maxStreak > consecutiveWins && (
+                <span style={{ fontSize: "0.7em", opacity: 0.7 }}>MAX: {maxStreak}</span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Reel Window ── */}
         <div className="w-full px-4 mb-3">
           <ReelWindow 
@@ -1446,6 +1493,19 @@ export default function SlotMachine({
           80%      { transform: translate(3px, 1px); }
         }
         .bonus-alert-shake { animation: bonusAlertShake 0.7s ease-in-out 2; }
+        @keyframes toastSlideIn {
+          0%   { opacity: 0; transform: translateY(40px) scale(0.85); }
+          70%  { opacity: 1; transform: translateY(-4px) scale(1.04); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes toastSlideOut {
+          0%   { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-20px); }
+        }
+        @keyframes streakPulse {
+          0%   { transform: scale(1); }
+          100% { transform: scale(1.06); }
+        }
         .screen-shake-light { animation: screenShakeLight 0.3s ease-out; }
         @keyframes screenShakeLight { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
         .screen-shake-medium { animation: screenShakeMedium 0.5s ease-out; }

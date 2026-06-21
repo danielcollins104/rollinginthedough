@@ -329,6 +329,8 @@ export function useGameState() {
   const [spinCount, setSpinCount] = useState<number>(saved?.spinCount ?? 0);
   const [level, setLevel] = useState<number>(saved?.level ?? 1);
   const [xp, setXp] = useState<number>(saved?.xp ?? 0);
+  const [consecutiveWins, setConsecutiveWins] = useState<number>(saved?.consecutiveWins ?? 0);
+  const [maxStreak, setMaxStreak] = useState<number>(saved?.maxStreak ?? 0);
   const [autoplay, setAutoplay] = useState(false);
   const [jackpotPool, setJackpotPool] = useState<number>(saved?.jackpotPool ?? JACKPOT_SEED);
   const [soundEnabled, setSoundEnabled] = useState(saved?.soundEnabled ?? true);
@@ -344,8 +346,8 @@ export function useGameState() {
 
   // Save state on changes
   useEffect(() => {
-    saveState({ coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency });
-  }, [coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency]);
+    saveState({ coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency, consecutiveWins, maxStreak });
+  }, [coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency, consecutiveWins, maxStreak]);
   
   // Get current currency balance
   const currentBalance = selectedCurrency === 'gold' ? goldCoins : greenCoins;
@@ -421,6 +423,11 @@ export function useGameState() {
     // Free spins trigger
     if (scatters >= FREE_SPIN_TRIGGER) {
       setFreeSpins((f) => f + FREE_SPIN_COUNT);
+      // Toast for retrigger case (player already had free spins and got more).
+      // Fresh free spins are implied by the scatter fanfare so don't double-toast.
+      window.dispatchEvent(new CustomEvent("toast", {
+        detail: { kind: "retrigger", message: `+${FREE_SPIN_COUNT} FREE SPINS!` },
+      }));
     }
 
     // Scatter bonus trigger: 4+ scatters trigger lucky wheel bonus (in addition to any free spins)
@@ -460,6 +467,11 @@ export function useGameState() {
         const fakeWin = Math.floor(bet * (1.5 + Math.random() * 1.5));
         setWinAmount(fakeWin);
         setLastWinType("SMALL_WIN");
+        // Notify the toast stack so the player sees the "second chance" beat.
+        // Done via window event so this file stays decoupled from Toasts.tsx.
+        window.dispatchEvent(new CustomEvent("toast", {
+          detail: { kind: "secondChance", message: "🍀 SECOND CHANCE — BONUS WIN!" },
+        }));
         setTimeout(() => {
           setWinAmount(0);
           setLastWinType(null);
@@ -481,9 +493,30 @@ export function useGameState() {
     });
 
     setSpinCount((s) => s + 1);
+
+    // Streak tracking: increment on real wins (not LDW), reset on losses.
+    // Done after the spin resolves so the LDW fake-win doesn't count as a
+    // streak win (that would defeat the purpose of streaks being rare).
+    if (finalWin > 0) {
+      setConsecutiveWins(prev => {
+        const next = prev + 1;
+        if (next > maxStreak) setMaxStreak(next);
+        // Streak milestone toasts at 3, 5, 10
+        if (next === 3 || next === 5 || next === 10) {
+          window.dispatchEvent(new CustomEvent("toast", {
+            detail: { kind: "streak", message: `🔥 ${next}x WIN STREAK!` },
+          }));
+        }
+        return next;
+      });
+    } else if (!isJackpot) {
+      // Genuine loss — reset streak. (Jackpot loss isn't possible but guard anyway.)
+      setConsecutiveWins(0);
+    }
+
     setSpinning(false);
     spinningRef.current = false;
-  }, [coins, bet, freeSpins, jackpotPool, level, selectedCurrency, goldCoins, greenCoins]);
+  }, [coins, bet, freeSpins, jackpotPool, level, selectedCurrency, goldCoins, greenCoins, maxStreak]);
 
   // Autoplay logic
   useEffect(() => {
@@ -518,6 +551,8 @@ export function useGameState() {
     level,
     xp,
     xpToNext,
+    consecutiveWins,
+    maxStreak,
     autoplay,
     setAutoplay,
     spin,
