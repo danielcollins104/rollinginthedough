@@ -50,6 +50,7 @@ export default function Home() {
     autoplay,
     setAutoplay,
     spin,
+    triggerDemoSpin,
     jackpotPool,
     soundEnabled,
     setSoundEnabled,
@@ -273,6 +274,7 @@ export default function Home() {
           bet={bet}
           setBet={setBet}
           spin={spin}
+          triggerDemoSpin={triggerDemoSpin}
           autoplay={autoplay}
           setAutoplay={setAutoplay}
           spinCount={spinCount}

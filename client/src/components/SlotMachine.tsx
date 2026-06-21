@@ -37,6 +37,7 @@ interface Props {
   bet: number;
   setBet: (b: number) => void;
   spin: () => void;
+  triggerDemoSpin?: () => void;
   autoplay: boolean;
   setAutoplay: (a: boolean) => void;
   spinCount: number;
@@ -589,7 +590,7 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
 function CabinetButtonPanel({
   bet, setBet, paylines, setPaylines, spin, autoplay, setAutoplay,
   canSpin, totalBet, coins, onCoinShop, soundEnabled, setSoundMuted, soundMuted,
-  spinButtonPulse, shakeIntensity, selectedCurrency, spinning
+  spinButtonPulse, shakeIntensity, selectedCurrency, spinning, freeSpins
 }: any) {
   return (
     <div className="w-full px-2 pb-4" style={{
@@ -757,33 +758,47 @@ function CabinetButtonPanel({
           disabled={!canSpin}
           className="flex-1 flex items-center justify-center gap-3 py-5 px-8 rounded-xl transition-all min-h-[80px]"
           style={{
-            background: canSpin 
-              ? "linear-gradient(180deg, #8B5E0A 0%, #D4AF37 30%, #FFD700 50%, #D4AF37 70%, #8B5E0A 100%)" 
-              : "linear-gradient(180deg, #3a2a00, #2a1a00)",
-            border: "3px solid #FFD700",
+            background: freeSpins > 0
+              ? "linear-gradient(180deg, #2E7D32 0%, #4CAF50 30%, #90EE90 50%, #4CAF50 70%, #2E7D32 100%)"
+              : canSpin
+                ? "linear-gradient(180deg, #8B5E0A 0%, #D4AF37 30%, #FFD700 50%, #D4AF37 70%, #8B5E0A 100%)"
+                : "linear-gradient(180deg, #3a2a00, #2a1a00)",
+            border: freeSpins > 0 ? "3px solid #90EE90" : "3px solid #FFD700",
             borderRadius: "20px",
             color: "#1a1000",
-            boxShadow: `
-              0 8px 30px rgba(0,0,0,0.6),
-              0 0 40px rgba(212,175,55,0.6),
-              0 0 80px rgba(212,175,55,0.3),
-              inset 0 2px 4px rgba(255,255,255,0.3),
-              inset 0 -2px 4px rgba(0,0,0,0.3)
-            `,
+            boxShadow: freeSpins > 0
+              ? `
+                0 8px 30px rgba(0,0,0,0.6),
+                0 0 40px rgba(76,175,80,0.7),
+                0 0 80px rgba(76,175,80,0.4),
+                inset 0 2px 4px rgba(255,255,255,0.3),
+                inset 0 -2px 4px rgba(0,0,0,0.3)
+              `
+              : `
+                0 8px 30px rgba(0,0,0,0.6),
+                0 0 40px rgba(212,175,55,0.6),
+                0 0 80px rgba(212,175,55,0.3),
+                inset 0 2px 4px rgba(255,255,255,0.3),
+                inset 0 -2px 4px rgba(0,0,0,0.3)
+              `,
             fontWeight: 900,
             fontSize: "clamp(1.5rem, 5vw, 2.5rem)",
             letterSpacing: "0.1em",
             textShadow: "0 2px 4px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.2)",
             opacity: canSpin ? 1 : 0.4,
             transform: spinButtonPulse ? "scale(1.02)" : "scale(1)",
-            animation: spinButtonPulse ? "spinPulse 1.5s ease-in-out infinite" : "none",
+            animation: freeSpins > 0
+              ? "freeSpinButtonPulse 1s ease-in-out infinite"
+              : spinButtonPulse ? "spinPulse 1.5s ease-in-out infinite" : "none",
           }}
           onMouseDown={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(0.96)"; }}
           onMouseUp={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(1)"; }}
           onMouseLeave={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(1)"; }}
         >
           <span style={{ fontSize: "2rem", animation: "spinIconRotate 0.8s linear infinite", display: spinning ? "inline-block" : "none" }}>⟳</span>
-          <span className="font-display font-black" style={{ display: spinning ? "none" : "inline" }}>SPIN</span>
+          <span className="font-display font-black" style={{ display: spinning ? "none" : "inline" }}>
+            {freeSpins > 0 ? `FREE ${freeSpins}` : "SPIN"}
+          </span>
           <span style={{ fontSize: "2rem", display: spinning ? "none" : "inline-block" }}>⟳</span>
         </button>
 
@@ -837,6 +852,7 @@ export default function SlotMachine({
   bet,
   setBet,
   spin,
+  triggerDemoSpin,
   autoplay,
   setAutoplay,
   spinCount,
@@ -918,6 +934,33 @@ export default function SlotMachine({
       setSpinButtonPulse(false);
     }
   }, [spinning, cascadeActive, lastSpinTime]);
+
+  // ─── Idle attract mode (Vegas methodology) ───────────────────────────────
+  // Standard behavior of physical casino cabinets: when no one has played
+  // for ~15s, run a free demo spin to attract attention. The demo spin
+  // doesn't deduct bet, doesn't award coins, doesn't grant bonuses — it
+  // just shows the reels spinning so a passerby sees what the machine does.
+  // Any user interaction (real spin, button click, etc.) resets the timer
+  // because lastSpinTime updates whenever spinning starts.
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!triggerDemoSpin) return; // Older callers without this prop = no attract
+    // Only run attract when: not spinning, no free spins, no autoplay,
+    // player has enough coins for at least one real spin (don't demo on
+    // a busted cabinet — that's depressing).
+    const activeBalance = selectedCurrency === 'gold' ? coins : coins;
+    const canAfford = activeBalance >= bet;
+    if (spinning || autoplay || freeSpins > 0 || !canAfford) {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      return;
+    }
+    idleTimerRef.current = setTimeout(() => {
+      triggerDemoSpin();
+    }, 15000);
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [spinning, autoplay, freeSpins, bet, coins, selectedCurrency, lastSpinTime, triggerDemoSpin]);
 
   const displayGrid = cascadeGrid || reels;
 
@@ -1352,6 +1395,7 @@ export default function SlotMachine({
           shakeIntensity={shakeIntensity}
           selectedCurrency={selectedCurrency}
           spinning={spinning}
+          freeSpins={freeSpins}
         />
       </div>
 
@@ -1381,6 +1425,11 @@ export default function SlotMachine({
         @keyframes spinPulse {
           0%, 100% { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.6), 0 0 80px rgba(212,175,55,0.3), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3); }
           50% { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 60px rgba(212,175,55,0.9), 0 0 120px rgba(212,175,55,0.5), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3); }
+        }
+        /* Free-spin mode: faster green pulse to telegraph "this spin is free" */
+        @keyframes freeSpinButtonPulse {
+          0%, 100% { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(76,175,80,0.6), 0 0 80px rgba(76,175,80,0.3), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3); }
+          50%      { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 70px rgba(144,238,144,1), 0 0 140px rgba(76,175,80,0.6), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.3); }
         }
         @keyframes spinIconRotate {
           from { transform: rotate(0deg); }

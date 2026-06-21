@@ -364,11 +364,11 @@ export function useGameState() {
     }
   }, []);
 
-  const spin = useCallback(async () => {
+  const spin = useCallback(async (isDemo = false) => {
     if (spinningRef.current) return;
-    // Check balance using the active currency
+    // Check balance using the active currency (demo always passes)
     const activeBalance = selectedCurrency === 'gold' ? goldCoins : greenCoins;
-    if (freeSpins === 0 && activeBalance < bet) return;
+    if (!isDemo && freeSpins === 0 && activeBalance < bet) return;
 
     spinningRef.current = true;
     setSpinning(true);
@@ -376,9 +376,11 @@ export function useGameState() {
     setWinLines([]);
     setLastWinType(null);
 
-    // Deduct bet from the active currency (unless free spin)
+    // Deduct bet from the active currency (unless free spin or demo)
     const isFree = freeSpins > 0;
-    if (isFree) {
+    if (isDemo) {
+      // Demo (idle attract mode): no bet deduction, no jackpot contribution.
+    } else if (isFree) {
       setFreeSpins((f) => f - 1);
     } else {
       if (selectedCurrency === 'gold') {
@@ -421,7 +423,7 @@ export function useGameState() {
     }
 
     // Free spins trigger
-    if (scatters >= FREE_SPIN_TRIGGER) {
+    if (!isDemo && scatters >= FREE_SPIN_TRIGGER) {
       setFreeSpins((f) => f + FREE_SPIN_COUNT);
       // Toast for retrigger case (player already had free spins and got more).
       // Fresh free spins are implied by the scatter fanfare so don't double-toast.
@@ -431,7 +433,7 @@ export function useGameState() {
     }
 
     // Scatter bonus trigger: 4+ scatters trigger lucky wheel bonus (in addition to any free spins)
-    if (scatters >= 4) {
+    if (!isDemo && scatters >= 4) {
       // 30% chance of bonus game on 4 scatters, guaranteed on 5+
       if (scatters >= 5 || Math.random() < 0.3) {
         setBonusGameType('lucky_spin' as BonusGameType);
@@ -439,12 +441,12 @@ export function useGameState() {
     }
 
     // Huntress bonus trigger (takes precedence if both trigger)
-    if (isHuntressBonus && !bonusGameType) {
+    if (!isDemo && isHuntressBonus && !bonusGameType) {
       setBonusGameType('huntress_bonus' as BonusGameType);
     }
 
     // Update coins in the active currency
-    if (finalWin > 0) {
+    if (!isDemo && finalWin > 0) {
       if (selectedCurrency === 'gold') {
         setGoldCoins((c) => c + finalWin);
       } else {
@@ -479,25 +481,27 @@ export function useGameState() {
       }
     }
 
-    // XP gain
-    const xpGain = Math.floor(bet / 10) + (finalWin > 0 ? Math.floor(finalWin / 20) : 0);
-    setXp((currentXp) => {
-      let newXp = currentXp + xpGain;
-      let newLevel = level;
-      while (newXp >= xpForLevel(newLevel)) {
-        newXp -= xpForLevel(newLevel);
-        newLevel++;
-      }
-      if (newLevel !== level) setLevel(newLevel);
-      return newXp;
-    });
+    // XP gain (skipped on demo — would inflate XP without play)
+    if (!isDemo) {
+      const xpGain = Math.floor(bet / 10) + (finalWin > 0 ? Math.floor(finalWin / 20) : 0);
+      setXp((currentXp) => {
+        let newXp = currentXp + xpGain;
+        let newLevel = level;
+        while (newXp >= xpForLevel(newLevel)) {
+          newXp -= xpForLevel(newLevel);
+          newLevel++;
+        }
+        if (newLevel !== level) setLevel(newLevel);
+        return newXp;
+      });
+    }
 
-    setSpinCount((s) => s + 1);
+    setSpinCount((s) => isDemo ? s : s + 1);
 
-    // Streak tracking: increment on real wins (not LDW), reset on losses.
+    // Streak tracking: increment on real wins (not LDW, not demo), reset on losses.
     // Done after the spin resolves so the LDW fake-win doesn't count as a
     // streak win (that would defeat the purpose of streaks being rare).
-    if (finalWin > 0) {
+    if (!isDemo && finalWin > 0) {
       setConsecutiveWins(prev => {
         const next = prev + 1;
         if (next > maxStreak) setMaxStreak(next);
@@ -509,7 +513,7 @@ export function useGameState() {
         }
         return next;
       });
-    } else if (!isJackpot) {
+    } else if (!isDemo && !isJackpot) {
       // Genuine loss — reset streak. (Jackpot loss isn't possible but guard anyway.)
       setConsecutiveWins(0);
     }
@@ -556,6 +560,7 @@ export function useGameState() {
     autoplay,
     setAutoplay,
     spin,
+    triggerDemoSpin: () => spin(true),
     jackpotPool,
     soundEnabled,
     setSoundEnabled,
