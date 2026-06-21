@@ -1309,6 +1309,11 @@ export default function SlotMachine({
           0%, 100% { opacity: 0.8; }
           50% { opacity: 1; }
         }
+        @keyframes winFlash {
+          0%   { opacity: 0; }
+          20%  { opacity: 1; }
+          100% { opacity: 0; }
+        }
         @keyframes ledPulse {
           0%, 100% { opacity: 0.6; }
           50% { opacity: 1; }
