@@ -119,6 +119,7 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
             borderRadius: "50%",
             boxShadow: "0 0 15px rgba(212,175,55,0.8), inset 0 2px 4px rgba(255,255,255,0.3)",
             border: "2px solid #F5E6C8",
+            animation: "cabinetOrnamentGlow 5s ease-in-out infinite",
           }} />
           <div className="text-center">
             <div className="font-display font-black tracking-widest uppercase text-gold-gradient" 
@@ -135,6 +136,7 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
             boxShadow: "0 0 15px rgba(212,175,55,0.8), inset 0 2px 4px rgba(255,255,255,0.3)",
             border: "2px solid #F5E6C8",
             transform: "scaleX(-1)",
+            animation: "cabinetOrnamentGlow 5s ease-in-out infinite",
           }} />
         </div>
       </div>
@@ -462,7 +464,7 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
         {displayGrid.map((reel, reelIdx) => (
           <div
             key={reelIdx}
-            className={`reel-container rounded relative ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
+            className={`reel-container rounded relative ${scatterSlowdownActive && reelIdx >= 2 && reelIdx <= 4 ? 'scatter-anticipation' : ''} ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
             style={{
               minHeight: "200px",
               height: "100%",
@@ -1306,8 +1308,12 @@ export default function SlotMachine({
       {/* Global styles */}
       <style>{`
         @keyframes cabinetGlow {
-          0%, 100% { opacity: 0.8; }
-          50% { opacity: 1; }
+          0%, 100% { opacity: 0.7; box-shadow: 0 0 12px #D4AF37, 0 0 24px rgba(212,175,55,0.4); }
+          50%      { opacity: 1.0; box-shadow: 0 0 24px #FFD700, 0 0 48px rgba(255,215,0,0.7); }
+        }
+        @keyframes cabinetOrnamentGlow {
+          0%, 100% { box-shadow: 0 0 10px rgba(212,175,55,0.5), inset 0 2px 4px rgba(255,255,255,0.3); }
+          50%      { box-shadow: 0 0 22px rgba(255,215,0,0.95), inset 0 2px 4px rgba(255,255,255,0.5); }
         }
         @keyframes winFlash {
           0%   { opacity: 0; }
@@ -1391,6 +1397,33 @@ export default function SlotMachine({
         .wild-lock-shake { animation: stickyWildLock 0.6s ease-in-out; }
         .scatter-slowdown-reel { animation: scatterSlowdown 0.5s ease-in-out; }
         @keyframes scatterSlowdown { 0%, 100% { border-color: rgba(255,107,107,0.5); } 50% { border-color: #FF6B6B; box-shadow: 0 0 30px rgba(255,107,107,0.5); } }
+        /* Sustained shimmer while scatter is approaching — runs as long as
+           scatterSlowdownActive is true, gives the player anticipatory
+           feedback that "something's coming" (Langer & Imber 2007). */
+        .scatter-anticipation { position: relative; }
+        .scatter-anticipation::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          pointer-events: none;
+          background: linear-gradient(
+            105deg,
+            transparent 0%,
+            transparent 40%,
+            rgba(255, 107, 107, 0.35) 50%,
+            transparent 60%,
+            transparent 100%
+          );
+          background-size: 250% 250%;
+          animation: scatterShimmer 1.4s linear infinite;
+          mix-blend-mode: screen;
+          z-index: 2;
+        }
+        @keyframes scatterShimmer {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -150% 0; }
+        }
         .screen-shake-light { animation: screenShakeLight 0.3s ease-out; }
         @keyframes screenShakeLight { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
         .screen-shake-medium { animation: screenShakeMedium 0.5s ease-out; }
