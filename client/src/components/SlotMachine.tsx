@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
-import { playSound } from "@/lib/sounds";
+import { playSound, playWinSound } from "@/lib/sounds";
 import { WinParticles } from "./WinParticles";
 import { soundManager } from "@/lib/soundManager";
 import ScratchGame from "./ScratchGame";
@@ -397,7 +397,7 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
 }
 
 function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActive, cascadeWinningCells, cascadeAnimatingCells, cascadeGrid, stickyWildCells, wildLockAnimating, nearMissCells, nearMissAnimating, scatterSlowdownActive, lastWinType, scatterFanfareActive }: any) {
-  const displayGrid = cascadeGrid || reels;
+  const displayGrid: SymbolId[][] = cascadeGrid || reels;
 
   return (
     <div className="relative" style={{
@@ -572,7 +572,7 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
       <WinLineHighlight winLines={winLines} show={showWin && !cascadeActive} />
       
       {/* Payline highlights for each winning line */}
-      {showWin && winLines.map((line, idx) => (
+      {(winLines as WinLine[] | undefined)?.map((line: WinLine, idx: number) => (
         <PaylineHighlight key={idx} paylineIndex={line.row} isActive={true} reelCount={5} rowCount={3} />
       ))}
 
@@ -582,10 +582,10 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
   );
 }
 
-function CabinetButtonPanel({ 
-  bet, setBet, paylines, setPaylines, spin, autoplay, setAutoplay, 
-  canSpin, totalBet, coins, onCoinShop, soundEnabled, setSoundMuted, soundMuted, 
-  spinButtonPulse, shakeIntensity, selectedCurrency 
+function CabinetButtonPanel({
+  bet, setBet, paylines, setPaylines, spin, autoplay, setAutoplay,
+  canSpin, totalBet, coins, onCoinShop, soundEnabled, setSoundMuted, soundMuted,
+  spinButtonPulse, shakeIntensity, selectedCurrency, spinning
 }: any) {
   return (
     <div className="w-full px-2 pb-4" style={{
@@ -1299,11 +1299,12 @@ export default function SlotMachine({
           spinButtonPulse={spinButtonPulse}
           shakeIntensity={shakeIntensity}
           selectedCurrency={selectedCurrency}
+          spinning={spinning}
         />
       </div>
 
       {/* Global styles */}
-      <style jsx global>{`
+      <style>{`
         @keyframes cabinetGlow {
           0%, 100% { opacity: 0.8; }
           50% { opacity: 1; }
@@ -1312,7 +1313,7 @@ export default function SlotMachine({
           0%, 100% { opacity: 0.6; }
           50% { opacity: 1; }
         }
-        @keyframes ledPulse {
+        @keyframes ledPulseDim {
           0%, 100% { opacity: 0.3; }
           50% { opacity: 0; }
         }
