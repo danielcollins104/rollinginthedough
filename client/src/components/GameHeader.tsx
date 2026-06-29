@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { LoyaltyBadge } from "@/components/LoyaltyBadge";
 
 interface Props {
   coins: number;
@@ -307,6 +308,9 @@ export default function GameHeader({
           >
             <span style={{ fontSize: "1.1rem" }}>{soundEnabled ? "🔊" : "🔇"}</span>
           </button>
+
+          {/* Loyalty badge */}
+          <LoyaltyBadge />
 
           {!isAuthenticated && (
             <button
