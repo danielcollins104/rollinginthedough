@@ -331,6 +331,9 @@ export function useGameState() {
   const [xp, setXp] = useState<number>(saved?.xp ?? 0);
   const [consecutiveWins, setConsecutiveWins] = useState<number>(saved?.consecutiveWins ?? 0);
   const [maxStreak, setMaxStreak] = useState<number>(saved?.maxStreak ?? 0);
+  // Loss-back rescue: when the player is running low and just lost, offer one
+  // guaranteed half-bet win on the next spin. Vegas "save the player" mechanic.
+  const [rescueOffered, setRescueOffered] = useState<boolean>(false);
   const [autoplay, setAutoplay] = useState(false);
   const [jackpotPool, setJackpotPool] = useState<number>(saved?.jackpotPool ?? JACKPOT_SEED);
   const [soundEnabled, setSoundEnabled] = useState(saved?.soundEnabled ?? true);
@@ -420,6 +423,20 @@ export function useGameState() {
     if (isJackpot) {
       finalWin = jackpotPool;
       setJackpotPool(JACKPOT_SEED);
+    }
+
+    // ─── Loss-back rescue (Vegas "save the player" mechanic) ───────────────
+    // If the rescue was offered (player ran low and lost), force the next
+    // spin to return at least 50% of the bet. Skipped on demo (no real
+    // player to save) and on jackpot (already a huge win, no rescue needed).
+    // The flag is consumed here regardless of outcome so the offer is one-shot.
+    if (!isDemo && rescueOffered && !isJackpot) {
+      const rescueMin = Math.floor(bet * 0.5);
+      if (finalWin < rescueMin) finalWin = rescueMin;
+      setRescueOffered(false);
+      window.dispatchEvent(new CustomEvent("toast", {
+        detail: { kind: "secondChance", message: `🎟️ RESCUE SPIN! +${rescueMin}` },
+      }));
     }
 
     // Free spins trigger
@@ -516,6 +533,22 @@ export function useGameState() {
     } else if (!isDemo && !isJackpot) {
       // Genuine loss — reset streak. (Jackpot loss isn't possible but guard anyway.)
       setConsecutiveWins(0);
+
+      // Loss-back rescue offer: if the player is now running low (active
+      // currency < 6× bet after this losing spin = <5× bet going forward)
+      // AND they're not in a bonus or free-spin mode, offer a rescue spin
+      // for their next attempt. Threshold of 5× bet matches industry norms
+      // for "about to bust" detection on sweepstakes/credit-based cabinets.
+      // Note: goldCoins/greenCoins here is the pre-deduction value because
+      // state updates are batched — pre - bet gives the post-spin balance.
+      const preSpinBalance = selectedCurrency === 'gold' ? goldCoins : greenCoins;
+      const postSpinBalance = preSpinBalance - bet;
+      if (postSpinBalance < bet * 5 && freeSpins === 0 && !bonusGameType) {
+        setRescueOffered(true);
+        window.dispatchEvent(new CustomEvent("toast", {
+          detail: { kind: "secondChance", message: "🎟️ RESCUE SPIN OFFERED!" },
+        }));
+      }
     }
 
     setSpinning(false);
@@ -557,6 +590,7 @@ export function useGameState() {
     xpToNext,
     consecutiveWins,
     maxStreak,
+    rescueOffered,
     autoplay,
     setAutoplay,
     spin,

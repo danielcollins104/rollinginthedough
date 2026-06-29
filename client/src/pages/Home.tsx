@@ -47,6 +47,7 @@ export default function Home() {
     xpToNext,
     consecutiveWins,
     maxStreak,
+    rescueOffered,
     autoplay,
     setAutoplay,
     spin,
@@ -281,6 +282,7 @@ export default function Home() {
           soundEnabled={soundEnabled}
           consecutiveWins={consecutiveWins}
           maxStreak={maxStreak}
+          rescueOffered={rescueOffered}
           paylines={paylines}
           setPaylines={setPaylines}
           onCoinShop={() => setShowCoinShop(true)}

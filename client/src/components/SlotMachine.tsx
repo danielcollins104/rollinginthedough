@@ -44,6 +44,7 @@ interface Props {
   soundEnabled: boolean;
   consecutiveWins?: number;
   maxStreak?: number;
+  rescueOffered?: boolean;
   paylines?: number;
   setPaylines?: (p: number) => void;
   onCoinShop?: () => void;
@@ -590,7 +591,7 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
 function CabinetButtonPanel({
   bet, setBet, paylines, setPaylines, spin, autoplay, setAutoplay,
   canSpin, totalBet, coins, onCoinShop, soundEnabled, setSoundMuted, soundMuted,
-  spinButtonPulse, shakeIntensity, selectedCurrency, spinning, freeSpins
+  spinButtonPulse, shakeIntensity, selectedCurrency, spinning, freeSpins, rescueOffered
 }: any) {
   return (
     <div className="w-full px-2 pb-4" style={{
@@ -705,6 +706,39 @@ function CabinetButtonPanel({
           </div>
         </div>
       </div>
+
+      {/* Rescue spin indicator (Vegas "save the player" mechanic).
+          Visible only when rescueOffered is true, i.e. player just lost
+          and is running low. Shows the guaranteed half-bet return so
+          they know this next spin is a 'free pass'. */}
+      {rescueOffered && (
+        <div
+          className="w-full flex justify-center mb-2 px-2 pointer-events-none"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className="font-display font-black uppercase tracking-widest select-none"
+            style={{
+              fontSize: "clamp(0.75rem, 2.2vw, 0.95rem)",
+              color: "#FFD700",
+              background: "linear-gradient(180deg, rgba(255,215,0,0.22) 0%, rgba(0,0,0,0.7) 100%)",
+              border: "2px solid #FFD700",
+              borderRadius: "999px",
+              padding: "4px 14px",
+              textShadow: "0 0 10px rgba(255,215,0,0.9)",
+              boxShadow: "0 0 18px rgba(255,215,0,0.5)",
+              animation: "freeSpinButtonPulse 1.2s ease-in-out infinite",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <span aria-hidden="true">🎟️</span>
+            <span>RESCUE SPIN — GUARANTEED {Math.floor(bet * 0.5)} RETURN!</span>
+          </div>
+        </div>
+      )}
 
       {/* Main Button Row */}
       <div className="flex items-center justify-between gap-3 px-2">
@@ -859,6 +893,7 @@ export default function SlotMachine({
   soundEnabled,
   consecutiveWins = 0,
   maxStreak = 0,
+  rescueOffered = false,
   paylines,
   setPaylines,
   onCoinShop,
@@ -1396,6 +1431,7 @@ export default function SlotMachine({
           selectedCurrency={selectedCurrency}
           spinning={spinning}
           freeSpins={freeSpins}
+          rescueOffered={rescueOffered}
         />
       </div>
 
