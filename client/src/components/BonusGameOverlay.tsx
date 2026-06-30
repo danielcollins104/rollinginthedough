@@ -342,7 +342,7 @@ export default function BonusGameOverlay({ gameType, onClose }: Props) {
           }}
         >
           <h2 className="font-display font-black text-2xl tracking-wider">
-            🎁 BONUS GAME 🎁
+            ⚔️ SPIRIT TRIAL ⚔️
           </h2>
           <p className="text-sm font-bold mt-1">{game.name}</p>
         </div>

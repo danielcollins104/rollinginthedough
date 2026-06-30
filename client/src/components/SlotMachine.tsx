@@ -100,7 +100,7 @@ function getRandomSymbolId(): SymbolId {
 function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
   return (
     <div className="relative" style={{
-      background: "linear-gradient(180deg, #1a1005 0%, #2d1f0a 40%, #3d2a0f 100%)",
+      background: "linear-gradient(180deg, #0d0512 0%, #1a0a25 40%, #2d0e30 100%)",
       borderBottom: "3px solid #D4AF37",
       borderRadius: "1rem 1rem 0 0",
       padding: "12px 16px 8px",
@@ -113,51 +113,65 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
         boxShadow: "0 0 20px #FFD700, 0 0 40px #D4AF37",
         animation: "cabinetGlow 3s ease-in-out infinite",
       }} />
-      
+
       {/* Game title area */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
-          {/* Side cabinet ornament */}
-          <div className="w-10 h-10" style={{
-            background: "linear-gradient(135deg, #8B5E0A, #C8860A, #FFD700, #C8860A, #8B5E0A)",
+          {/* Left ornament: warrior bow arrow icon */}
+          <div className="w-10 h-10 flex items-center justify-center" style={{
+            background: "radial-gradient(circle, #4A1A5C 0%, #1A0A2A 100%)",
             borderRadius: "50%",
-            boxShadow: "0 0 15px rgba(212,175,55,0.8), inset 0 2px 4px rgba(255,255,255,0.3)",
-            border: "2px solid #F5E6C8",
+            boxShadow: "0 0 15px rgba(255,107,170,0.5), inset 0 0 8px rgba(212,175,55,0.4)",
+            border: "2px solid #D4AF37",
             animation: "cabinetOrnamentGlow 5s ease-in-out infinite",
-          }} />
+          }}>
+            <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🏹</span>
+          </div>
           <div className="text-center">
-            <div className="font-display font-black tracking-widest uppercase text-gold-gradient" 
-                 style={{ fontSize: "clamp(1rem, 3.5vw, 1.5rem)", letterSpacing: "0.1em", textShadow: "0 0 20px rgba(212,175,55,0.8)" }}>
-              Rolling in the Dough
+            <div className="font-display font-black tracking-widest uppercase"
+                 style={{
+                   fontSize: "clamp(1rem, 3.5vw, 1.5rem)",
+                   letterSpacing: "0.1em",
+                   background: "linear-gradient(135deg, #D4AF37 0%, #F5E6C8 30%, #FFD700 50%, #FF6BAA 75%, #D4AF37 100%)",
+                   WebkitBackgroundClip: "text",
+                   WebkitTextFillColor: "transparent",
+                   backgroundClip: "text",
+                   textShadow: "0 0 25px rgba(212,175,55,0.6), 0 0 50px rgba(255,107,170,0.4)",
+                   filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.7))",
+                 }}>
+              HUNTRESS WARRIOR
             </div>
-            <div className="font-numbers tracking-wider uppercase" style={{ fontSize: "clamp(0.6rem, 1.5vw, 0.8rem)", color: "#C8860A" }}>
-              ◆ Sweepstakes Slots ◆
+            <div className="font-numbers tracking-wider uppercase" style={{ fontSize: "clamp(0.6rem, 1.5vw, 0.8rem)", color: "#FF6BAA" }}>
+              ◆ Spirit of the Plains ◆
             </div>
           </div>
-          <div className="w-10 h-10" style={{
-            background: "linear-gradient(135deg, #8B5E0A, #C8860A, #FFD700, #C8860A, #8B5E0A)",
+          {/* Right ornament: mirror */}
+          <div className="w-10 h-10 flex items-center justify-center" style={{
+            background: "radial-gradient(circle, #4A1A5C 0%, #1A0A2A 100%)",
             borderRadius: "50%",
-            boxShadow: "0 0 15px rgba(212,175,55,0.8), inset 0 2px 4px rgba(255,255,255,0.3)",
-            border: "2px solid #F5E6C8",
+            boxShadow: "0 0 15px rgba(255,107,170,0.5), inset 0 0 8px rgba(212,175,55,0.4)",
+            border: "2px solid #D4AF37",
             transform: "scaleX(-1)",
             animation: "cabinetOrnamentGlow 5s ease-in-out infinite",
-          }} />
+          }}>
+            <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🏹</span>
+          </div>
         </div>
       </div>
 
       {/* Free spins badge */}
       <FreeSpinsDisplay freeSpins={freeSpins} />
 
-      {/* Scrolling marquee - legal disclaimer */}
+      {/* Scrolling marquee - thematic legal disclaimer */}
       <div className="overflow-hidden" style={{
-        background: "linear-gradient(90deg, #0a0500, #1a1000, #0a0500)",
+        background: "linear-gradient(90deg, #0a0500, #1a0825, #0a0500)",
         border: "1px solid rgba(212,175,55,0.3)",
         borderRadius: "0.5rem",
         padding: "4px 8px",
         marginTop: "8px",
       }}>
         <div className="marquee-text text-xs font-numbers px-2" style={{ color: "#C8860A", fontSize: "0.6rem" }}>
-          ◆ FREE SWEEPSTAKES GAME — NO PURCHASE NECESSARY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🍀 WILD SUBSTITUTES ALL ◆ ⭐ 3 SCATTERS = 10 FREE SPINS ◆ ⭐ 5 SCATTERS = JACKPOT ◆ 🗡️ 3 HUNTRESS = BONUS ROUND ◆ JACKPOT GROWS WITH EVERY SPIN ◆
+          ◆ FREE SWEEPSTAKES GAME — NO PURCHASE NECESSARY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🔥 SACRED FIRE WILD SUBSTITUTES ALL ◆ ⚔️ 3 HUNTRESS = BONUS ROUND ◆ 🌟 3 SPIRIT ARROWS = 10 FREE SPINS ◆ 🌟 5 SPIRIT ARROWS = JACKPOT ◆ 🐺 SPIRIT WOLF PAYS UP TO 180X ◆ 🏹 HUNT BY THE LIGHT OF THE FULL MOON ◆
         </div>
       </div>
     </div>

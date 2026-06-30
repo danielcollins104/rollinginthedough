@@ -330,7 +330,7 @@ export default function BonusWheel({ baseReward, maxMultiplier, onWin, onTrigger
               backgroundClip: "text",
             }}
           >
-            🎡 LUCKY WHEEL 🎡
+            🌀 SPIRIT WHEEL 🌀
           </div>
           <p className="text-yellow-200/80 text-sm">Spin to multiply your reward!</p>
           <p className="text-amber-300 text-xs mt-1">
