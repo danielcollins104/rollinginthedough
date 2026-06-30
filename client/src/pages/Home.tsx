@@ -15,7 +15,6 @@ import CoinShop from "@/components/CoinShop";
 import BonusGameOverlay from "@/components/BonusGameOverlay";
 import CurrencyToggle, { type CurrencyType } from "@/components/CurrencyToggle";
 import BottomNavBar from "@/components/BottomNavBar";
-import AppFooter from "@/components/AppFooter";
 import LoginPromptModal from "@/components/LoginPromptModal";
 import DailyBonusModal from "@/components/DailyBonusModal";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -177,12 +176,9 @@ export default function Home() {
 
   return (
     <div
-      className="flex flex-col"
+      className="flex flex-col min-h-screen"
       style={{
-        height: "100vh",
-        minHeight: "-webkit-fill-available",
         background: "linear-gradient(160deg, #050510 0%, #0a0a1a 40%, #0d0a1a 70%, #050510 100%)",
-        overflow: "hidden",
       }}
     >
       {/* Background hero image overlay */}
@@ -263,7 +259,7 @@ export default function Home() {
       </div>
 
       {/* Main Slot Machine Area */}
-      <main className="flex-grow flex items-center justify-center px-1 relative z-10" style={{ minHeight: "0" }}>
+      <main className="flex-grow flex items-start justify-center px-1 py-2 relative z-10">
         <SlotMachine
           reels={reels}
           spinning={spinning}
@@ -298,7 +294,6 @@ export default function Home() {
 
       <div className="hidden sm:block"><GameFooter /></div>
       <div className="sm:hidden text-center text-xs text-gray-400 py-0.5 px-2">Rolling in the Dough © 2026</div>
-
       {showParticles && <CoinParticles count={lastWinType === "JACKPOT" ? 80 : lastWinType === "BIG_WIN" ? 40 : 20} />}
       {showJackpot && <JackpotOverlay amount={winAmount} onClose={() => setShowJackpot(false)} />}
       {showCoinShop && <CoinShop onClose={() => setShowCoinShop(false)} currency={coinShopCurrency} />}
@@ -422,8 +417,6 @@ export default function Home() {
         />
       </div>
 
-      {/* App Footer - only show on desktop when not playing */}
-      <div className="hidden md:block"><AppFooter /></div>
     </div>
   );
 }
