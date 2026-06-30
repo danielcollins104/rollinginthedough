@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { shouldOfferRescue, rescueMinPayout } from "./useGameState";
+import type { BonusGameType } from "@/lib/bonusGames";
 
 /**
  * Win Calculation Tests
@@ -196,6 +198,70 @@ describe("Win Calculation Logic", () => {
       const totalBet = 100;
       balance = balance - totalBet + winAmount;
       expect(balance).toBe(900);
+    });
+  });
+});
+
+/**
+ * Loss-back rescue spin (Vegas "save the player" mechanic).
+ *
+ * Trigger: after a losing spin, if postSpinBalance < bet*5 AND not in
+ * bonus/free-spin mode, set rescueOffered=true. On the next non-demo,
+ * non-jackpot spin, force finalWin >= rescueMinPayout(bet) and clear the flag.
+ */
+describe("Loss-back rescue spin", () => {
+  describe("shouldOfferRescue trigger", () => {
+    it("triggers when postSpin balance is well below 5× bet", () => {
+      expect(shouldOfferRescue(100, 25, 0, null)).toBe(true);
+    });
+
+    it("triggers at the boundary (balance just under 5× bet)", () => {
+      // 5×bet - 1 → triggers (strict less-than)
+      expect(shouldOfferRescue(124, 25, 0, null)).toBe(true);
+    });
+
+    it("does NOT trigger when balance equals 5× bet exactly", () => {
+      // 5×bet exactly → does NOT trigger (strict <)
+      expect(shouldOfferRescue(125, 25, 0, null)).toBe(false);
+    });
+
+    it("does NOT trigger when balance is comfortable", () => {
+      expect(shouldOfferRescue(10_000, 25, 0, null)).toBe(false);
+    });
+
+    it("does NOT trigger during free-spin mode (no real loss)", () => {
+      expect(shouldOfferRescue(50, 25, 3, null)).toBe(false);
+    });
+
+    it("does NOT trigger during a bonus round (no real loss)", () => {
+      expect(shouldOfferRescue(50, 25, 0, "wheel" as BonusGameType)).toBe(false);
+    });
+
+    it("triggers even with no bonus game if balance is busted", () => {
+      // Edge: player is broke (or near-broke)
+      expect(shouldOfferRescue(0, 25, 0, null)).toBe(true);
+    });
+
+    it("scales threshold with bet size", () => {
+      // bet=100, threshold=500
+      expect(shouldOfferRescue(499, 100, 0, null)).toBe(true);
+      expect(shouldOfferRescue(500, 100, 0, null)).toBe(false);
+    });
+  });
+
+  describe("rescueMinPayout", () => {
+    it("returns 50% of bet, floored", () => {
+      expect(rescueMinPayout(25)).toBe(12);
+      expect(rescueMinPayout(100)).toBe(50);
+    });
+
+    it("handles odd bets without rounding error", () => {
+      // 7 * 0.5 = 3.5 → floored to 3
+      expect(rescueMinPayout(7)).toBe(3);
+    });
+
+    it("returns 0 for zero bet", () => {
+      expect(rescueMinPayout(0)).toBe(0);
     });
   });
 });

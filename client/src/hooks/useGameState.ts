@@ -290,6 +290,30 @@ function xpForLevel(level: number): number {
   return Math.floor(100 * Math.pow(1.4, level - 1));
 }
 
+/**
+ * Loss-back rescue trigger: should we offer a guaranteed half-bet spin
+ * after a losing spin? Pure function so it's unit-testable.
+ *
+ *   postSpinBalance < bet * 5   → player is "about to bust"
+ *   freeSpins === 0             → skip during free-spin mode (no real loss)
+ *   bonusGameType == null       → skip during bonus round (no real loss)
+ */
+export function shouldOfferRescue(
+  postSpinBalance: number,
+  bet: number,
+  freeSpins: number,
+  bonusGameType: BonusGameType | null
+): boolean {
+  if (freeSpins > 0) return false;
+  if (bonusGameType) return false;
+  return postSpinBalance < bet * 5;
+}
+
+/** Minimum guaranteed return for a consumed rescue spin (50% of bet). */
+export function rescueMinPayout(bet: number): number {
+  return Math.floor(bet * 0.5);
+}
+
 // ─── Local storage helpers ────────────────────────────────────────────────────
 function loadState() {
   try {
@@ -431,7 +455,7 @@ export function useGameState() {
     // player to save) and on jackpot (already a huge win, no rescue needed).
     // The flag is consumed here regardless of outcome so the offer is one-shot.
     if (!isDemo && rescueOffered && !isJackpot) {
-      const rescueMin = Math.floor(bet * 0.5);
+      const rescueMin = rescueMinPayout(bet);
       if (finalWin < rescueMin) finalWin = rescueMin;
       setRescueOffered(false);
       window.dispatchEvent(new CustomEvent("toast", {
@@ -543,7 +567,9 @@ export function useGameState() {
       // state updates are batched — pre - bet gives the post-spin balance.
       const preSpinBalance = selectedCurrency === 'gold' ? goldCoins : greenCoins;
       const postSpinBalance = preSpinBalance - bet;
-      if (postSpinBalance < bet * 5 && freeSpins === 0 && !bonusGameType) {
+      if (
+        shouldOfferRescue(postSpinBalance, bet, freeSpins, bonusGameType)
+      ) {
         setRescueOffered(true);
         window.dispatchEvent(new CustomEvent("toast", {
           detail: { kind: "secondChance", message: "🎟️ RESCUE SPIN OFFERED!" },
