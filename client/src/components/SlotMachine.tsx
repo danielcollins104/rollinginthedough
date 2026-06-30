@@ -615,108 +615,108 @@ function CabinetButtonPanel({
       boxShadow: "inset 0 2px 0 rgba(0, 150, 255, 0.2), 0 -4px 20px rgba(0,0,0,0.5)",
       borderTop: "1px solid rgba(212,175,55,0.1)",
     }}>
-      {/* Bet / Lines Row */}
-      <div className="flex items-center justify-between gap-3 mb-3 px-2 overflow-x-auto scrollbar-hide" style={{ minWidth: 0 }}>
-        {/* Bet controls */}
-        <div className="flex items-center gap-2 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
-          <button
-            onClick={() => setBet(Math.max(10, bet - 10))}
-            disabled={spinning || bet <= 10}
-            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
-            style={{
-              background: "linear-gradient(180deg, #3a2a00, #1a1500)",
-              border: "2px solid #D4AF37",
+      {/* Bet / Lines Row — stacks on mobile to avoid 41px horizontal overflow on phones */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-3 px-2" style={{ minWidth: 0 }}>
+        <div className="flex items-center justify-between gap-2">
+          {/* Bet controls */}
+          <div className="flex items-center gap-1.5 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
+            <button
+              onClick={() => setBet(Math.max(10, bet - 10))}
+              disabled={spinning || bet <= 10}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
+              style={{
+                background: "linear-gradient(180deg, #3a2a00, #1a1500)",
+                border: "2px solid #D4AF37",
+                color: "#FFD700",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+              }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              −
+            </button>
+            <div className="w-12 sm:w-20 text-center font-numbers tabular-nums" style={{
+              fontSize: "1rem",
               color: "#FFD700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-            }}
-            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          >
-            −
-          </button>
-          <div className="w-20 text-center font-numbers tabular-nums" style={{ 
-            fontSize: "1.1rem", 
-            color: "#FFD700",
-            textShadow: "0 0 10px rgba(212,175,55,0.5)",
-          }}>
-            {bet}
-          </div>
-          <button
-            onClick={() => setBet(Math.min(200, bet + 10))}
-            disabled={spinning || bet >= 200}
-            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
-            style={{
-              background: "linear-gradient(180deg, #3a2a00, #1a1500)",
-              border: "2px solid #D4AF37",
-              color: "#FFD700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-            }}
-            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          >
-            +
-          </button>
-        </div>
-
-        {/* Paylines controls */}
-        <div className="flex items-center gap-2 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
-          <button
-            onClick={() => setPaylines?.(Math.max(1, (paylines || 1) - 1))}
-            disabled={spinning || (paylines || 1) <= 1}
-            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
-            style={{
-              background: "linear-gradient(180deg, #2a1a00, #1a1000)",
-              border: "2px solid #FFA500",
-              color: "#FFD700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-            }}
-            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          >
-            −
-          </button>
-          <div className="w-16 text-center font-numbers tabular-nums" style={{ 
-            fontSize: "1.1rem", 
-            color: "#FFD700",
-            textShadow: "0 0 10px rgba(212,175,55,0.5)",
-          }}>
-            {paylines || 1} LINES
-          </div>
-          <button
-            onClick={() => setPaylines?.(Math.min(25, (paylines || 1) + 1))}
-            disabled={spinning || (paylines || 1) >= 25}
-            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
-            style={{
-              background: "linear-gradient(180deg, #2a1a00, #1a1000)",
-              border: "2px solid #FFA500",
-              color: "#FFD700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-            }}
-            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          >
-            +
-          </button>
-        </div>
-
-        {/* Total Bet Display */}
-        <div className="flex-1 min-w-0" style={{ marginLeft: "auto" }}>
-          <div className="text-right">
-            <div className="text-[0.55rem] font-numbers uppercase tracking-widest mb-1" style={{ color: "rgba(212,175,55,0.5)" }}>
-              TOTAL BET
-            </div>
-            <div className="font-numbers tabular-nums" style={{ 
-              fontSize: "clamp(1rem, 3vw, 1.4rem)",
-              color: selectedCurrency === 'gold' ? "#FFD700" : "#90EE90",
-              textShadow: selectedCurrency === 'gold' ? "0 0 10px rgba(255,215,0,0.8)" : "0 0 10px rgba(144,238,144,0.8)",
-              fontFamily: '"Orbitron", monospace',
+              textShadow: "0 0 10px rgba(212,175,55,0.5)",
             }}>
-              {totalBet.toLocaleString()}
+              {bet}
             </div>
+            <button
+              onClick={() => setBet(Math.min(200, bet + 10))}
+              disabled={spinning || bet >= 200}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
+              style={{
+                background: "linear-gradient(180deg, #3a2a00, #1a1500)",
+                border: "2px solid #D4AF37",
+                color: "#FFD700",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+              }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              +
+            </button>
+          </div>
+
+          {/* Paylines controls */}
+          <div className="flex items-center gap-1.5 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
+            <button
+              onClick={() => setPaylines?.(Math.max(1, (paylines || 1) - 1))}
+              disabled={spinning || (paylines || 1) <= 1}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
+              style={{
+                background: "linear-gradient(180deg, #2a1a00, #1a1000)",
+                border: "2px solid #FFA500",
+                color: "#FFD700",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+              }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              −
+            </button>
+            <div className="w-14 sm:w-16 text-center font-numbers tabular-nums" style={{
+              fontSize: "0.95rem",
+              color: "#FFD700",
+              textShadow: "0 0 10px rgba(212,175,55,0.5)",
+            }}>
+              {paylines || 1} L
+            </div>
+            <button
+              onClick={() => setPaylines?.(Math.min(25, (paylines || 1) + 1))}
+              disabled={spinning || (paylines || 1) >= 25}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
+              style={{
+                background: "linear-gradient(180deg, #2a1a00, #1a1000)",
+                border: "2px solid #FFA500",
+                color: "#FFD700",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+              }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Total Bet Display — right-aligned on sm+, full-width on mobile so it sits on its own row */}
+        <div className="w-full sm:w-auto sm:flex-1 sm:min-w-0 flex sm:block items-center justify-between gap-2" style={{ marginLeft: "auto" }}>
+          <div className="text-[0.55rem] font-numbers uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.5)" }}>
+            TOTAL BET
+          </div>
+          <div className="font-numbers tabular-nums sm:text-right" style={{
+            fontSize: "clamp(1rem, 3vw, 1.4rem)",
+            color: selectedCurrency === 'gold' ? "#FFD700" : "#90EE90",
+            textShadow: selectedCurrency === 'gold' ? "0 0 10px rgba(255,215,0,0.8)" : "0 0 10px rgba(144,238,144,0.8)",
+            fontFamily: '"Orbitron", monospace',
+          }}>
+            {totalBet.toLocaleString()}
           </div>
         </div>
       </div>
@@ -755,11 +755,12 @@ function CabinetButtonPanel({
       )}
 
       {/* Main Button Row */}
-      <div className="flex items-center justify-between gap-3 px-2">
-        {/* Coin Shop */}
+      <div className="flex items-center justify-between gap-2 sm:gap-3 px-2">
+        {/* Coin Shop — icon-only on mobile, full pill on sm+ */}
         <button
           onClick={onCoinShop}
-          className="flex items-center gap-2 px-4 py-3 rounded-lg shrink-0 transition-all"
+          aria-label="Open coin shop"
+          className="flex items-center justify-center gap-2 w-12 h-12 sm:w-auto sm:h-auto sm:px-4 sm:py-3 rounded-lg shrink-0 transition-all"
           style={{
             background: "linear-gradient(180deg, #3a2a00, #2a1a00)",
             border: "2px solid #D4AF37",
@@ -773,17 +774,18 @@ function CabinetButtonPanel({
           onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         >
           <span style={{ fontSize: "1.2rem" }}>💰</span>
-          <span className="font-numbers">COINS</span>
+          <span className="font-numbers hidden sm:inline">COINS</span>
         </button>
 
-        {/* AUTOSPIN */}
+        {/* AUTOSPIN — icon-only on mobile */}
         <button
           onClick={() => setAutoplay(!autoplay)}
           disabled={spinning}
-          className={`flex items-center gap-2 px-4 py-3 rounded-lg shrink-0 transition-all ${autoplay ? 'ring-2' : ''}`}
+          aria-label={autoplay ? "Stop autoplay" : "Start autoplay"}
+          className={`flex items-center justify-center gap-2 w-12 h-12 sm:w-auto sm:h-auto sm:px-4 sm:py-3 rounded-lg shrink-0 transition-all ${autoplay ? 'ring-2' : ''}`}
           style={{
-            background: autoplay 
-              ? "linear-gradient(180deg, #3a002a, #2a001a)" 
+            background: autoplay
+              ? "linear-gradient(180deg, #3a002a, #2a001a)"
               : "linear-gradient(180deg, #1a2a1a, #0d1a0d)",
             border: `2px solid ${autoplay ? "#FF6B6B" : "#4CAF50"}`,
             color: autoplay ? "#FF6B6B" : "#90EE90",
@@ -797,7 +799,7 @@ function CabinetButtonPanel({
           onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         >
           <span style={{ fontSize: "1.2rem" }}>{autoplay ? "⏹" : "▶"}</span>
-          <span className="font-numbers">AUTO</span>
+          <span className="font-numbers hidden sm:inline">AUTO</span>
         </button>
 
         {/* SPIN BUTTON - MASSIVE, DOMINANT */}

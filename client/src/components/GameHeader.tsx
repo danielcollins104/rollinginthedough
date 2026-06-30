@@ -292,9 +292,9 @@ export default function GameHeader({
             </div>
           </div>
 
-          {/* ── Achievements ── */}
-          <div className="flex items-center gap-2">
-            <div className="font-numbers uppercase tracking-widest text-xs">
+          {/* ── Achievements — label hidden on mobile, badge icon stays ── */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="font-numbers uppercase tracking-widest text-xs hidden sm:block">
               Achievements
             </div>
             {!loading && (
@@ -303,7 +303,7 @@ export default function GameHeader({
                 <span>{achievements.length}</span>
               </Badge>
             )}
-            {loading && <span className="text-xs">Loading...</span>}
+            {loading && <span className="text-xs hidden sm:inline">Loading...</span>}
           </div>
 
           {/* ── Sound toggle ── */}

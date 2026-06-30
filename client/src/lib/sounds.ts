@@ -193,30 +193,44 @@ export function playSound(name: SoundName) {
 
   switch (name) {
     case "spin":
-      // Psychologically effective spin: brief mechanical whoosh + subtle anticipation build
-      // Research: Short, punchy sounds maintain engagement; continuous drones cause fatigue/annoyance
-      // Frequency mix: Bass warmth (120Hz) + mechanical texture + subtle rising pitch = anticipation
-      playNoise(0.08, 0.15, 0, 1500);            // Sharp mechanical "whoosh" - air displacement
-      playTone(120, 0.18, "sine", 0.25, 0, 200);  // Rising bass sweep (warmth, felt not heard)
-      playTone(220, 0.15, "sine", 0.15, 0.03, 300); // Mid sweep (clarity)
-      playNoise(0.12, 0.06, 0.05, 2500);         // Gear catch texture (brief)
-      // Subtle anticipation tail: major 3rd interval = positive expectation
-      playTone(330, 0.12, "sine", 0.1, 0.15);    // E4 - resolved, pleasant
-      playTone(415, 0.1, "sine", 0.08, 0.18);    // G#4 - major 3rd, optimistic
+      // Slot machine spin = short rising whoosh + a click-clack that says
+      // "reels are spinning". Keep it under 250ms total so it doesn't
+      // pile on top of subsequent reel_stop sounds.
+      //
+      // Previous version stacked 5+ oscillators at the same instant with
+      // two noise bursts. Stacked peaks = 0.83+ gain = harsh distortion.
+      // Even with attack ramps, layered sine + noise = abrasive sound
+      // (the "awful noise" user reported). Redesigned for clarity:
+      // one ascending sine sweep, one brief filtered-noise tail, total
+      // peak gain ~0.30.
+      //
+      // 0–120ms: rising whoosh — single sine sweep from 140Hz to 320Hz.
+      //          A clean ascending pitch reads as "energy starting".
+      // 30–160ms: filtered bandpass noise (filtered around 1.6kHz, the
+      //          "shhh" frequency of a mechanical reel).
+      // 120–220ms: 440Hz tone tail — small "engaged" confirmation.
+      playTone(140, 0.12, "sine", 0.18, 0, 320);     // Rising sweep
+      playNoise(0.13, 0.10, 0.03, 1600, "bandpass"); // Brief reel whoosh
+      playTone(440, 0.10, "sine", 0.12, 0.12);       // Settle confirmation
       break;
 
     case "reel_stop":
-      // Professional casino reel stop: heavy mechanical "clunk" with resonant tail
-      // Based on real mechanical slot machine physics - weighted reel catches on stop pin
-      playTone(85, 0.18, "sine", 0.5);           // Heavy thunk - primary impact (felt in chest)
-      playTone(120, 0.15, "sine", 0.35, 0.02);   // Secondary mass resonance
-      playTone(180, 0.12, "sine", 0.25, 0.04);   // Tertiary harmonic
-      playNoise(0.035, 0.12, 0, 1800);           // Sharp mechanical click - pawl engaging stop pin
-      playNoise(0.08, 0.04, 0.02, 3500);         // Metal-on-metal texture
-      // Resonant tail - the cabinet rings
-      playTone(220, 0.25, "sine", 0.15, 0.06);   // Cabinet resonance
-      playTone(330, 0.2, "sine", 0.1, 0.1);      // Higher resonance
-      playTone(80, 0.4, "sine", 0.12, 0.15);     // Deep sub-bass thump
+      // Slot machine reel-stop = a punchy "thunk" with a brief cabinet
+      // resonance. A real reel has weight; when it stops, you hear a
+      // physical clunk, not 8 stacked oscillators.
+      //
+      // Previous version stacked 8 sounds at peak gain ~0.92 — heavily
+      // clipping. That produced the harsh "blat" the user reported.
+      // Redesigned: 4 sounds at peak gain ~0.30, total under 250ms.
+      //
+      // 0–50ms: 85Hz tone — the felt "thunk" weight
+      // 20–120ms: 180Hz tone — mechanical body resonance
+      // 0–35ms: brief noise burst — pawl engaging the stop pin
+      // 60–220ms: 220Hz tone — cabinet ring tail
+      playTone(85, 0.16, "sine", 0.18);            // Felt thunk
+      playTone(180, 0.10, "sine", 0.10, 0.02);     // Body resonance
+      playNoise(0.035, 0.06, 0, 1800, "highpass"); // Mechanical click
+      playTone(220, 0.18, "sine", 0.08, 0.06);    // Cabinet ring
       break;
 
     case "small_win":
