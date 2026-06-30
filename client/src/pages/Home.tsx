@@ -406,8 +406,8 @@ export default function Home() {
       {/* Global toast stack — listens for window 'toast' events from anywhere */}
       <Toasts />
       
-      {/* Streak display panel - accessible from game area */}
-      <div className="absolute top-20 right-2 z-20 w-40">
+      {/* Streak display panel - shown on lg+ only (overlaps reels on small/medium screens, accessible via Missions modal) */}
+      <div className="hidden lg:block absolute top-20 right-2 z-20 w-40">
         <DailyStreakDisplay
           currentStreak={currentStreak}
           level={retentionLevel}

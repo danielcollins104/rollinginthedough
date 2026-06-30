@@ -174,7 +174,7 @@ export default function GameHeader({
         }}
       />
       <div className="max-w-3xl mx-auto px-2 py-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
 
           {/* ── Jackpot pool (compact) ── */}
           <div
@@ -325,8 +325,10 @@ export default function GameHeader({
             <span style={{ fontSize: "1.1rem" }}>{soundEnabled ? "🔊" : "🔇"}</span>
           </button>
 
-          {/* Loyalty badge */}
-          <LoyaltyBadge />
+          {/* Loyalty badge — hidden on mobile to keep header compact */}
+          <div className="hidden md:block shrink-0">
+            <LoyaltyBadge />
+          </div>
 
           {!isAuthenticated && (
             <button

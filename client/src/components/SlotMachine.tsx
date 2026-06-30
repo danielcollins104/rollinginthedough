@@ -103,7 +103,7 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
       background: "linear-gradient(180deg, #0d0512 0%, #1a0a25 40%, #2d0e30 100%)",
       borderBottom: "3px solid #D4AF37",
       borderRadius: "1rem 1rem 0 0",
-      padding: "12px 16px 8px",
+      padding: "clamp(8px, 2vw, 12px) clamp(10px, 3vw, 16px) clamp(6px, 1.5vw, 8px)",
       position: "relative",
       overflow: "hidden",
     }}>
@@ -116,9 +116,9 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
 
       {/* Game title area */}
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3">
-          {/* Left ornament: warrior bow arrow icon */}
-          <div className="w-10 h-10 flex items-center justify-center" style={{
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Left ornament: warrior bow arrow icon (hidden on mobile) */}
+          <div className="hidden sm:flex w-10 h-10 items-center justify-center" style={{
             background: "radial-gradient(circle, #4A1A5C 0%, #1A0A2A 100%)",
             borderRadius: "50%",
             boxShadow: "0 0 15px rgba(255,107,170,0.5), inset 0 0 8px rgba(212,175,55,0.4)",
@@ -127,10 +127,10 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
           }}>
             <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🏹</span>
           </div>
-          <div className="text-center">
+          <div className="text-center flex-1">
             <div className="font-display font-black tracking-widest uppercase"
                  style={{
-                   fontSize: "clamp(1rem, 3.5vw, 1.5rem)",
+                   fontSize: "clamp(0.95rem, 3.2vw, 1.5rem)",
                    letterSpacing: "0.1em",
                    background: "linear-gradient(135deg, #D4AF37 0%, #F5E6C8 30%, #FFD700 50%, #FF6BAA 75%, #D4AF37 100%)",
                    WebkitBackgroundClip: "text",
@@ -141,12 +141,12 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
                  }}>
               HUNTRESS WARRIOR
             </div>
-            <div className="font-numbers tracking-wider uppercase" style={{ fontSize: "clamp(0.6rem, 1.5vw, 0.8rem)", color: "#FF6BAA" }}>
+            <div className="font-numbers tracking-wider uppercase hidden sm:block" style={{ fontSize: "clamp(0.6rem, 1.5vw, 0.8rem)", color: "#FF6BAA" }}>
               ◆ Spirit of the Plains ◆
             </div>
           </div>
-          {/* Right ornament: mirror */}
-          <div className="w-10 h-10 flex items-center justify-center" style={{
+          {/* Right ornament: mirror (hidden on mobile) */}
+          <div className="hidden sm:flex w-10 h-10 items-center justify-center" style={{
             background: "radial-gradient(circle, #4A1A5C 0%, #1A0A2A 100%)",
             borderRadius: "50%",
             boxShadow: "0 0 15px rgba(255,107,170,0.5), inset 0 0 8px rgba(212,175,55,0.4)",
@@ -162,8 +162,8 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
       {/* Free spins badge */}
       <FreeSpinsDisplay freeSpins={freeSpins} />
 
-      {/* Scrolling marquee - thematic legal disclaimer */}
-      <div className="overflow-hidden" style={{
+      {/* Scrolling marquee - thematic legal disclaimer (hidden on mobile to save ~30px; visible on tablet+) */}
+      <div className="hidden sm:block overflow-hidden" style={{
         background: "linear-gradient(90deg, #0a0500, #1a0825, #0a0500)",
         border: "1px solid rgba(212,175,55,0.3)",
         borderRadius: "0.5rem",
@@ -193,17 +193,17 @@ function LEDDisplay({ label, value, color = "#FFD700", labelColor = "rgba(212,17
       background: "linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%)",
       border: "2px solid #333",
       borderRadius: "8px",
-      padding: "8px 12px",
+      padding: "clamp(4px, 1.2vw, 8px) clamp(6px, 1.8vw, 12px)",
       boxShadow: "inset 0 0 20px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.5)",
-      minWidth: "120px",
+      minWidth: 0,
     }}>
-      <div className="text-[0.6rem] font-numbers uppercase tracking-widest mb-1" style={{ color: labelColor }}>
+      <div className="text-[0.55rem] font-numbers uppercase tracking-widest mb-0.5 sm:mb-1" style={{ color: labelColor }}>
         {label}
       </div>
-      <div 
+      <div
         className="font-numbers tabular-nums text-center"
-        style={{ 
-          fontSize: "clamp(1.2rem, 4vw, 2rem)", 
+        style={{
+          fontSize: "clamp(0.95rem, 3.2vw, 2rem)",
           color,
           textShadow: `0 0 10px ${color}, 0 0 20px ${color}`,
           fontFamily: '"Orbitron", "Share Tech Mono", monospace',
@@ -870,8 +870,8 @@ function CabinetButtonPanel({
         </button>
       </div>
 
-      {/* Cabinet base - bill validator / ticket printer simulation */}
-      <div className="w-full mt-4 flex items-center justify-center gap-8 px-2" style={{ opacity: 0.6 }}>
+      {/* Cabinet base - bill validator / ticket printer simulation (decorative; hidden on mobile where bottom nav already provides nav chrome) */}
+      <div className="hidden sm:flex w-full mt-4 items-center justify-center gap-8 px-2" style={{ opacity: 0.6 }}>
         <div className="flex items-center gap-2" style={{ color: "rgba(212,175,55,0.5)", fontSize: "0.7rem" }}>
           <span>💵</span>
           <span className="font-numbers">BILL ACCEPTOR</span>
@@ -1333,13 +1333,13 @@ export default function SlotMachine({
         {/* ── Top Glass ── */}
         <CabinetTopGlass freeSpins={freeSpins} />
 
-        {/* ── Jackpot Meters ── */}
-        <div className="w-full px-4 mb-3">
+        {/* ── Jackpot Meters (hidden on mobile to keep cabinet compact; jackpot is still shown in overlay during wins) ── */}
+        <div className="hidden sm:block w-full px-4 mb-3">
           <CabinetJackpotMeters jackpotPool={jackpotPool} />
         </div>
 
-        {/* ── Game Info Panel ── */}
-        <div className="w-full px-4 mb-2">
+        {/* ── Game Info Panel (hidden on mobile — long marquee adds ~40px height, info is on desktop) ── */}
+        <div className="hidden md:block w-full px-4 mb-2">
           <GameInfoPanel freeSpins={freeSpins} />
         </div>
 
