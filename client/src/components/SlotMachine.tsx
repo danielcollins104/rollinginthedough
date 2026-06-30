@@ -9,7 +9,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
 import { playSound, playWinSound } from "@/lib/sounds";
 import { WinParticles } from "./WinParticles";
-import { soundManager } from "@/lib/soundManager";
 import ScratchGame from "./ScratchGame";
 import DealsModal from "./DealsModal";
 import BigWinOverlay from "./BigWinOverlay";
@@ -1227,10 +1226,10 @@ export default function SlotMachine({
 
           if (!soundMuted) {
             const winLineCount = winLines.length;
-            if (lastWinType === "JACKPOT") { playSound("jackpot"); soundManager.playJackpot(); }
-            else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); soundManager.playBigWin(); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
-            else if (lastWinType === "BIG_WIN") { playSound("big_win"); soundManager.playBigWin(); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
-            else { playWinSound(winLines.length); soundManager.playSmallWin(); }
+            if (lastWinType === "JACKPOT") { playSound("jackpot"); }
+            else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
+            else if (lastWinType === "BIG_WIN") { playSound("big_win"); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
+            else { playWinSound(winLines.length); }
           }
 
           if (winLines.length > 0) startCascade(reels, winLines);

@@ -51,15 +51,21 @@ function playTone(
 
   oscillator.type = type;
   oscillator.frequency.setValueAtTime(frequency, ctx.currentTime + delay);
-  
+
   // Frequency sweep for more interesting sound
   if (endFrequency) {
     oscillator.frequency.exponentialRampToValueAtTime(endFrequency, ctx.currentTime + delay + duration);
   }
 
-  // Smooth attack and release envelope
+  // Smooth attack AND release envelope to eliminate clicks.
+  // Without an attack ramp the gain jumps from 0 to peak instantly, which
+  // produces a "blat" — the same artifact you get from blowing into a mic.
+  const ATTACK = 0.008;   // 8ms — fast enough to feel responsive
+  const RELEASE_START = Math.max(ATTACK, duration - 0.05);
+  const peak = gainValue;
   gainNode.gain.setValueAtTime(0, ctx.currentTime + delay);
-  gainNode.gain.linearRampToValueAtTime(gainValue, ctx.currentTime + delay + 0.02);
+  gainNode.gain.linearRampToValueAtTime(peak, ctx.currentTime + delay + ATTACK);
+  gainNode.gain.setValueAtTime(peak, ctx.currentTime + delay + RELEASE_START);
   gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
 
   oscillator.start(ctx.currentTime + delay);
@@ -70,7 +76,13 @@ function playTone(
  * Play filtered noise with smooth envelope
  * Creates mechanical, organic textures
  */
-function playNoise(duration: number, gainValue = 0.1, delay = 0, filterFreq = 1200) {
+function playNoise(
+  duration: number,
+  gainValue = 0.1,
+  delay = 0,
+  filterFreq = 1200,
+  filterType: BiquadFilterType = "lowpass"
+) {
   const ctx = getAudioContext();
   if (!ctx) return;
 
@@ -85,11 +97,18 @@ function playNoise(duration: number, gainValue = 0.1, delay = 0, filterFreq = 12
   source.buffer = buffer;
 
   const gainNode = ctx.createGain();
-  gainNode.gain.setValueAtTime(gainValue, ctx.currentTime + delay);
+  // Click-free envelope — see note in playTone. Instant "blat" on white noise
+  // is the textbook "blowing into a microphone" artifact.
+  const ATTACK = 0.005;
+  const RELEASE_START = Math.max(ATTACK, duration - 0.04);
+  const peak = gainValue;
+  gainNode.gain.setValueAtTime(0, ctx.currentTime + delay);
+  gainNode.gain.linearRampToValueAtTime(peak, ctx.currentTime + delay + ATTACK);
+  gainNode.gain.setValueAtTime(peak, ctx.currentTime + delay + RELEASE_START);
   gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
 
   const filter = ctx.createBiquadFilter();
-  filter.type = "lowpass";
+  filter.type = filterType;
   filter.frequency.value = filterFreq;
   filter.Q.value = 1;
 

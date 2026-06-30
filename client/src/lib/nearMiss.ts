@@ -112,10 +112,31 @@ function checkAlmostBonus(reels: string[][]): boolean {
 /**
  * Plays a near-miss sound effect
  * Creates anticipation and excitement
+ *
+ * Shares an audio context with the rest of the game via sharedAudioContext.
+ * Creating a new AudioContext on every call causes browser limits to fire
+ * (Chrome caps at ~6 simultaneous contexts) and produces audible glitches.
  */
-export function playNearMissSound(nearMiss: NearMissEvent): void {
+let sharedAudioContext: AudioContext | null = null;
+function getAudioContext(): AudioContext | null {
   try {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!sharedAudioContext) {
+      sharedAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (sharedAudioContext.state === "suspended") {
+      void sharedAudioContext.resume();
+    }
+    return sharedAudioContext;
+  } catch {
+    return null;
+  }
+}
+
+export function playNearMissSound(nearMiss: NearMissEvent): void {
+  const audioCtx = getAudioContext();
+  if (!audioCtx) return;
+
+  try {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
@@ -125,24 +146,27 @@ export function playNearMissSound(nearMiss: NearMissEvent): void {
     osc.type = "sine";
     const now = audioCtx.currentTime;
 
+    // Click-free envelope — instant gain on a sine pops audibly.
+    const ATTACK = 0.008;
+    const peak = 0.2;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(peak, now + ATTACK);
+
     if (nearMiss.type === "one_away") {
       // Ascending tones that stop just short of resolution
       osc.frequency.setValueAtTime(440, now);
       osc.frequency.linearRampToValueAtTime(660, now + 0.3);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
     } else if (nearMiss.type === "almost_jackpot") {
       // Dramatic ascending sweep
       osc.frequency.setValueAtTime(300, now);
       osc.frequency.linearRampToValueAtTime(800, now + 0.4);
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
     } else if (nearMiss.type === "almost_bonus") {
       // Quick ascending progression
       osc.frequency.setValueAtTime(523, now);
       osc.frequency.linearRampToValueAtTime(784, now + 0.25);
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
     }
 
     osc.start(now);
