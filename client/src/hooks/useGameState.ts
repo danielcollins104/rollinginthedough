@@ -314,6 +314,26 @@ export function rescueMinPayout(bet: number): number {
   return Math.floor(bet * 0.5);
 }
 
+/**
+ * Pure claim helper for missions. Returns the updated mission + the reward
+ * to credit, or { mission: existing, reward: 0 } if the mission can't be
+ * claimed (not complete, or already claimed).
+ *
+ * Extracted so the claim-once semantics can be unit-tested without rendering
+ * the React tree.
+ */
+export function applyMissionClaim(
+  mission: { completed: boolean; claimed: boolean; reward: number }
+): { mission: { completed: boolean; claimed: boolean; reward: number }; reward: number } {
+  if (!mission.completed || mission.claimed) {
+    return { mission, reward: 0 };
+  }
+  return {
+    mission: { ...mission, claimed: true },
+    reward: mission.reward,
+  };
+}
+
 // ─── Local storage helpers ────────────────────────────────────────────────────
 function loadState() {
   try {

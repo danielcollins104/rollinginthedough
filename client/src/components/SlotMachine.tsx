@@ -53,6 +53,7 @@ interface Props {
   externalShowScratch?: boolean;
   onDealsClose?: () => void;
   onScratchClose?: () => void;
+  onScratchWin?: (amount: number) => void;
   selectedCurrency?: 'gold' | 'green';
 }
 
@@ -902,6 +903,7 @@ export default function SlotMachine({
   externalShowScratch,
   onDealsClose,
   onScratchClose,
+  onScratchWin,
   selectedCurrency = 'gold',
 }: Props) {
   const [reelDone, setReelDone] = useState<boolean[]>([true, true, true, true, true]);
@@ -1258,6 +1260,27 @@ export default function SlotMachine({
       {/* Big Win Overlay */}
       {showBigWin && (lastWinType === "BIG_WIN" || lastWinType === "MEGA_WIN" || lastWinType === "JACKPOT") && (
         <BigWinOverlay winType={lastWinType} winAmount={winAmount} onDismiss={() => setShowBigWin(false)} />
+      )}
+
+      {/* Scratch Game modal (opens from bottom-nav 🎰 Scratch) */}
+      {showScratchGame && (
+        <ScratchGame
+          onClose={() => {
+            setShowScratchGame(false);
+            onScratchClose?.();
+          }}
+          onWin={(amount) => onScratchWin?.(amount)}
+        />
+      )}
+
+      {/* Deals modal (opens from bottom-nav 🎁 Deals) */}
+      {showDealsModal && (
+        <DealsModal
+          onClose={() => {
+            setShowDealsModal(false);
+            onDealsClose?.();
+          }}
+        />
       )}
 
       {/* ── Physical Cabinet Structure ── */}

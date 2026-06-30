@@ -291,6 +291,7 @@ export default function Home() {
           externalShowScratch={externalShowScratch}
           onDealsClose={() => setExternalShowDeals(false)}
           onScratchClose={() => setExternalShowScratch(false)}
+          onScratchWin={(amount) => setGoldCoins((c) => c + amount)}
           selectedCurrency={selectedCurrency}
         />
       </main>

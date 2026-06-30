@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { shouldOfferRescue, rescueMinPayout } from "./useGameState";
+import { shouldOfferRescue, rescueMinPayout, applyMissionClaim } from "./useGameState";
 import type { BonusGameType } from "@/lib/bonusGames";
 
 /**
@@ -263,5 +263,42 @@ describe("Loss-back rescue spin", () => {
     it("returns 0 for zero bet", () => {
       expect(rescueMinPayout(0)).toBe(0);
     });
+  });
+});
+
+/**
+ * Mission claim-once semantics. The mission can only be claimed once; a
+ * re-click on a claimed mission must return 0 reward and not toggle the
+ * claimed flag back.
+ */
+describe("applyMissionClaim", () => {
+  const completedUnclaimed = { completed: true, claimed: false, reward: 150 };
+
+  it("credits the reward and marks claimed on first claim", () => {
+    const { mission, reward } = applyMissionClaim(completedUnclaimed);
+    expect(reward).toBe(150);
+    expect(mission.claimed).toBe(true);
+    expect(mission.completed).toBe(true);
+  });
+
+  it("does not re-credit on a second claim attempt", () => {
+    const first = applyMissionClaim(completedUnclaimed);
+    const second = applyMissionClaim(first.mission);
+    expect(second.reward).toBe(0);
+    expect(second.mission).toEqual(first.mission);
+  });
+
+  it("rejects incomplete missions", () => {
+    const incomplete = { completed: false, claimed: false, reward: 100 };
+    const { mission, reward } = applyMissionClaim(incomplete);
+    expect(reward).toBe(0);
+    expect(mission).toEqual(incomplete); // untouched
+  });
+
+  it("rejects already-claimed missions", () => {
+    const claimed = { completed: true, claimed: true, reward: 200 };
+    const { mission, reward } = applyMissionClaim(claimed);
+    expect(reward).toBe(0);
+    expect(mission).toEqual(claimed);
   });
 });
