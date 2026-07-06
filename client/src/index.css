@@ -134,16 +134,193 @@
   pointer-events: none;
 }
 
-/* Slot machine reel styles */
+/* Slot machine reel styles — fills one cell of the cabinet-rim grid.
+   NO own border here — the cabinet-rim parent's gold gradient
+   (drawn via ::before with mask-composite: exclude) provides the
+   outer rim. We use CSS Grid 3-rows so the symbol tiles divide the
+   reel height exactly evenly with NO leftover gap at the bottom.
+   The only painted recess is an inset shadow. */
 .reel-container {
-  background: linear-gradient(180deg, #050510 0%, #0a0a1a 50%, #050510 100%);
-  border: 2px solid #D4AF37;
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.3);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #14081c 0%, #1a0a26 50%, #14081c 100%);
+  box-shadow:
+    inset 0 0 28px rgba(0, 0, 0, 0.85),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.35),
+    inset 0 1px 0 rgba(255, 220, 160, 0.18),
+    0 0 18px rgba(212, 175, 55, 0.35);
   overflow: hidden;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: 120px;
+  display: grid;
+  grid-template-rows: 1fr 1fr 1fr;
+  min-height: 280px;
+  border-radius: 10px;
+  border: none;
+  gap: 0;
+}
+
+/* Cabinet-level gold-rim glow that wraps the entire reel array.
+   Thicker (6px) double-keyline frame with a single continuous
+   gold-foil gradient, painted on the padding ring via the ::before
+   mask. Inspired by the Melody Circus Riches reference: vermillion
+   pillar + gold rim + candle bloom. Adapted to the Huntress Warrior
+   palette: plum body, fired-clay gold rim, candle bloom + red haze. */
+.cabinet-rim {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(60, 14, 30, 0.95) 0%, rgba(20, 8, 28, 0.95) 50%, rgba(40, 10, 22, 0.95) 100%);
+  border: 6px solid transparent;
+  background-clip: padding-box;
+  box-shadow:
+    /* Inner: 24px candle-yellow bloom (the reference's signature glow) */
+    0 0 24px rgba(255, 194, 71, 0.85),
+    /* Outer: 60px warm prairie-fire haze */
+    0 0 60px rgba(255, 107, 107, 0.28),
+    /* Far field: faint 96px ember bleed */
+    0 0 96px rgba(255, 138, 60, 0.18),
+    /* Inset recess */
+    inset 0 0 40px rgba(0, 0, 0, 0.65);
+  border-radius: 18px;
+  /* Inner padding creates a plum recess between the gold border and
+     the reels. The double key-line gold frame is painted on the
+     padding area via the ::before mask. */
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  animation: cabinetRimBreathe 4.5s ease-in-out infinite;
+}
+/* The double-keyline gold frame sits on a layer behind the inner
+   content. Painted on the padding area, so the rim is 6px thick
+   with a darker pinstripe in the middle (1px dark line at 50% of
+   the rim width creates the "double key-line" effect). */
+.cabinet-rim::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 6px;
+  border-radius: 18px;
+  background:
+    /* outer ring (3px) — pale gold, lit by bloom */
+    linear-gradient(135deg, #fbe089 0%, #f5e1a4 25%, #fbe089 50%, #d4af37 75%, #7a5234 100%) padding-box,
+    /* mid pinstripe (sub-pixel dark line) */
+    linear-gradient(180deg, #1a0a14 0%, #2a0e1a 100%) padding-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+}
+/* Subtle extra inner-ring so the 1.5px divider between rim and reels
+   reads as a deliberate key-line, not a hairline seam. */
+.cabinet-rim::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, rgba(255, 220, 130, 0.4) 0%, rgba(212, 175, 55, 0.2) 50%, rgba(255, 220, 130, 0.4) 100%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+@keyframes cabinetRimBreathe {
+  0%, 100% {
+    filter: brightness(1.0);
+  }
+  50% {
+    filter: brightness(1.18);
+  }
+}
+
+/* Symbol tile — flame-bordered glowing border (like the reference's WILD tiles).
+   Adapted from the Melody Circus Riches reference: each tile has a molten
+   14-18px yellow-orange bloom, a thin gold rim, an inner warm glow, and
+   animated candle-breath on the bloom only. The gold ring is intentionally
+   thin (1.5px) so adjacent tiles don't pile into a thick gold band. */
+.symbol-tile {
+  position: relative;
+  border-radius: 4px;
+  /* outline draws a 1.5px gold ring INSIDE the box, layered with the
+     box-shadow bloom for the "pressed metal under candlelight" feel. */
+  outline: 1.5px solid rgba(255, 220, 130, 0.95);
+  outline-offset: -1px;
+  box-shadow:
+    /* outermost ember bleed — broad warm glow (the reference's bloom) */
+    0 0 8px rgba(255, 138, 60, 0.75),
+    0 0 16px rgba(255, 194, 71, 0.65),
+    0 0 28px rgba(255, 107, 107, 0.35),
+    /* inner warm glow */
+    inset 0 0 8px rgba(255, 138, 60, 0.55),
+    inset 0 1px 0 rgba(255, 240, 180, 0.18);
+  animation: tileBreath 3.6s ease-in-out infinite;
+}
+@keyframes tileBreath {
+  0%, 100% {
+    box-shadow:
+      0 0 8px rgba(255, 138, 60, 0.75),
+      0 0 16px rgba(255, 194, 71, 0.65),
+      0 0 28px rgba(255, 107, 107, 0.35),
+      inset 0 0 8px rgba(255, 138, 60, 0.55),
+      inset 0 1px 0 rgba(255, 240, 180, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 10px rgba(255, 138, 60, 0.9),
+      0 0 20px rgba(255, 194, 71, 0.85),
+      0 0 36px rgba(255, 107, 107, 0.45),
+      inset 0 0 10px rgba(255, 138, 60, 0.7),
+      inset 0 1px 0 rgba(255, 240, 180, 0.25);
+  }
+}
+/* Six ember sparks (no mix-blend-mode; pure radial-gradient spots). They
+   sit 2px from the rim so they paint crisply against the dark interior. */
+.symbol-tile::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 4px;
+  background:
+    radial-gradient(circle 2.5px at 6% 12%, rgba(255, 240, 180, 1), transparent 80%),
+    radial-gradient(circle 2.5px at 86% 6%, rgba(255, 168, 64, 1), transparent 80%),
+    radial-gradient(circle 2.5px at 96% 42%, rgba(255, 240, 180, 1), transparent 80%),
+    radial-gradient(circle 2.5px at 92% 80%, rgba(255, 168, 64, 1), transparent 80%),
+    radial-gradient(circle 2.5px at 38% 96%, rgba(255, 240, 180, 1), transparent 80%),
+    radial-gradient(circle 2.5px at 6% 84%, rgba(255, 168, 64, 1), transparent 80%);
+  pointer-events: none;
+  z-index: 5;
+}
+.symbol-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  background: transparent;
+  pointer-events: none;
+  z-index: 5;
+}
+@keyframes emberCrawl {
+  0%   { background-position: 0 0; }
+  100% { background-position: 60px 60px; }
+}
+
+/* Cracks — top + bottom of every cell, subtle to match the reference */
+.reel-cell-divider-top {
+  box-shadow:
+    inset 0 1px 0 rgba(212, 175, 55, 0.45),
+    inset 0 -1px 0 rgba(212, 175, 55, 0.18);
 }
 
 .reel-container::before {
@@ -152,9 +329,9 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 30%;
-  background: linear-gradient(180deg, rgba(5,5,16,0.95) 0%, transparent 100%);
-  z-index: 10;
+  height: 18%;
+  background: linear-gradient(180deg, rgba(20, 8, 28, 0.9) 0%, transparent 100%);
+  z-index: 6;
   pointer-events: none;
 }
 
@@ -164,9 +341,9 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 30%;
-  background: linear-gradient(0deg, rgba(5,5,16,0.95) 0%, transparent 100%);
-  z-index: 10;
+  height: 18%;
+  background: linear-gradient(0deg, rgba(20, 8, 28, 0.9) 0%, transparent 100%);
+  z-index: 6;
   pointer-events: none;
 }
 
@@ -461,6 +638,20 @@
 
 .reel-win {
   animation: reelWinBorder 0.6s ease-in-out infinite;
+}
+
+/* Spinning reel vertical-streak overlay — bright bands scroll upward
+   inside the reel while the strip is in motion, producing the
+   "flashing through symbols" look of a real cabinet. The 0.12s
+   loop + 50px background-tile = 416 px-per-second streaming cue
+   that does NOT depend on JS frame timing. */
+@keyframes spinStreaks {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 280px; }
+}
+@keyframes spinStreaksSlower {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 100px; }
 }
 
 /* Spin button idle pulse (attention-grabbing) */

@@ -1,54 +1,42 @@
 /**
- * Rolling in the Dough — Scientifically-Designed Sound Psychology
+ * Rolling in the Dough — Sound Psychology Library (v2)
+ * Refactored to use the unified audio core. All oscillators now route
+ * through the shared AudioContext + master limiter + master gain, so
+ * (a) sounds from this module mix correctly with sounds.ts instead of
+ * fighting for a separate audio device, (b) the per-context cap of 6
+ * can't be exhausted, and (c) the single mute gate (audioCore.setMuted)
+ * silences everything when the user toggles sound off.
  *
- * Based on behavioral psychology research:
- * - Dopamine triggers: ascending frequencies, harmonic progressions, unexpected rewards
- * - Variable Ratio Reinforcement: unpredictable rewards trigger stronger dopamine response
- * - Frequency psychology: 40Hz (gamma) for focus, 432Hz for calm, 528Hz for healing
- * - Temporal dynamics: longer sustained notes = stronger reward sensation
- * - Win music on small net gains: behavioral conditioning (Skinner box principles)
+ * Original design intent preserved:
+ * - playSpin: anticipation builder (100→200Hz sweep)
+ * - playReelStop: 200Hz thunk + harmonic overtones
+ * - playWinMusic: ascending C-major chord = psychologically pleasing
+ * - playMegaWin: bass gamma (40Hz) + ascending harmonic series
+ * - playJackpot: deep bass swell + full octave celebration
+ * - playBonusAlert: ascending alert (E5 G5 C6 E6)
+ * - playCascade: descending sweep (800→400Hz) = falling
  *
- * v2: All oscillators use a click-free ADSR envelope via computeEnvelope().
- * Earlier versions jumped gain from 0 to peak instantly with
- * setValueAtTime(value, now), then exponential-ramped DOWN. That instant
- * "blat" is the textbook "blowing into a microphone" artifact —
- * especially audible on low frequencies and on rapid sequences where
- * each tone starts while the previous one is still in its release phase.
+ * Peak gains kept under 0.5 per branch; the master limiter is the
+ * safety net below that.
  */
 
+import {
+  playTone,
+  playChord,
+  playArpeggio,
+  playNoise,
+  getAudioContext,
+  getMixBus as coreMixBus,
+} from "./audioCore";
 import { computeEnvelope } from "./audioEnvelope";
 
-// Single shared audio context — creating new ones per-call hits the
-// browser's ~6-context cap and causes sounds to fail or play through
-// an isolated context that ignores the global mute.
-let audioCtxInstance: globalThis.AudioContext | null = null;
-
-function getAudioContext(): globalThis.AudioContext | null {
-  try {
-    if (!audioCtxInstance) {
-      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!Ctx) return null;
-      audioCtxInstance = new Ctx();
-    }
-    if (audioCtxInstance.state === "suspended") {
-      void audioCtxInstance.resume();
-    }
-    return audioCtxInstance;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Plays a single oscillator through ctx.destination with a click-free
+ * Plays a single oscillator through audioCore's mix bus with a click-free
  * attack/hold/release envelope. Returns the gain node so callers can
  * chain filters if needed.
- *
- *   attack  — linear ramp from 0 → peak (default 12ms)
- *   release — exponential ramp from peak → 0.001 (starts at duration - 0.04s)
  */
 function spawnOsc(
-  ctx: globalThis.AudioContext,
+  ctx: AudioContext,
   frequency: number,
   peak: number,
   duration: number,
@@ -60,7 +48,10 @@ function spawnOsc(
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  // Route through audioCore's bus (which already goes through the master
+  // limiter and master gain). Direct ctx.destination connections would
+  // bypass the limiter and risk destination clipping.
+  gain.connect(getMixBus());
   osc.type = type;
   osc.frequency.setValueAtTime(frequency, ctx.currentTime + delay);
 
@@ -76,44 +67,44 @@ function spawnOsc(
   return { osc, gain };
 }
 
-/**
- * Sequence of tones (chord/ascending arpeggio). Each note has its own
- * click-free envelope so the start and end of every note is silent.
- */
+// Local mix-bus helper that calls the unified audio core. The bus is
+// the same one sounds.ts writes to, so all sounds share a single
+// AudioContext + master limiter + master gain.
+function getMixBus(): AudioNode {
+  const ctx = getAudioContext();
+  return ctx ? coreMixBus(ctx) : ({ connect: () => {} } as unknown as AudioNode);
+}
+
 function playSequence(
   frequencies: number[],
   duration: number,
   delay: number = 0.1,
-  volume: number = 0.25
+  volume: number = 0.18
 ): void {
-  const ctx = getAudioContext();
-  if (!ctx) return;
+  // Use audioCore.playTone so the chain is consistent with sounds.ts.
+  // Each note gets its own click-free envelope via audioCore.
   frequencies.forEach((freq, index) => {
-    spawnOsc(ctx, freq, volume, duration, "sine", delay * index);
+    playTone(freq, duration, "sine", volume, delay * index);
   });
 }
 
-/**
- * SPIN SOUND — Anticipation builder
- * Frequency sweep from 100Hz → 200Hz creates tension and excitement.
- */
 export function playSpin(): void {
+  // 100→200Hz sweep, 800ms. The sweep is gentle (no noise) so it
+  // doesn't pile on top of sounds.ts's spin sound if both fire.
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
     const duration = 0.8;
-
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(coreMixBus(ctx));
     osc.type = "sine";
     osc.frequency.setValueAtTime(100, now);
     osc.frequency.linearRampToValueAtTime(200, now + duration);
 
-    // Click-free envelope via the shared helper.
-    const env = computeEnvelope(duration, 0, 0.25, 0.1, duration * 0.4);
+    const env = computeEnvelope(duration, 0, 0.18, 0.10, duration * 0.4);
     gain.gain.setValueAtTime(0, now + env.attackStart);
     gain.gain.linearRampToValueAtTime(env.peak, now + env.attackEnd);
     gain.gain.setValueAtTime(env.peak, now + env.releaseStart);
@@ -126,139 +117,88 @@ export function playSpin(): void {
   }
 }
 
-/**
- * REEL STOP SOUND — Satisfying mechanical click
- * 200Hz thunk + harmonic overtones (400Hz, 600Hz) = satisfying resonance
- */
 export function playReelStop(): void {
+  // Mechanical click + harmonic. 200Hz thunk + 400Hz + 600Hz overtones.
+  // Peak gain 0.20 — short, won't accumulate across 5 reel stops.
   try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    spawnOsc(ctx, 200, 0.3, 0.15, "sine", 0, 0.005, 0.04);
-    spawnOsc(ctx, 400, 0.15, 0.2,  "sine", 0, 0.005, 0.04);
-    spawnOsc(ctx, 600, 0.1,  0.25, "sine", 0, 0.005, 0.04);
+    playTone(200, 0.12, "sine", 0.18);
+    playTone(400, 0.10, "sine", 0.12, 0.02);
+    playTone(600, 0.08, "sine", 0.10, 0.04);
   } catch (e) {
     console.warn("Reel stop sound failed:", e);
   }
 }
 
-/**
- * WIN MUSIC — Plays on any net positive outcome.
- * Ascending progression: C5 → E5 → G5 → C6 (C major chord = psychologically pleasing).
- */
 export function playWinMusic(isSmallWin: boolean = false): void {
   try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
     if (isSmallWin) {
       // C5 → E5 → G5 (quick dopamine spike)
-      playSequence([523, 659, 784], 0.3, 0.15, 0.2);
+      playSequence([523, 659, 784], 0.20, 0.10, 0.13);
     } else {
       // C5 → E5 → G5 → C6 (sustained climax)
-      playSequence([523, 659, 784, 1047], 0.5, 0.2, 0.25);
+      playSequence([523, 659, 784, 1047], 0.25, 0.12, 0.15);
     }
   } catch (e) {
     console.warn("Win music failed:", e);
   }
 }
 
-/**
- * MEGA WIN — Epic celebration with 40Hz gamma and ascending harmonic series.
- */
 export function playMegaWin(): void {
   try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    // Bass gamma (40Hz) — long duration
-    spawnOsc(ctx, 40, 0.2, 1.2, "sine", 0, 0.08, 0.4);
-
-    // Ascending harmonic series with attack ramps
-    playSequence([523, 659, 784, 1047, 1319], 0.4, 0.25, 0.3);
+    // Bass gamma (40Hz) — short, won't clip into the next sound
+    playTone(40, 0.20, "sine", 0.18);
+    // Ascending harmonic series
+    playSequence([523, 659, 784, 1047, 1319], 0.25, 0.10, 0.13);
   } catch (e) {
     console.warn("Mega win sound failed:", e);
   }
 }
 
-/**
- * JACKPOT — Maximum celebration with full octave progression.
- */
 export function playJackpot(): void {
   try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-
-    // Deep bass foundation (80Hz, swells up to 0.3)
-    spawnOsc(ctx, 80, 0.3, 2.0, "sine", 0, 0.3, 0.5);
-
-    // Full octave celebration: C5 → E5 → G5 → C6 → E6 → G6
-    playSequence([523, 659, 784, 1047, 1319, 1568], 0.5, 0.15, 0.3);
+    // Deep bass foundation (80Hz)
+    playTone(80, 0.30, "sine", 0.20);
+    // Full octave celebration
+    playSequence([523, 659, 784, 1047, 1319, 1568], 0.30, 0.10, 0.13);
+    // High bell tail
+    playTone(2093, 0.50, "sine", 0.10, 0.60);
   } catch (e) {
     console.warn("Jackpot sound failed:", e);
   }
 }
 
-/**
- * BONUS GAME TRIGGER — Exciting alert sound.
- * Ascending tones E5 → G5 → C6 → E6.
- */
 export function playBonusAlert(): void {
   try {
-    playSequence([659, 784, 1047, 1319], 0.25, 0.1, 0.3);
+    // Ascending alert E5 → G5 → C6 → E6.
+    playSequence([659, 784, 1047, 1319], 0.20, 0.10, 0.15);
   } catch (e) {
     console.warn("Bonus alert sound failed:", e);
   }
 }
 
-/**
- * CASCADE SOUND — Satisfying cascade effect (Candy Crush style).
- * Descending sweep 800Hz → 400Hz.
- */
 export function playCascade(): void {
+  // Descending sweep 800Hz → 400Hz. Falls and lands.
   try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const duration = 0.6;
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(800, now);
-    osc.frequency.linearRampToValueAtTime(400, now + duration);
-
-    const env = computeEnvelope(duration, 0, 0.25, 0.02, duration * 0.3);
-    gain.gain.setValueAtTime(0, now + env.attackStart);
-    gain.gain.linearRampToValueAtTime(env.peak, now + env.attackEnd);
-    gain.gain.setValueAtTime(env.peak, now + env.releaseStart);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + env.releaseEnd);
-
-    osc.start(now);
-    osc.stop(now + duration);
+    playTone(800, 0.25, "sine", 0.16, 0, 400);
+    playTone(600, 0.20, "sine", 0.10, 0.10, 300);
   } catch (e) {
     console.warn("Cascade sound failed:", e);
   }
 }
 
 /**
- * BACKGROUND MUSIC — Sustained 432Hz "healing" tone with 40Hz gamma overlay.
+ * Background music — sustained 432Hz "healing" tone with 40Hz gamma overlay.
  *
  * Old version started oscillators with NEVER stop them — every call piled
  * oscillators on top of the live ones, multiplying the volume and producing
  * a layered "wind blowing" drone that wouldn't go away. Now both oscillators
- * have a finite 8s duration and explicit .stop() calls. This means callers
- * MUST re-invoke playBackgroundMusic() periodically to keep the music going.
- *
- * Audio still won't restart in the middle of a sustained loop (since browsers
- * don't allow restarting a stopped oscillator), so callers should instead
- * use startBackgroundMusic/loopBackgroundMusic to manage continuity.
+ * have a finite 8s duration and explicit .stop() calls. Callers MUST
+ * re-invoke playBackgroundMusic() before the 8s elapses to keep the music
+ * going. startBackgroundMusic/loopBackgroundMusic manage continuity.
  */
 let bgFundamental: { osc: OscillatorNode; gain: GainNode } | null = null;
 let bgGamma: { osc: OscillatorNode; gain: GainNode } | null = null;
-const BG_DURATION = 8; // seconds — must be re-invoked before this elapses
+const BG_DURATION = 8; // seconds
 
 export function playBackgroundMusic(): void {
   try {
@@ -267,77 +207,61 @@ export function playBackgroundMusic(): void {
 
     const now = ctx.currentTime;
     const end = now + BG_DURATION;
+    const bus = coreMixBus(ctx);
 
+    // 432Hz fundamental
     const fundamental = ctx.createOscillator();
     const fundamentalGain = ctx.createGain();
     fundamental.connect(fundamentalGain);
-    fundamentalGain.connect(ctx.destination);
+    fundamentalGain.connect(bus);
     fundamental.type = "sine";
     fundamental.frequency.value = 432;
-    // Click-free envelope — instantaneous gain on a 432Hz sustained tone
-    // produces an audible blip at start/end.
-    const fundEnv = computeEnvelope(BG_DURATION, 0, 0.08, 0.5, BG_DURATION * 0.5);
+    const fundEnv = computeEnvelope(BG_DURATION, 0, 0.06, 0.5, BG_DURATION * 0.5);
     fundamentalGain.gain.setValueAtTime(0, now + fundEnv.attackStart);
     fundamentalGain.gain.linearRampToValueAtTime(fundEnv.peak, now + fundEnv.attackEnd);
     fundamentalGain.gain.setValueAtTime(fundEnv.peak, now + fundEnv.releaseStart);
     fundamentalGain.gain.exponentialRampToValueAtTime(0.001, end);
     fundamental.start(now);
     fundamental.stop(end);
+    bgFundamental = { osc: fundamental, gain: fundamentalGain };
 
+    // 40Hz gamma overlay
     const gamma = ctx.createOscillator();
     const gammaGain = ctx.createGain();
     gamma.connect(gammaGain);
-    gammaGain.connect(ctx.destination);
+    gammaGain.connect(bus);
     gamma.type = "sine";
     gamma.frequency.value = 40;
-    const gammaEnv = computeEnvelope(BG_DURATION, 0, 0.05, 0.5, BG_DURATION * 0.5);
+    const gammaEnv = computeEnvelope(BG_DURATION, 0, 0.04, 0.5, BG_DURATION * 0.5);
     gammaGain.gain.setValueAtTime(0, now + gammaEnv.attackStart);
     gammaGain.gain.linearRampToValueAtTime(gammaEnv.peak, now + gammaEnv.attackEnd);
     gammaGain.gain.setValueAtTime(gammaEnv.peak, now + gammaEnv.releaseStart);
     gammaGain.gain.exponentialRampToValueAtTime(0.001, end);
     gamma.start(now);
     gamma.stop(end);
-
-    bgFundamental = { osc: fundamental, gain: fundamentalGain };
     bgGamma = { osc: gamma, gain: gammaGain };
   } catch (e) {
     console.warn("Background music failed:", e);
   }
 }
 
-/** Stop any currently-playing background music by ramping it down. */
-export function stopBackgroundMusic(): void {
-  try {
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const FADE = 0.25;
-    if (bgFundamental && bgGamma) {
-      // Ramp down then stop so the cutoff is inaudible.
-      bgFundamental.gain.gain.cancelScheduledValues(now);
-      bgFundamental.gain.gain.setValueAtTime(bgFundamental.gain.gain.value, now);
-      bgFundamental.gain.gain.exponentialRampToValueAtTime(0.001, now + FADE);
-      try { bgFundamental.osc.stop(now + FADE); } catch {}
-      bgGamma.gain.gain.cancelScheduledValues(now);
-      bgGamma.gain.gain.setValueAtTime(bgGamma.gain.gain.value, now);
-      bgGamma.gain.gain.exponentialRampToValueAtTime(0.001, now + FADE);
-      try { bgGamma.osc.stop(now + FADE); } catch {}
-      bgFundamental = null;
-      bgGamma = null;
-    }
-  } catch (e) {
-    console.warn("Stop background music failed:", e);
-  }
+export function startBackgroundMusic(): void {
+  playBackgroundMusic();
+  // Re-invoke every 7s (1s before BG_DURATION) so the loop is continuous.
+  setInterval(() => playBackgroundMusic(), 7000);
 }
 
-/**
- * NO WIN SOUND — Non-punishing, encouraging sound.
- * Subtle ascending G4 → A4 (not descending, which sounds negative).
- */
-export function playNoWin(): void {
-  try {
-    playSequence([392, 440], 0.2, 0.1, 0.1);
-  } catch (e) {
-    console.warn("No win sound failed:", e);
+export function loopBackgroundMusic(): void {
+  startBackgroundMusic();
+}
+
+export function stopBackgroundMusic(): void {
+  if (bgFundamental) {
+    try { bgFundamental.osc.stop(); } catch {}
+    bgFundamental = null;
+  }
+  if (bgGamma) {
+    try { bgGamma.osc.stop(); } catch {}
+    bgGamma = null;
   }
 }

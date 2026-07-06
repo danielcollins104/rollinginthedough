@@ -39,9 +39,9 @@ export default function SymbolIcon({ symbolId, size = 48, className, style }: Pr
     case "cake": return <DrumIcon           size={size} className={className} style={style} />;
     case "muffin": return <SunstonesIcon   size={size} className={className} style={style} />;
     case "bun": return <FireIcon           size={size} className={className} style={style} />;
-    case "huntress": return <HuntressIcon size={size} className={className} style={style} />;
+    case "huntress": return <HuntressPhoto size={size} className={className} style={style} />;
     case "dough": return <SpiritArrowIcon  size={size} className={className} style={style} />;
-    default: return <HuntressIcon         size={size} className={className} style={style} />;
+    default: return <HuntressPhoto         size={size} className={className} style={style} />;
   }
 }
 
@@ -405,6 +405,54 @@ function FireIcon({ size, className, style }: Props) {
 }
 
 /** Huntress Warrior (SCATTER) — silhouette of a warrior holding a bow. */
+function HuntressPhoto({ size, className, style }: Props) {
+  // Real illustration used as the SCATTER symbol on the reels.
+  // Source: /client/public/huntress-warrior-square.png (1086x1086,
+  // upward-biased crop from 1086x1448 portrait to preserve headdress
+  // + moon). Painted for the cabinet by the user; replaces the old
+  // SVG silhouette (HuntressIcon below) which the user said looked
+  // "like a 5-year-old drew it".
+  //
+  // The 1:1 source is composited with a soft amber glow ring behind
+  // the figure (matching the candle-bloom cabinet language) so the
+  // tile reads as "lit by candle" rather than pasted-on photograph.
+  // The amber glow uses her actual palette: copper #B87333, ember
+  // orange #FF8A3C, plum #5A1F4E.
+  return (
+    <div
+      className={className}
+      style={{
+        width: size,
+        height: size,
+        position: "relative",
+        borderRadius: 4,
+        overflow: "hidden",
+        background:
+          "radial-gradient(circle at 50% 38%, rgba(255,194,71,0.45) 0%, rgba(255,138,60,0.2) 35%, rgba(90,31,78,0.0) 65%)",
+        ...style,
+      }}
+    >
+      <img
+        src="/huntress-warrior-square.png"
+        alt="Huntress Warrior scatter"
+        width={size}
+        height={size}
+        draggable={false}
+        style={{
+          display: "block",
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "50% 30%",
+          // Slight contrast/saturation boost so the image reads crisply
+          // at 72px and integrates with the cabinet's candle-lit palette.
+          filter: "contrast(1.08) saturate(1.12) drop-shadow(0 0 6px rgba(255,194,71,0.35))",
+        }}
+      />
+    </div>
+  );
+}
+
 function HuntressIcon({ size, className, style }: Props) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className={className} style={style}>

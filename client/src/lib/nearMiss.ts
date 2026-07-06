@@ -113,26 +113,15 @@ function checkAlmostBonus(reels: string[][]): boolean {
  * Plays a near-miss sound effect
  * Creates anticipation and excitement
  *
- * Shares an audio context with the rest of the game via sharedAudioContext.
- * Creating a new AudioContext on every call causes browser limits to fire
- * (Chrome caps at ~6 simultaneous contexts) and produces audible glitches.
+ * Uses the unified audio core (audioCore) so the near-miss sound
+ * shares the same AudioContext, master limiter, and mute gate as
+ * every other sound in the game. Direct context.destination writes
+ * are forbidden because they bypass the limiter and the gate.
  */
-let sharedAudioContext: AudioContext | null = null;
-function getAudioContext(): AudioContext | null {
-  try {
-    if (!sharedAudioContext) {
-      sharedAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    if (sharedAudioContext.state === "suspended") {
-      void sharedAudioContext.resume();
-    }
-    return sharedAudioContext;
-  } catch {
-    return null;
-  }
-}
+import { getAudioContext, getMixBus as coreMixBus, isMuted } from "./audioCore";
 
 export function playNearMissSound(nearMiss: NearMissEvent): void {
+  if (isMuted()) return;
   const audioCtx = getAudioContext();
   if (!audioCtx) return;
 
@@ -141,14 +130,14 @@ export function playNearMissSound(nearMiss: NearMissEvent): void {
     const gain = audioCtx.createGain();
 
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(coreMixBus(audioCtx));
 
     osc.type = "sine";
     const now = audioCtx.currentTime;
 
     // Click-free envelope — instant gain on a sine pops audibly.
     const ATTACK = 0.008;
-    const peak = 0.2;
+    const peak = 0.16;
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(peak, now + ATTACK);
 

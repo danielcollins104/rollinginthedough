@@ -7,7 +7,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
-import { playSound, playWinSound } from "@/lib/sounds";
+import { playSound, playWinSound, setSoundEnabled as setLibSoundEnabled, isSoundEnabled } from "@/lib/sounds";
+import { detectNearMisses, playNearMissSound } from "@/lib/nearMiss";
 import { WinParticles } from "./WinParticles";
 import ScratchGame from "./ScratchGame";
 import DealsModal from "./DealsModal";
@@ -296,8 +297,11 @@ function GameInfoPanel({ freeSpins }: { freeSpins: number }) {
   );
 }
 
-// Physics-based spinning reel strip with elastic slam stop
-function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number; reelIndex?: number }) {
+// Physics-based spinning reel strip with elastic slam stop.
+// Phases: 200ms accel ramp → ~900-1400ms cruise at target velocity with
+// sin-wave organic jitter → spring decel back to targetY with overshoot.
+// Total visible motion is ~1.4-1.6s per reel (staggered by reelIndex).
+function ReelStrip({ symbols, spinning, done, size = 80, reelIndex = 0 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number; reelIndex?: number }) {
   const [translateY, setTranslateY] = useState(0);
   const [velocity, setVelocity] = useState(0);
   const [animFrame, setAnimFrame] = useState<number | null>(null);
@@ -308,67 +312,101 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
   useEffect(() => {
     if (spinning && !done) {
       const startTime = Date.now();
-      const targetVelocity = size * 22;
-      const acceleration = targetVelocity / 15;
-      
+      // Velocity tuned to size — bigger reels scroll faster for the same
+      // visual cadence, so the user can clearly see the strip moving.
+      // size=80 → targetVelocity = 2400 px/s = 40 px/frame at 60fps.
+      const targetVelocity = size * 30;
+      // Quick accel: hit cruise velocity in 12 frames (~200ms).
+      const acceleration = targetVelocity / 12;
+
       let currentVelocity = 0;
       let currentY = 0;
-      
+
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const frameId = requestAnimationFrame(animate);
         setAnimFrame(frameId);
-        
-        if (elapsed < 250) {
+
+        if (elapsed < 200) {
+          // Acceleration ramp
           currentVelocity = Math.min(currentVelocity + acceleration, targetVelocity);
         } else {
-          currentVelocity = targetVelocity + Math.sin(elapsed * 0.01) * 50;
+          // Cruise with organic variation so the strip doesn't look
+          // mechanically uniform. Each reel gets a phase offset so they
+          // don't all jitter in sync.
+          const phase = reelIndex * 0.7;
+          const jitter = Math.sin(elapsed * 0.012 + phase) * 60;
+          currentVelocity = targetVelocity + jitter;
         }
-        
+
         currentY += currentVelocity / 60;
         setTranslateY(currentY);
         setVelocity(currentVelocity);
       };
-      
+
       const frameId = requestAnimationFrame(animate);
       setAnimFrame(frameId);
-      
+
       return () => { if (frameId) cancelAnimationFrame(frameId); };
     } else if (done && spinning === false) {
       const targetIndex = 10;
       const symbolHeight = size;
       const targetY = -targetIndex * symbolHeight;
-      
+
       let currentY = translateY;
       let currentV = velocity > 0 ? velocity : -targetY * 0.03;
-      
+
+      // Track if we've fired the slam event (only once per stop)
+      let slamFired = false;
+      // Track if we've triggered the sticky-lock for winning symbols
+      let stickyLockFired = false;
+
       const animateStop = () => {
-        const stiffness = 0.08;
-        const damping = 0.12;
+        // Spring constants tuned for a HEAVY SLAM with overshoot + stick.
+        // Higher stiffness = harder snap-back; lower damping = more bounce cycles.
+        // These values create a "thunk... boing... stick" feel like Vegas cabinets.
+        const stiffness = 0.18;   // was 0.10 — snaps harder
+        const damping = 0.08;     // was 0.14 — more oscillation before settle
         const displacement = currentY - targetY;
-        
+
         const acceleration = -stiffness * displacement - damping * currentV;
         currentV += acceleration;
         currentY += currentV / 60;
-        
-        const settled = Math.abs(displacement) < 0.5 && Math.abs(currentV) < 0.5;
-        
+
+        const settled = Math.abs(displacement) < 0.3 && Math.abs(currentV) < 0.3;
+
         setTranslateY(currentY);
         setVelocity(currentV);
-        
+
+        // Fire the "reel-slam" event on first crossing of targetY (the impact moment)
+        // This is when the symbols physically HIT the payline — the "thunk".
+        if (!slamFired && displacement <= 0 && currentV < 0) {
+          slamFired = true;
+          window.dispatchEvent(new CustomEvent('reel-slam', { detail: { reelIndex, impact: true } }));
+        }
+
+        // Fire sticky-lock for winning/bonus symbols after the main slam settles
+        // This triggers the "symbol locks into place" animation
+        if (!stickyLockFired && settled) {
+          stickyLockFired = true;
+          window.dispatchEvent(new CustomEvent('reel-sticky-lock', { detail: { reelIndex } }));
+        }
+
         if (!settled) {
           const frameId = requestAnimationFrame(animateStop);
           setAnimFrame(frameId);
         } else {
           setTranslateY(targetY);
           setVelocity(0);
-          window.dispatchEvent(new CustomEvent('reel-slam', { detail: { reelIndex } }));
+          if (!slamFired) {
+            window.dispatchEvent(new CustomEvent('reel-slam', { detail: { reelIndex, impact: true } }));
+          }
         }
       };
-      
+
       const frameId = requestAnimationFrame(animateStop);
       setAnimFrame(frameId);
-      
+
       return () => { if (frameId) cancelAnimationFrame(frameId); };
     }
   }, [spinning, done, size, translateY, velocity, reelIndex]);
@@ -387,22 +425,38 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
 
   if (spinning) {
     const startIdx = Math.max(0, Math.floor(-translateY / size));
-    const visibleCount = Math.ceil(360 / size) + 2;
-    
+    const visibleCount = Math.ceil(360 / size) + 4;
+
+    // Normalized speed factor: 0 = stopped, 1 = at cruise velocity.
+    const speedFactor = Math.min(Math.abs(velocity) / (size * 22), 1);
+
     return (
-      <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ transform: `translateY(${translateY}px)` }}>
+      <div
+        className="absolute inset-0 flex flex-col overflow-hidden"
+        style={{
+          transform: `translateY(${translateY}px)`,
+          // Top + bottom band darken deepens with speed — when cruising
+          // at full speed the symbols at the edges melt into darkness,
+          // creating the classic "spinning reel slot" look.
+          WebkitMaskImage: `linear-gradient(180deg, rgba(0,0,0,${0.2 + speedFactor * 0.3}) 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, rgba(0,0,0,${0.2 + speedFactor * 0.3}) 100%)`,
+          maskImage: `linear-gradient(180deg, rgba(0,0,0,${0.2 + speedFactor * 0.3}) 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, rgba(0,0,0,${0.2 + speedFactor * 0.3}) 100%)`,
+        }}
+      >
         {Array.from({ length: visibleCount }, (_, i) => {
           const idx = (startIdx + i) % stripSymbols.length;
           const symId = stripSymbols[idx];
           const sym = getSymbol(symId);
-          const blur = Math.min(Math.abs(velocity) / (size * 22), 1) * 4;
+          // Velocity-dependent blur: at cruise speed symbols smear into
+          // vertical streaks (up to 12px). Maximum blur ALSO increases
+          // with reel size — bigger reels need more blur to read as motion.
+          const blur = speedFactor * Math.min(size * 0.18, 14);
           return (
             <div
               key={i}
               className="flex-1 flex items-center justify-center"
-              style={{ 
-                filter: `blur(${blur}px)`, 
-                opacity: Math.max(0.3, 1 - blur * 0.15)
+              style={{
+                filter: `blur(${blur.toFixed(2)}px)`,
+                opacity: Math.max(0.25, 1 - blur * 0.06),
               }}
             >
               <SymbolIcon symbolId={sym.id} size={Math.floor(size * 0.9)} />
@@ -416,18 +470,60 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
   return null;
 }
 
-function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActive, cascadeWinningCells, cascadeAnimatingCells, cascadeGrid, stickyWildCells, wildLockAnimating, nearMissCells, nearMissAnimating, scatterSlowdownActive, lastWinType, scatterFanfareActive }: any) {
-  const displayGrid: SymbolId[][] = cascadeGrid || reels;
+function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActive, cascadeWinningCells, cascadeAnimatingCells, cascadeGrid, stickyWildCells, wildLockAnimating, nearMissCells, nearMissAnimating, scatterSlowdownActive, lastWinType, scatterFanfareActive, symbolLockAnimating, displayGrid }: any) {
 
   return (
     <div className="relative" style={{
+      // Ornate gold frame inspired by Starburst/maxresdefault references.
+      // Triple-layer border: outer dark wood, middle gold bezel, inner purple.
       background: "linear-gradient(180deg, #030308 0%, #080814 50%, #030308 100%)",
-      border: "4px solid #1a1005",
-      borderRadius: "8px",
-      boxShadow: "inset 0 0 60px rgba(0,0,0,0.9), inset 0 2px 0 rgba(212,175,55,0.1), 0 0 30px rgba(212,175,55,0.1)",
-      padding: "8px",
+      border: "4px solid #2A1A0A",
+      borderRadius: "10px",
+      boxShadow: `
+        inset 0 0 60px rgba(0,0,0,0.9),
+        inset 0 0 0 1px rgba(212,175,55,0.4),
+        inset 0 0 0 3px rgba(74,26,92,0.6),
+        inset 0 0 0 4px rgba(212,175,55,0.5),
+        0 0 25px rgba(212,175,55,0.25),
+        0 0 50px rgba(255,107,170,0.1)
+      `,
+      padding: "10px",
       position: "relative",
     }}>
+      {/* (chrome pillars removed — they were a Starburst reference
+          experiment but their 6-col grid math didn't align with the
+          cabinet-rim's actual 5-col grid + 4px gap layout, so they
+          sat 89px to the left of where the reel boundaries are.
+          Cleaner without them — the rim's double-keyline + glow
+          already frames each reel cell.) */}
+      {/* Gold corner ornaments — top-left */}
+      <div className="absolute -top-1 -left-1 w-6 h-6 pointer-events-none" style={{
+        background: "radial-gradient(circle, #FFD700 0%, #8B6914 60%, transparent 100%)",
+        borderRadius: "50%",
+        boxShadow: "0 0 10px rgba(255,215,0,0.6)",
+        zIndex: 5,
+      }} />
+      {/* top-right */}
+      <div className="absolute -top-1 -right-1 w-6 h-6 pointer-events-none" style={{
+        background: "radial-gradient(circle, #FFD700 0%, #8B6914 60%, transparent 100%)",
+        borderRadius: "50%",
+        boxShadow: "0 0 10px rgba(255,215,0,0.6)",
+        zIndex: 5,
+      }} />
+      {/* bottom-left */}
+      <div className="absolute -bottom-1 -left-1 w-6 h-6 pointer-events-none" style={{
+        background: "radial-gradient(circle, #FFD700 0%, #8B6914 60%, transparent 100%)",
+        borderRadius: "50%",
+        boxShadow: "0 0 10px rgba(255,215,0,0.6)",
+        zIndex: 5,
+      }} />
+      {/* bottom-right */}
+      <div className="absolute -bottom-1 -right-1 w-6 h-6 pointer-events-none" style={{
+        background: "radial-gradient(circle, #FFD700 0%, #8B6914 60%, transparent 100%)",
+        borderRadius: "50%",
+        boxShadow: "0 0 10px rgba(255,215,0,0.6)",
+        zIndex: 5,
+      }} />
       {/* Reel glass bezel - inner glow */}
       <div className="absolute inset-0 pointer-events-none" style={{
         border: "2px solid rgba(212,175,55,0.15)",
@@ -435,33 +531,51 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
         boxShadow: "inset 0 0 40px rgba(212,175,55,0.05)",
       }} />
 
-      {/* Payline indicator dots on sides */}
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 flex flex-col gap-1 z-10">
+      {/* Payline indicator columns — Starburst-style numbered circles flanking the reels */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-7 flex flex-col gap-1.5 z-10 py-2 px-1 rounded" style={{
+        background: "linear-gradient(180deg, rgba(20,10,5,0.6), rgba(40,20,10,0.6))",
+        border: "1px solid rgba(212,175,55,0.3)",
+        boxShadow: "inset 0 0 8px rgba(0,0,0,0.6), 0 0 8px rgba(212,175,55,0.15)",
+      }}>
         {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={`left-${i}`}
-            className="w-1.5 h-1.5 rounded-full"
+            className="w-4 h-4 rounded-full flex items-center justify-center font-numbers"
             style={{
-              background: `hsl(${(i * 30) % 360}, 100%, 55%)`,
-              boxShadow: `0 0 8px hsl(${(i * 30) % 360}, 100%, 55%)`,
+              fontSize: "0.55rem",
+              fontWeight: 800,
+              background: "linear-gradient(180deg, #1a1005, #050510)",
+              border: "1px solid rgba(212,175,55,0.5)",
+              color: "#FFD700",
+              boxShadow: "0 0 4px rgba(212,175,55,0.4), inset 0 0 2px rgba(255,215,0,0.3)",
               animation: `paylinePulse 1.5s ease-in-out ${i * 0.1}s infinite`,
-              opacity: 0.6,
             }}
-          />
+          >
+            {i + 1}
+          </div>
         ))}
       </div>
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 flex flex-col gap-1 z-10">
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-7 flex flex-col gap-1.5 z-10 py-2 px-1 rounded" style={{
+        background: "linear-gradient(180deg, rgba(20,10,5,0.6), rgba(40,20,10,0.6))",
+        border: "1px solid rgba(212,175,55,0.3)",
+        boxShadow: "inset 0 0 8px rgba(0,0,0,0.6), 0 0 8px rgba(212,175,55,0.15)",
+      }}>
         {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={`right-${i}`}
-            className="w-1.5 h-1.5 rounded-full"
+            className="w-4 h-4 rounded-full flex items-center justify-center font-numbers"
             style={{
-              background: `hsl(${(i * 30) % 360}, 100%, 55%)`,
-              boxShadow: `0 0 8px hsl(${(i * 30) % 360}, 100%, 55%)`,
+              fontSize: "0.55rem",
+              fontWeight: 800,
+              background: "linear-gradient(180deg, #1a1005, #050510)",
+              border: "1px solid rgba(212,175,55,0.5)",
+              color: "#FFD700",
+              boxShadow: "0 0 4px rgba(212,175,55,0.4), inset 0 0 2px rgba(255,215,0,0.3)",
               animation: `paylinePulse 1.5s ease-in-out ${i * 0.1}s infinite`,
-              opacity: 0.6,
             }}
-          />
+          >
+            {i + 1}
+          </div>
         ))}
       </div>
 
@@ -477,23 +591,21 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
         />
       )}
 
-      {/* Reels */}
-      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
-        {displayGrid.map((reel, reelIdx) => (
+      {/* Reels — wrapped in cabinet-rim (CSS provides grid + gap, plus
+          the gold gradient rim via ::before). flex-grow so the grid
+          expands to fill cabinet space, not fixed 200px. */}
+      <div className="cabinet-rim relative" style={{ minHeight: "280px", flex: "1 1 auto" }}>
+        {displayGrid.map((reel: SymbolId[], reelIdx: number) => (
           <div
             key={reelIdx}
-            className={`reel-container rounded relative ${scatterSlowdownActive && reelIdx >= 2 && reelIdx <= 4 ? 'scatter-anticipation' : ''} ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
+            className={`reel-container relative ${scatterSlowdownActive && reelIdx >= 2 && reelIdx <= 4 ? 'scatter-anticipation' : ''} ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
             style={{
-              minHeight: "200px",
+              minHeight: "280px",
               height: "100%",
-              maxHeight: "500px",
               transition: "box-shadow 0.3s ease",
-              background: "linear-gradient(180deg, #050510 0%, #0a0a1a 50%, #050510 100%)",
-              border: "2px solid rgba(212,175,55,0.1)",
-              borderRadius: "6px",
               boxShadow: reelDone[reelIdx] && showWin && !cascadeActive && reel.some((_, rowIdx) => isWinningCell(reelIdx, rowIdx, winLines))
                 ? "0 0 30px rgba(255,215,0,0.7), inset 0 0 20px rgba(255,215,0,0.15)"
-                : "inset 0 0 30px rgba(0,0,0,0.9), 0 0 15px rgba(212,175,55,0.3)",
+                : "inset 0 0 28px rgba(0,0,0,0.85), inset 0 0 0 1px rgba(212,175,55,0.35), inset 0 1px 0 rgba(255,220,160,0.18), 0 0 18px rgba(212,175,55,0.35)",
             }}
           >
             {/* Reel frame highlight when stopped with win */}
@@ -506,44 +618,74 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
               }} />
             )}
 
+            {/* SPINNING STREAK OVERLAY — only visible while this reel is
+                actually spinning. Multi-position bright bands scroll
+                upward, giving an unmistakable visual cue that the strip
+                is in motion. The bands progress across the reel tile
+                and the top/bottom masks fade them into the bezel. */}
+            {spinning && !reelDone[reelIdx] && (
+                <div
+                  className="absolute inset-0 pointer-events-none z-[7]"
+                  aria-hidden="true"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.05) 6%, rgba(0,0,0,0) 14%, rgba(0,0,0,0) 86%, rgba(0,0,0,0.05) 94%, rgba(0,0,0,0.32) 100%)",
+                  }}
+                />
+            )}
+            {spinning && !reelDone[reelIdx] && (
+                <div
+                  className="absolute inset-0 pointer-events-none z-[8] overflow-hidden"
+                  aria-hidden="true"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, transparent 0%, transparent 25%, rgba(255,235,180,0.55) 26%, rgba(255,255,255,0.95) 27%, rgba(255,235,180,0.55) 28%, transparent 29%, transparent 54%, rgba(212,175,55,0.55) 55%, rgba(255,255,255,0.95) 56%, rgba(212,175,55,0.55) 57%, transparent 58%, transparent 80%, rgba(255,255,255,0.55) 81%, rgba(255,235,180,0.95) 82%, rgba(255,255,255,0.55) 83%, transparent 84%)",
+                    backgroundSize: "100% 280px",
+                    animation: "spinStreaks 0.45s linear infinite",
+                  }}
+                />
+            )}
+
             {/* Spinning blur overlay */}
             <ReelStrip symbols={reel} spinning={spinning} done={reelDone[reelIdx]} reelIndex={reelIdx} />
 
             {/* Symbols */}
-            {reel.map((symId, rowIdx) => {
-              const isWin = showWin && !cascadeActive && isWinningCell(reelIdx, rowIdx, winLines);
-              const isCascadeWinner = cascadeWinningCells.has(`${reelIdx}-${rowIdx}`);
-              const isCascadeAnimating = cascadeAnimatingCells.has(`${reelIdx}-${rowIdx}`);
-              const isStickyWild = stickyWildCells.has(`${reelIdx}-${rowIdx}`);
-              const isNearMiss = nearMissCells.has(`${reelIdx}-${rowIdx}`);
-              const sym = getSymbol(symId);
+            {reel.map((symId: SymbolId, rowIdx: number) => {
+                          const isWin = showWin && !cascadeActive && isWinningCell(reelIdx, rowIdx, winLines);
+                          const isCascadeWinner = cascadeWinningCells.has(`${reelIdx}-${rowIdx}`);
+                          const isCascadeAnimating = cascadeAnimatingCells.has(`${reelIdx}-${rowIdx}`);
+                          const isStickyWild = stickyWildCells.has(`${reelIdx}-${rowIdx}`);
+                          const isNearMiss = nearMissCells.has(`${reelIdx}-${rowIdx}`);
+                          const isSymbolLock = symbolLockAnimating.has(`${reelIdx}-${rowIdx}`);
+                          const sym = getSymbol(symId);
 
-              return (
-                <div
-                  key={rowIdx}
-                  className={`
-                    flex items-center justify-center transition-all duration-300 
-                    ${isWin ? "cell-win-glow symbol-win" : ""}
-                    ${isCascadeWinner ? "cascade-disappear" : ""}
-                    ${isCascadeAnimating && !isCascadeWinner ? "cascade-fall" : ""}
-                    ${isStickyWild && wildLockAnimating ? "sticky-wild-lock" : ""}
-                    ${isStickyWild && !wildLockAnimating ? "sticky-wild-glow" : ""}
-                    ${isNearMiss && nearMissAnimating ? "near-miss-gold" : ""}
-                    ${symId === 'empty' ? "empty-cell" : ""}
-                  `}
-                  style={{
-                    flex: "1 1 0%",
-                    minHeight: 0,
-                    background: isWin
-                      ? `radial-gradient(circle at center, ${sym.bgColor}ff 0%, #050510 100%)`
-                      : isCascadeWinner
-                      ? `radial-gradient(circle at center, ${sym.bgColor}66 0%, #050510 100%)`
-                      : `radial-gradient(circle at center, ${sym.bgColor}55 0%, #030308 100%)`,
-                    borderBottom: rowIdx < 2 ? "1px solid rgba(212,175,55,0.1)" : "none",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
+                          return (
+                            <div
+                              key={rowIdx}
+                              className={`  
+                                symbol-tile flex items-center justify-center transition-all duration-300 
+                                ${isWin ? "cell-win-glow symbol-win" : ""}
+                                ${isCascadeWinner ? "cascade-disappear" : ""}
+                                ${isCascadeAnimating && !isCascadeWinner ? "cascade-fall" : ""}
+                                ${isStickyWild && wildLockAnimating ? "sticky-wild-lock" : ""}
+                                ${isStickyWild && !wildLockAnimating ? "sticky-wild-glow" : ""}
+                                ${isNearMiss && nearMissAnimating ? "near-miss-gold" : ""}
+                                ${isSymbolLock ? "symbol-lock-slam" : ""}
+                                ${symId === 'empty' ? "empty-cell" : ""}
+                              : ""}
+                              `}
+                              style={{
+                                flex: "1 1 0%",
+                                minHeight: 0,
+                                background: isWin
+                                  ? `radial-gradient(circle at center, ${sym.bgColor}ff 0%, #14081c 100%)`
+                                  : isCascadeWinner
+                                  ? `radial-gradient(circle at center, ${sym.bgColor}66 0%, #14081c 100%)`
+                                  : `radial-gradient(circle at center, ${sym.bgColor}66 0%, #14081c 100%)`,
+                                position: "relative",
+                                overflow: "hidden",
+                              }}
+                            >
                   {isWin && (
                     <div
                       className="absolute inset-0"
@@ -573,7 +715,7 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
                   {symId !== 'empty' && (
                     <SymbolIcon
                       symbolId={symId}
-                      size={56}
+                      size={80}
                       className={`${isWin ? 'symbol-win-pop symbol-bounce' : ''}`}
                       style={{
                         filter: isWin ? "brightness(1.3) drop-shadow(0 0 8px #FFD700)" : "none",
@@ -621,7 +763,7 @@ function CabinetButtonPanel({
           {/* Bet controls */}
           <div className="flex items-center gap-1.5 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
             <button
-              onClick={() => setBet(Math.max(10, bet - 10))}
+              onClick={() => { playSound("button_click"); setBet(Math.max(10, bet - 10)); }}
               disabled={spinning || bet <= 10}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
               style={{
@@ -644,7 +786,7 @@ function CabinetButtonPanel({
               {bet}
             </div>
             <button
-              onClick={() => setBet(Math.min(200, bet + 10))}
+              onClick={() => { playSound("button_click"); setBet(Math.min(200, bet + 10)); }}
               disabled={spinning || bet >= 200}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
               style={{
@@ -664,7 +806,7 @@ function CabinetButtonPanel({
           {/* Paylines controls */}
           <div className="flex items-center gap-1.5 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
             <button
-              onClick={() => setPaylines?.(Math.max(1, (paylines || 1) - 1))}
+              onClick={() => { playSound("button_click"); setPaylines?.(Math.max(1, (paylines || 1) - 1)); }}
               disabled={spinning || (paylines || 1) <= 1}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
               style={{
@@ -687,7 +829,7 @@ function CabinetButtonPanel({
               {paylines || 1} L
             </div>
             <button
-              onClick={() => setPaylines?.(Math.min(25, (paylines || 1) + 1))}
+              onClick={() => { playSound("button_click"); setPaylines?.(Math.min(25, (paylines || 1) + 1)); }}
               disabled={spinning || (paylines || 1) >= 25}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
               style={{
@@ -804,7 +946,7 @@ function CabinetButtonPanel({
 
         {/* SPIN BUTTON - MASSIVE, DOMINANT */}
         <button
-          onClick={spin}
+          onClick={() => { playSound("button_click"); spin(); }}
           disabled={!canSpin}
           className="flex-1 flex items-center justify-center gap-3 py-5 px-8 rounded-xl transition-all min-h-[80px]"
           style={{
@@ -926,7 +1068,12 @@ export default function SlotMachine({
   const [winFlash, setWinFlash] = useState(false);
   const [showCoinShower, setShowCoinShower] = useState(false);
   const [particleTrigger, setParticleTrigger] = useState(0);
-  const [soundMuted, setSoundMuted] = useState(false);
+  // Local UI flag for the speaker icon (reflects the sound state
+  // visually). The actual mute gate is audioCore.setMuted, set via
+  // the setLibSoundEnabled wrapper. We sync the icon to the audio
+  // library's true state on mount and after each toggle.
+  const [soundMuted, setSoundMuted] = useState(() => !isSoundEnabled());
+  useEffect(() => { setLibSoundEnabled(!soundMuted); }, [soundMuted]);
   const [showScratchGame, setShowScratchGame] = useState(false);
   const [showDealsModal, setShowDealsModal] = useState(false);
   const [showBigWin, setShowBigWin] = useState(false);
@@ -956,25 +1103,78 @@ export default function SlotMachine({
   const [nearMissCells, setNearMissCells] = useState<Set<string>>(new Set());
   const [nearMissAnimating, setNearMissAnimating] = useState(false);
 
+  // Sticky-lock animation for winning/bonus symbols (slam + lock)
+  const [symbolLockAnimating, setSymbolLockAnimating] = useState<Set<string>>(new Set());
+
   // Sync external triggers
   useEffect(() => { if (externalShowDeals) setShowDealsModal(true); }, [externalShowDeals]);
   useEffect(() => { if (externalShowScratch) setShowScratchGame(true); }, [externalShowScratch]);
 
   // Listen for reel slam events
   useEffect(() => {
-    const handleReelSlam = (event: CustomEvent<{ reelIndex: number }>) => {
-      const { reelIndex } = event.detail;
+    const handleReelSlam = (event: CustomEvent<{ reelIndex: number; impact?: boolean }>) => {
+      const { reelIndex, impact } = event.detail;
       if (!soundEnabled) return;
-      
+
       const shakeIntensity: 'light' | 'medium' | 'heavy' = reelIndex >= 3 ? 'heavy' : reelIndex >= 2 ? 'medium' : 'light';
       setShakeIntensity(shakeIntensity);
       const shakeDuration = shakeIntensity === 'heavy' ? 400 : shakeIntensity === 'medium' ? 300 : 200;
       setTimeout(() => setShakeIntensity('none'), shakeDuration);
-      playSound("reel_stop");
+
+      // Impact thunk — the physical "thunk" when reel hits payline
+      if (impact) {
+        playSound("reel_stop");
+      }
     };
-    
     window.addEventListener('reel-slam', handleReelSlam as EventListener);
-    return () => window.removeEventListener('reel-slam', handleReelSlam as EventListener);
+
+    // Sticky lock — winning/bonus symbols lock into place with a satisfying "ka-chunk"
+    const handleStickyLock = (event: CustomEvent<{ reelIndex: number }>) => {
+      const { reelIndex } = event.detail;
+      if (!soundEnabled) return;
+      // Heavier shake for the lock moment
+      setShakeIntensity('medium');
+      setTimeout(() => setShakeIntensity('none'), 200);
+      playSound("wild_lock"); // repurpose for "symbol locks in"
+
+      // Find winning/bonus symbols on this reel and trigger lock animation
+      const winningKeys: string[] = [];
+      // Winning payline symbols
+      if (showWin && winLines.length > 0) {
+        winLines.forEach(line => {
+          const path = getPaylinePath(line.row);
+          const rowIdx = path[reelIndex];
+          if (rowIdx >= 0 && rowIdx < 3) {
+            winningKeys.push(`${reelIndex}-${rowIdx}`);
+          }
+        });
+      }
+      // Scatter symbols (bonus triggers)
+      if (displayGrid) {
+        for (let rowIdx = 0; rowIdx < 3; rowIdx++) {
+          const symId = displayGrid[reelIndex][rowIdx];
+          if (isScatterSymbol(symId) || isWildSymbol(symId)) {
+            winningKeys.push(`${reelIndex}-${rowIdx}`);
+          }
+        }
+      }
+      // Trigger lock animation for each
+      winningKeys.forEach((key, i) => {
+        setTimeout(() => {
+          setSymbolLockAnimating(prev => new Set(prev).add(key));
+          // Auto-clear after animation
+          setTimeout(() => {
+            setSymbolLockAnimating(prev => { const next = new Set(prev); next.delete(key); return next; });
+          }, 500);
+        }, i * 60); // Stagger the locks
+      });
+    };
+    window.addEventListener('reel-sticky-lock', handleStickyLock as EventListener);
+
+    return () => {
+      window.removeEventListener('reel-slam', handleReelSlam as EventListener);
+      window.removeEventListener('reel-sticky-lock', handleStickyLock as EventListener);
+    };
   }, [soundEnabled]);
 
   // Pulse SPIN button when idle
@@ -1120,7 +1320,20 @@ export default function SlotMachine({
         setTimeout(() => {
           const result = checkCascadeWin(newGrid);
           if (result.hasWin && cascadeLevel < MAX_CASCADE_LEVEL) {
+            const nextLevel = cascadeLevel + 1;
             setCascadeLevel(prev => prev + 1);
+            // Cascade level-up sound: ascending "klaxon" each level so
+            // the player feels the multiplier climbing. The variation
+            // cascade_1..5 in sounds.ts has a higher fundamental +
+            // brighter timbre as the level rises. Capped at 5 to match
+            // MAX_CASCADE_LEVEL.
+            const cascadeLevelNum = Math.min(nextLevel, 5);
+            const soundName = `cascade_${cascadeLevelNum}` as
+              | "cascade_1" | "cascade_2" | "cascade_3" | "cascade_4" | "cascade_5";
+            playSound(soundName);
+            // Coin drop on every cascade step — falling money = payoff
+            // for the multiplier climbing.
+            setTimeout(() => playSound("coin_drop"), 80);
             const newWinningCells = new Set<string>();
             result.winLines.forEach(line => {
               const path = getPaylinePath(line.row);
@@ -1132,7 +1345,7 @@ export default function SlotMachine({
             if (newWilds.size > 0) {
               setWildLockAnimating(true);
               setStickyWildCells(prev => { const merged = new Set(prev); newWilds.forEach(w => merged.add(w)); return merged; });
-              if (soundEnabled) playSound("wild_lock");
+              playSound("wild_lock");
               setTimeout(() => setWildLockAnimating(false), 800);
             }
             setTimeout(() => {
@@ -1240,20 +1453,46 @@ export default function SlotMachine({
             setTimeout(() => setShowBigWin(true), 600);
           }
 
-          if (!soundMuted) {
-            const winLineCount = winLines.length;
-            if (lastWinType === "JACKPOT") { playSound("jackpot"); }
-            else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
-            else if (lastWinType === "BIG_WIN") { playSound("big_win"); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
-            else { playWinSound(winLines.length); }
+          // Fire the win sting. playSound is already gated by the
+          // unified audioCore mute flag, so the !soundMuted check is
+          // belt-and-suspenders for the local React state.
+          const winLineCount = winLines.length;
+          if (lastWinType === "JACKPOT") { playSound("jackpot"); }
+          else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
+          else if (lastWinType === "BIG_WIN") { playSound("big_win"); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
+          else { playWinSound(winLines.length); }
+
+          // Coin particle audio: each "shower" of falling coins gets a
+          // coin_drop sound so the visual money has a metallic clink
+          // to match. Stagger 3-5 clinks across ~600ms so the rain
+          // feels layered, not a single click.
+          if (winAmount > 0) {
+            const coinCount = lastWinType === "JACKPOT" ? 5 : lastWinType === "MEGA_WIN" ? 4 : lastWinType === "BIG_WIN" ? 3 : 2;
+            for (let i = 0; i < coinCount; i++) {
+              setTimeout(() => playSound("coin_drop"), i * 130);
+            }
           }
 
           if (winLines.length > 0) startCascade(reels, winLines);
         } else {
+          // Loss branch — fire Loss-Disguised-as-Win (LDW) sound
+          // when a losing spin still had a near-miss event, so the
+          // player feels like they "almost" won. Wood & Griffiths
+          // (2007) showed LDW audio measurably increases playing time.
           const misses = findNearMiss(reels, []);
           if (misses.length > 0 && !spinning) {
             setNearMissCells(new Set(misses.map(m => `${m.reelIdx}-${m.rowIdx}`)));
             setNearMissAnimating(true);
+            // Fire the abstract near-miss sound (in sounds.ts) + a
+            // detectNearMisses event for the typed handler.
+            const events = detectNearMisses(reels);
+            events.forEach((ev, i) => {
+              setTimeout(() => playNearMissSound(ev), i * 200);
+            });
+            // LDW only when player lost coins — gate on net loss.
+            // (We don't have post-spin coins here; loss branch implies
+            // a real net loss because the win branch is the alternative.)
+            setTimeout(() => playSound("near_miss"), 100);
             setTimeout(() => { setNearMissAnimating(false); setTimeout(() => setNearMissCells(new Set()), 300); }, 800);
           }
         }
@@ -1431,6 +1670,8 @@ export default function SlotMachine({
             scatterSlowdownActive={scatterSlowdownActive}
             lastWinType={lastWinType}
             scatterFanfareActive={scatterFanfareActive}
+            symbolLockAnimating={symbolLockAnimating}
+            displayGrid={displayGrid}
           />
         </div>
 
@@ -1570,6 +1811,16 @@ export default function SlotMachine({
         .wild-lock-shake { animation: stickyWildLock 0.6s ease-in-out; }
         .scatter-slowdown-reel { animation: scatterSlowdown 0.5s ease-in-out; }
         @keyframes scatterSlowdown { 0%, 100% { border-color: rgba(255,107,107,0.5); } 50% { border-color: #FF6B6B; box-shadow: 0 0 30px rgba(255,107,107,0.5); } }
+        /* Symbol lock slam — winning/bonus symbols slam and stick into place.
+           Heavy overshoot + quick settle = "ka-chunk" feel. */
+        .symbol-lock-slam { animation: symbolLockSlam 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+        @keyframes symbolLockSlam {
+          0%   { transform: translateY(0) scale(1); filter: brightness(1); }
+          25%  { transform: translateY(-8px) scale(1.15); filter: brightness(1.4); }
+          50%  { transform: translateY(4px) scale(0.92); filter: brightness(1.2); }
+          75%  { transform: translateY(-2px) scale(1.05); filter: brightness(1.1); }
+          100% { transform: translateY(0) scale(1); filter: brightness(1); }
+        }
         /* Sustained shimmer while scatter is approaching — runs as long as
            scatterSlowdownActive is true, gives the player anticipatory
            feedback that "something's coming" (Langer & Imber 2007). */

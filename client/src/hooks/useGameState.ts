@@ -566,11 +566,21 @@ export function useGameState() {
       setConsecutiveWins(prev => {
         const next = prev + 1;
         if (next > maxStreak) setMaxStreak(next);
-        // Streak milestone toasts at 3, 5, 10
+        // Streak milestone toasts + audio chime at 3, 5, 10. The
+        // sound is paired with the toast so the player gets a
+        // distinct "you crossed a threshold" cue — NOT on every
+        // win (that would cause habituation and notification
+        // fatigue). Each milestone also gets progressively
+        // brighter audio (the chime frequency rises with `next`).
         if (next === 3 || next === 5 || next === 10) {
           window.dispatchEvent(new CustomEvent("toast", {
             detail: { kind: "streak", message: `🔥 ${next}x WIN STREAK!` },
           }));
+          // Dynamic import to keep the useGameState hook from
+          // pulling the audio module into a hot path.
+          import("@/lib/sounds").then(({ playSound }) => {
+            playSound("streak_milestone");
+          });
         }
         return next;
       });
