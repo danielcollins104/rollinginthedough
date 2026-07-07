@@ -25,6 +25,7 @@ import {
   claimReferralRewards,
 } from "./referral";
 import { checkAndAwardReferralMilestones } from "./referral";
+import { achievementsRouter } from "./routers/achievements";
 
 // Square production environment configuration
 const squareClient = ENV.squareAccessToken
@@ -477,6 +478,8 @@ export const appRouter = router({
       return { totalClaimed };
     }),
   }),
+
+  achievements: achievementsRouter,
 });
 
 export type AppRouter = typeof appRouter;

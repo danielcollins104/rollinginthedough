@@ -15,7 +15,6 @@ import CoinShop from "@/components/CoinShop";
 import BonusGameOverlay from "@/components/BonusGameOverlay";
 import CurrencyToggle, { type CurrencyType } from "@/components/CurrencyToggle";
 import BottomNavBar from "@/components/BottomNavBar";
-import AppFooter from "@/components/AppFooter";
 import LoginPromptModal from "@/components/LoginPromptModal";
 import DailyBonusModal from "@/components/DailyBonusModal";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -24,9 +23,12 @@ import { useRetention } from "@/hooks/useRetention";
 import { DailyLoginBonus } from "@/components/DailyLoginBonus";
 import { DailyStreakDisplay } from "@/components/DailyStreakDisplay";
 import { LevelUp } from "@/components/LevelUp";
+import { HuntressHero } from "@/components/HuntressHero";
+import { CabinetScene } from "@/components/CabinetScene";
 import { Missions } from "@/components/Missions";
 import { SessionTimeReward } from "@/components/SessionTimeReward";
 import ReferralScreen, { FloatingReferralBadge } from "@/components/ReferralScreen";
+import { Toasts } from "@/components/Toasts";
 
 export default function Home() {
   const {
@@ -44,9 +46,13 @@ export default function Home() {
     level,
     xp,
     xpToNext,
+    consecutiveWins,
+    maxStreak,
+    rescueOffered,
     autoplay,
     setAutoplay,
     spin,
+    triggerDemoSpin,
     jackpotPool,
     soundEnabled,
     setSoundEnabled,
@@ -172,24 +178,20 @@ export default function Home() {
 
   return (
     <div
-      className="flex flex-col"
+      className="flex flex-col min-h-screen"
       style={{
-        height: "100vh",
-        minHeight: "-webkit-fill-available",
-        background: "linear-gradient(160deg, #050510 0%, #0a0a1a 40%, #0d0a1a 70%, #050510 100%)",
-        overflow: "hidden",
+        // Jewel-tone imperial palette — deep crimson + plum + midnight,
+        // matching the reference's vibrantly lit play area. The Huntress
+        // themed cabinet scene overlays this.
+        background:
+          "linear-gradient(160deg, #1a0816 0%, #280a22 20%, #3a0e2e 45%, #2a0a26 70%, #0e0418 100%)",
       }}
     >
-      {/* Background hero image overlay */}
-      <div
-        className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{
-          backgroundImage: `url(https://d2xsxph8kpxj0f.cloudfront.net/310519663349960110/ayNoVaN9cNAqmUHUzZ966J/ritd-hero-bg-FzGNyPyAATYm9thgu9JZxr.webp)`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      />
+      {/* Background hero image overlay — built from procedural SVG so the
+          cabinet has a real prairie-plains atmosphere (tipi village,
+          campfire, moonlit hills) like the casino-app reference. No network
+          fetch, no asset CDN dependency. */}
+      <CabinetScene opacity={0.85} className="absolute inset-0" />
 
       {/* Animated background particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -232,18 +234,46 @@ export default function Home() {
 
 
 
-      {/* Huntress Banner - Ultra Compact */}
+      {/* Huntress Banner - Compact crimson/gold themed. The 🗡️ text glyph
+          is replaced with a small 36px circular crop of the real portrait
+          so the banner shows her face, not a generic sword emoji. */}
       <div className="flex-shrink-0 w-full max-w-4xl mx-auto px-1 relative z-10" style={{ maxHeight: "60px" }}>
         <div
           className="rounded overflow-hidden shadow-2xl relative h-full"
           style={{
-            background: "linear-gradient(135deg, #0d0d20, #1a1a35)",
-            border: "1px solid rgba(212,175,55,0.3)",
+            background: "linear-gradient(135deg, #3a0e2e 0%, #5c1428 50%, #2a0a26 100%)",
+            border: "1.5px solid rgba(212,175,55,0.55)",
+            boxShadow:
+              "0 0 18px rgba(212,175,55,0.25), inset 0 1px 0 rgba(255,220,160,0.15)",
           }}
         >
           <div className="flex items-center justify-between px-3 py-1 h-full">
             <div className="flex items-center gap-2">
-              <span className="text-lg">🗡️</span>
+              {/* Real portrait — circular crop, 36px, framed in gold ring */}
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  border: "1.5px solid #D4AF37",
+                  boxShadow: "0 0 8px rgba(255,194,71,0.55), inset 0 0 4px rgba(0,0,0,0.4)",
+                  flexShrink: 0,
+                }}
+              >
+                <img
+                  src="/huntress-warrior-square.png"
+                  alt="Huntress"
+                  draggable={false}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "50% 30%",
+                    display: "block",
+                  }}
+                />
+              </div>
               <div>
                 <div className="font-display font-bold text-sm" style={{ color: "#D4AF37" }}>Huntress Warrior</div>
                 <div className="text-xs" style={{ color: "rgba(212,175,55,0.6)" }}>3+ Symbols = Bonus Round</div>
@@ -257,8 +287,16 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Cabinet centerpiece — the Huntress Warrior character portrait that
+          dominates the upper third of the cabinet the way Serpent Gold's
+          serpent head does. Full bleed inside the column, painterly SVG
+          character + scene composition. */}
+      <div className="flex-shrink-0 w-full max-w-4xl mx-auto px-1 relative z-10 mt-2">
+        <HuntressHero height={280} glow />
+      </div>
+
       {/* Main Slot Machine Area */}
-      <main className="flex-grow flex items-center justify-center px-1 relative z-10" style={{ minHeight: "0" }}>
+      <main className="flex-grow flex items-start justify-center px-1 py-2 relative z-10">
         <SlotMachine
           reels={reels}
           spinning={spinning}
@@ -270,10 +308,14 @@ export default function Home() {
           bet={bet}
           setBet={setBet}
           spin={spin}
+          triggerDemoSpin={triggerDemoSpin}
           autoplay={autoplay}
           setAutoplay={setAutoplay}
           spinCount={spinCount}
           soundEnabled={soundEnabled}
+          consecutiveWins={consecutiveWins}
+          maxStreak={maxStreak}
+          rescueOffered={rescueOffered}
           paylines={paylines}
           setPaylines={setPaylines}
           onCoinShop={() => setShowCoinShop(true)}
@@ -282,13 +324,13 @@ export default function Home() {
           externalShowScratch={externalShowScratch}
           onDealsClose={() => setExternalShowDeals(false)}
           onScratchClose={() => setExternalShowScratch(false)}
+          onScratchWin={(amount) => setGoldCoins((c) => c + amount)}
           selectedCurrency={selectedCurrency}
         />
       </main>
 
       <div className="hidden sm:block"><GameFooter /></div>
       <div className="sm:hidden text-center text-xs text-gray-400 py-0.5 px-2">Rolling in the Dough © 2026</div>
-
       {showParticles && <CoinParticles count={lastWinType === "JACKPOT" ? 80 : lastWinType === "BIG_WIN" ? 40 : 20} />}
       {showJackpot && <JackpotOverlay amount={winAmount} onClose={() => setShowJackpot(false)} />}
       {showCoinShop && <CoinShop onClose={() => setShowCoinShop(false)} currency={coinShopCurrency} />}
@@ -397,9 +439,12 @@ export default function Home() {
       
       {/* Floating referral badge - shows when user has referrals */}
       <FloatingReferralBadge referralCount={0} onClick={() => setShowReferral(true)} />
+
+      {/* Global toast stack — listens for window 'toast' events from anywhere */}
+      <Toasts />
       
-      {/* Streak display panel - accessible from game area */}
-      <div className="absolute top-20 right-2 z-20 w-40">
+      {/* Streak display panel - shown on lg+ only (overlaps reels on small/medium screens, accessible via Missions modal) */}
+      <div className="hidden lg:block absolute top-20 right-2 z-20 w-40">
         <DailyStreakDisplay
           currentStreak={currentStreak}
           level={retentionLevel}
@@ -409,8 +454,6 @@ export default function Home() {
         />
       </div>
 
-      {/* App Footer - only show on desktop when not playing */}
-      <div className="hidden md:block"><AppFooter /></div>
     </div>
   );
 }

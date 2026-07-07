@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { shouldOfferRescue, rescueMinPayout, applyMissionClaim } from "./useGameState";
+import type { BonusGameType } from "@/lib/bonusGames";
 
 /**
  * Win Calculation Tests
@@ -197,5 +199,106 @@ describe("Win Calculation Logic", () => {
       balance = balance - totalBet + winAmount;
       expect(balance).toBe(900);
     });
+  });
+});
+
+/**
+ * Loss-back rescue spin (Vegas "save the player" mechanic).
+ *
+ * Trigger: after a losing spin, if postSpinBalance < bet*5 AND not in
+ * bonus/free-spin mode, set rescueOffered=true. On the next non-demo,
+ * non-jackpot spin, force finalWin >= rescueMinPayout(bet) and clear the flag.
+ */
+describe("Loss-back rescue spin", () => {
+  describe("shouldOfferRescue trigger", () => {
+    it("triggers when postSpin balance is well below 5× bet", () => {
+      expect(shouldOfferRescue(100, 25, 0, null)).toBe(true);
+    });
+
+    it("triggers at the boundary (balance just under 5× bet)", () => {
+      // 5×bet - 1 → triggers (strict less-than)
+      expect(shouldOfferRescue(124, 25, 0, null)).toBe(true);
+    });
+
+    it("does NOT trigger when balance equals 5× bet exactly", () => {
+      // 5×bet exactly → does NOT trigger (strict <)
+      expect(shouldOfferRescue(125, 25, 0, null)).toBe(false);
+    });
+
+    it("does NOT trigger when balance is comfortable", () => {
+      expect(shouldOfferRescue(10_000, 25, 0, null)).toBe(false);
+    });
+
+    it("does NOT trigger during free-spin mode (no real loss)", () => {
+      expect(shouldOfferRescue(50, 25, 3, null)).toBe(false);
+    });
+
+    it("does NOT trigger during a bonus round (no real loss)", () => {
+      expect(shouldOfferRescue(50, 25, 0, "wheel" as BonusGameType)).toBe(false);
+    });
+
+    it("triggers even with no bonus game if balance is busted", () => {
+      // Edge: player is broke (or near-broke)
+      expect(shouldOfferRescue(0, 25, 0, null)).toBe(true);
+    });
+
+    it("scales threshold with bet size", () => {
+      // bet=100, threshold=500
+      expect(shouldOfferRescue(499, 100, 0, null)).toBe(true);
+      expect(shouldOfferRescue(500, 100, 0, null)).toBe(false);
+    });
+  });
+
+  describe("rescueMinPayout", () => {
+    it("returns 50% of bet, floored", () => {
+      expect(rescueMinPayout(25)).toBe(12);
+      expect(rescueMinPayout(100)).toBe(50);
+    });
+
+    it("handles odd bets without rounding error", () => {
+      // 7 * 0.5 = 3.5 → floored to 3
+      expect(rescueMinPayout(7)).toBe(3);
+    });
+
+    it("returns 0 for zero bet", () => {
+      expect(rescueMinPayout(0)).toBe(0);
+    });
+  });
+});
+
+/**
+ * Mission claim-once semantics. The mission can only be claimed once; a
+ * re-click on a claimed mission must return 0 reward and not toggle the
+ * claimed flag back.
+ */
+describe("applyMissionClaim", () => {
+  const completedUnclaimed = { completed: true, claimed: false, reward: 150 };
+
+  it("credits the reward and marks claimed on first claim", () => {
+    const { mission, reward } = applyMissionClaim(completedUnclaimed);
+    expect(reward).toBe(150);
+    expect(mission.claimed).toBe(true);
+    expect(mission.completed).toBe(true);
+  });
+
+  it("does not re-credit on a second claim attempt", () => {
+    const first = applyMissionClaim(completedUnclaimed);
+    const second = applyMissionClaim(first.mission);
+    expect(second.reward).toBe(0);
+    expect(second.mission).toEqual(first.mission);
+  });
+
+  it("rejects incomplete missions", () => {
+    const incomplete = { completed: false, claimed: false, reward: 100 };
+    const { mission, reward } = applyMissionClaim(incomplete);
+    expect(reward).toBe(0);
+    expect(mission).toEqual(incomplete); // untouched
+  });
+
+  it("rejects already-claimed missions", () => {
+    const claimed = { completed: true, claimed: true, reward: 200 };
+    const { mission, reward } = applyMissionClaim(claimed);
+    expect(reward).toBe(0);
+    expect(mission).toEqual(claimed);
   });
 });

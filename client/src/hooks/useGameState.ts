@@ -36,17 +36,17 @@ export interface Symbol {
 export const SYMBOLS: Symbol[] = [
   {
     id: "bread",
-    emoji: "🍞",
-    name: "Fresh Bread",
-    color: "#D4AF37",
-    bgColor: "#1a1200",
+    emoji: "🌾",
+    name: "Sacred Sage",
+    color: "#88CC88",
+    bgColor: "#0a1a0a",
     payouts: [2, 5, 12],
     weight: 30,
   },
   {
     id: "rolling",
-    emoji: "🥖",
-    name: "Baguette",
+    emoji: "🏹",
+    name: "Warrior Bow",
     color: "#C8860A",
     bgColor: "#1a0e00",
     payouts: [3, 8, 22],
@@ -54,17 +54,17 @@ export const SYMBOLS: Symbol[] = [
   },
   {
     id: "pretzel",
-    emoji: "🥨",
-    name: "Soft Pretzel",
-    color: "#E8A020",
-    bgColor: "#1a1000",
+    emoji: "🕸️",
+    name: "Dream Catcher",
+    color: "#9C7CF4",
+    bgColor: "#150a2a",
     payouts: [6, 18, 45],
     weight: 24,
   },
   {
     id: "croissant",
-    emoji: "🥐",
-    name: "Butter Croissant",
+    emoji: "🪶",
+    name: "Eagle Feathers",
     color: "#D4AF37",
     bgColor: "#1a1200",
     payouts: [10, 25, 60],
@@ -72,66 +72,66 @@ export const SYMBOLS: Symbol[] = [
   },
   {
     id: "cookie",
-    emoji: "🍪",
-    name: "Chocolate Chip Cookie",
-    color: "#F5E6C8",
-    bgColor: "#1a1500",
+    emoji: "🎯",
+    name: "Spirit Arrows",
+    color: "#FF6B6B",
+    bgColor: "#1a0808",
     payouts: [15, 40, 90],
     weight: 16,
   },
   {
     id: "cupcake",
-    emoji: "🧁",
-    name: "Pink Cupcake",
-    color: "#FF6B6B",
-    bgColor: "#2a0a0a",
+    emoji: "🐺",
+    name: "Spirit Wolf",
+    color: "#88AACC",
+    bgColor: "#0a1525",
     payouts: [25, 75, 180],
     weight: 14,
   },
   {
     id: "cake",
-    emoji: "🎂",
-    name: "Celebration Cake",
-    color: "#FFD700",
-    bgColor: "#1a1000",
+    emoji: "🥁",
+    name: "War Drum",
+    color: "#A8482A",
+    bgColor: "#1a0808",
     payouts: [40, 125, 300],
     weight: 9,
   },
   {
     id: "muffin",
-    emoji: "🧁",
-    name: "Blueberry Muffin",
-    color: "#88CCFF",
-    bgColor: "#001a2a",
+    emoji: "💎",
+    name: "Sunstones",
+    color: "#FF6BAA",
+    bgColor: "#250a1a",
     payouts: [20, 50, 120],
     weight: 14,
   },
   {
     id: "bun",
-    emoji: "🫓",
-    name: "Sweet Bun",
-    color: "#90EE90",
-    bgColor: "#001a00",
+    emoji: "🔥",
+    name: "Sacred Fire",
+    color: "#FF6B1A",
+    bgColor: "#1a0500",
     payouts: [60, 180, 450],
     weight: 8,
     isWild: true,
   },
   {
     id: "huntress",
-    emoji: "👑",
-    name: "Bakery Queen",
-    color: "#FF6B6B",
-    bgColor: "#2a0a0a",
+    emoji: "⚔️",
+    name: "Huntress Warrior",
+    color: "#FF6BAA",
+    bgColor: "#250a1a",
     payouts: [100, 350, 1500],
     weight: 6,
     isScatter: true,
   },
   {
     id: "dough",
-    emoji: "🍞",
-    name: "Rolling in the Dough",
+    emoji: "🌟",
+    name: "Spirit Arrow",
     color: "#FFD700",
-    bgColor: "#1a1000",
+    bgColor: "#1a1500",
     payouts: [150, 750, 3000],
     weight: 4,
     isScatter: true,
@@ -290,6 +290,50 @@ function xpForLevel(level: number): number {
   return Math.floor(100 * Math.pow(1.4, level - 1));
 }
 
+/**
+ * Loss-back rescue trigger: should we offer a guaranteed half-bet spin
+ * after a losing spin? Pure function so it's unit-testable.
+ *
+ *   postSpinBalance < bet * 5   → player is "about to bust"
+ *   freeSpins === 0             → skip during free-spin mode (no real loss)
+ *   bonusGameType == null       → skip during bonus round (no real loss)
+ */
+export function shouldOfferRescue(
+  postSpinBalance: number,
+  bet: number,
+  freeSpins: number,
+  bonusGameType: BonusGameType | null
+): boolean {
+  if (freeSpins > 0) return false;
+  if (bonusGameType) return false;
+  return postSpinBalance < bet * 5;
+}
+
+/** Minimum guaranteed return for a consumed rescue spin (50% of bet). */
+export function rescueMinPayout(bet: number): number {
+  return Math.floor(bet * 0.5);
+}
+
+/**
+ * Pure claim helper for missions. Returns the updated mission + the reward
+ * to credit, or { mission: existing, reward: 0 } if the mission can't be
+ * claimed (not complete, or already claimed).
+ *
+ * Extracted so the claim-once semantics can be unit-tested without rendering
+ * the React tree.
+ */
+export function applyMissionClaim(
+  mission: { completed: boolean; claimed: boolean; reward: number }
+): { mission: { completed: boolean; claimed: boolean; reward: number }; reward: number } {
+  if (!mission.completed || mission.claimed) {
+    return { mission, reward: 0 };
+  }
+  return {
+    mission: { ...mission, claimed: true },
+    reward: mission.reward,
+  };
+}
+
 // ─── Local storage helpers ────────────────────────────────────────────────────
 function loadState() {
   try {
@@ -329,6 +373,11 @@ export function useGameState() {
   const [spinCount, setSpinCount] = useState<number>(saved?.spinCount ?? 0);
   const [level, setLevel] = useState<number>(saved?.level ?? 1);
   const [xp, setXp] = useState<number>(saved?.xp ?? 0);
+  const [consecutiveWins, setConsecutiveWins] = useState<number>(saved?.consecutiveWins ?? 0);
+  const [maxStreak, setMaxStreak] = useState<number>(saved?.maxStreak ?? 0);
+  // Loss-back rescue: when the player is running low and just lost, offer one
+  // guaranteed half-bet win on the next spin. Vegas "save the player" mechanic.
+  const [rescueOffered, setRescueOffered] = useState<boolean>(false);
   const [autoplay, setAutoplay] = useState(false);
   const [jackpotPool, setJackpotPool] = useState<number>(saved?.jackpotPool ?? JACKPOT_SEED);
   const [soundEnabled, setSoundEnabled] = useState(saved?.soundEnabled ?? true);
@@ -344,8 +393,8 @@ export function useGameState() {
 
   // Save state on changes
   useEffect(() => {
-    saveState({ coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency });
-  }, [coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency]);
+    saveState({ coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency, consecutiveWins, maxStreak });
+  }, [coins, bet, freeSpins, totalWins, spinCount, level, xp, jackpotPool, soundEnabled, goldCoins, greenCoins, selectedCurrency, consecutiveWins, maxStreak]);
   
   // Get current currency balance
   const currentBalance = selectedCurrency === 'gold' ? goldCoins : greenCoins;
@@ -362,11 +411,11 @@ export function useGameState() {
     }
   }, []);
 
-  const spin = useCallback(async () => {
+  const spin = useCallback(async (isDemo = false) => {
     if (spinningRef.current) return;
-    // Check balance using the active currency
+    // Check balance using the active currency (demo always passes)
     const activeBalance = selectedCurrency === 'gold' ? goldCoins : greenCoins;
-    if (freeSpins === 0 && activeBalance < bet) return;
+    if (!isDemo && freeSpins === 0 && activeBalance < bet) return;
 
     spinningRef.current = true;
     setSpinning(true);
@@ -374,9 +423,11 @@ export function useGameState() {
     setWinLines([]);
     setLastWinType(null);
 
-    // Deduct bet from the active currency (unless free spin)
+    // Deduct bet from the active currency (unless free spin or demo)
     const isFree = freeSpins > 0;
-    if (isFree) {
+    if (isDemo) {
+      // Demo (idle attract mode): no bet deduction, no jackpot contribution.
+    } else if (isFree) {
       setFreeSpins((f) => f - 1);
     } else {
       if (selectedCurrency === 'gold') {
@@ -418,13 +469,32 @@ export function useGameState() {
       setJackpotPool(JACKPOT_SEED);
     }
 
+    // ─── Loss-back rescue (Vegas "save the player" mechanic) ───────────────
+    // If the rescue was offered (player ran low and lost), force the next
+    // spin to return at least 50% of the bet. Skipped on demo (no real
+    // player to save) and on jackpot (already a huge win, no rescue needed).
+    // The flag is consumed here regardless of outcome so the offer is one-shot.
+    if (!isDemo && rescueOffered && !isJackpot) {
+      const rescueMin = rescueMinPayout(bet);
+      if (finalWin < rescueMin) finalWin = rescueMin;
+      setRescueOffered(false);
+      window.dispatchEvent(new CustomEvent("toast", {
+        detail: { kind: "secondChance", message: `🎟️ RESCUE SPIN! +${rescueMin}` },
+      }));
+    }
+
     // Free spins trigger
-    if (scatters >= FREE_SPIN_TRIGGER) {
+    if (!isDemo && scatters >= FREE_SPIN_TRIGGER) {
       setFreeSpins((f) => f + FREE_SPIN_COUNT);
+      // Toast for retrigger case (player already had free spins and got more).
+      // Fresh free spins are implied by the scatter fanfare so don't double-toast.
+      window.dispatchEvent(new CustomEvent("toast", {
+        detail: { kind: "retrigger", message: `+${FREE_SPIN_COUNT} FREE SPINS!` },
+      }));
     }
 
     // Scatter bonus trigger: 4+ scatters trigger lucky wheel bonus (in addition to any free spins)
-    if (scatters >= 4) {
+    if (!isDemo && scatters >= 4) {
       // 30% chance of bonus game on 4 scatters, guaranteed on 5+
       if (scatters >= 5 || Math.random() < 0.3) {
         setBonusGameType('lucky_spin' as BonusGameType);
@@ -432,12 +502,12 @@ export function useGameState() {
     }
 
     // Huntress bonus trigger (takes precedence if both trigger)
-    if (isHuntressBonus && !bonusGameType) {
+    if (!isDemo && isHuntressBonus && !bonusGameType) {
       setBonusGameType('huntress_bonus' as BonusGameType);
     }
 
     // Update coins in the active currency
-    if (finalWin > 0) {
+    if (!isDemo && finalWin > 0) {
       if (selectedCurrency === 'gold') {
         setGoldCoins((c) => c + finalWin);
       } else {
@@ -460,6 +530,11 @@ export function useGameState() {
         const fakeWin = Math.floor(bet * (1.5 + Math.random() * 1.5));
         setWinAmount(fakeWin);
         setLastWinType("SMALL_WIN");
+        // Notify the toast stack so the player sees the "second chance" beat.
+        // Done via window event so this file stays decoupled from Toasts.tsx.
+        window.dispatchEvent(new CustomEvent("toast", {
+          detail: { kind: "secondChance", message: "🍀 SECOND CHANCE — BONUS WIN!" },
+        }));
         setTimeout(() => {
           setWinAmount(0);
           setLastWinType(null);
@@ -467,23 +542,74 @@ export function useGameState() {
       }
     }
 
-    // XP gain
-    const xpGain = Math.floor(bet / 10) + (finalWin > 0 ? Math.floor(finalWin / 20) : 0);
-    setXp((currentXp) => {
-      let newXp = currentXp + xpGain;
-      let newLevel = level;
-      while (newXp >= xpForLevel(newLevel)) {
-        newXp -= xpForLevel(newLevel);
-        newLevel++;
-      }
-      if (newLevel !== level) setLevel(newLevel);
-      return newXp;
-    });
+    // XP gain (skipped on demo — would inflate XP without play)
+    if (!isDemo) {
+      const xpGain = Math.floor(bet / 10) + (finalWin > 0 ? Math.floor(finalWin / 20) : 0);
+      setXp((currentXp) => {
+        let newXp = currentXp + xpGain;
+        let newLevel = level;
+        while (newXp >= xpForLevel(newLevel)) {
+          newXp -= xpForLevel(newLevel);
+          newLevel++;
+        }
+        if (newLevel !== level) setLevel(newLevel);
+        return newXp;
+      });
+    }
 
-    setSpinCount((s) => s + 1);
+    setSpinCount((s) => isDemo ? s : s + 1);
+
+    // Streak tracking: increment on real wins (not LDW, not demo), reset on losses.
+    // Done after the spin resolves so the LDW fake-win doesn't count as a
+    // streak win (that would defeat the purpose of streaks being rare).
+    if (!isDemo && finalWin > 0) {
+      setConsecutiveWins(prev => {
+        const next = prev + 1;
+        if (next > maxStreak) setMaxStreak(next);
+        // Streak milestone toasts + audio chime at 3, 5, 10. The
+        // sound is paired with the toast so the player gets a
+        // distinct "you crossed a threshold" cue — NOT on every
+        // win (that would cause habituation and notification
+        // fatigue). Each milestone also gets progressively
+        // brighter audio (the chime frequency rises with `next`).
+        if (next === 3 || next === 5 || next === 10) {
+          window.dispatchEvent(new CustomEvent("toast", {
+            detail: { kind: "streak", message: `🔥 ${next}x WIN STREAK!` },
+          }));
+          // Dynamic import to keep the useGameState hook from
+          // pulling the audio module into a hot path.
+          import("@/lib/sounds").then(({ playSound }) => {
+            playSound("streak_milestone");
+          });
+        }
+        return next;
+      });
+    } else if (!isDemo && !isJackpot) {
+      // Genuine loss — reset streak. (Jackpot loss isn't possible but guard anyway.)
+      setConsecutiveWins(0);
+
+      // Loss-back rescue offer: if the player is now running low (active
+      // currency < 6× bet after this losing spin = <5× bet going forward)
+      // AND they're not in a bonus or free-spin mode, offer a rescue spin
+      // for their next attempt. Threshold of 5× bet matches industry norms
+      // for "about to bust" detection on sweepstakes/credit-based cabinets.
+      // Note: goldCoins/greenCoins here is the pre-deduction value because
+      // state updates are batched — pre - bet gives the post-spin balance.
+      const preSpinBalance = selectedCurrency === 'gold' ? goldCoins : greenCoins;
+      const postSpinBalance = preSpinBalance - bet;
+      if (
+        shouldOfferRescue(postSpinBalance, bet, freeSpins, bonusGameType)
+      ) {
+        setRescueOffered(true);
+        window.dispatchEvent(new CustomEvent("toast", {
+          detail: { kind: "secondChance", message: "🎟️ RESCUE SPIN OFFERED!" },
+        }));
+      }
+    }
+
     setSpinning(false);
     spinningRef.current = false;
-  }, [coins, bet, freeSpins, jackpotPool, level, selectedCurrency, goldCoins, greenCoins]);
+  }, [coins, bet, freeSpins, jackpotPool, level, selectedCurrency, goldCoins, greenCoins, maxStreak]);
 
   // Autoplay logic
   useEffect(() => {
@@ -518,9 +644,13 @@ export function useGameState() {
     level,
     xp,
     xpToNext,
+    consecutiveWins,
+    maxStreak,
+    rescueOffered,
     autoplay,
     setAutoplay,
     spin,
+    triggerDemoSpin: () => spin(true),
     jackpotPool,
     soundEnabled,
     setSoundEnabled,

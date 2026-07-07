@@ -46,13 +46,49 @@ const TOTAL_ROTATIONS = 5; // Minimum rotations before stopping
 const SPIN_DURATION_BASE = 4000; // Base spin duration
 const TICK_INTERVAL_DEGREES = SEGMENT_ANGLE; // Tick every segment
 
-// Play wheel tick sound
+// ─── Audio (shared singleton) ───────────────────────────────────────────────
+//
+// Two bugs in the previous version:
+//
+//   1. `new AudioContext()` was created on every tick. Browsers cap
+//      simultaneous contexts (Chrome ~6); overflow sounds play through
+//      detached contexts that the global mute can't reach.
+//
+//   2. Gain was set instantly to peak (`setValueAtTime(0.15, now)`) then
+//      ramped down — the textbook "blowing into a microphone" artifact on
+//      every tick. With ~50 ticks per wheel spin, you'd hear 50 brief blats
+//      stacked on top of each other.
+//
+// Fix: shared AudioContext singleton, click-free attack envelope on every
+// oscillator (8ms linear attack).
+let sharedAudioContext: AudioContext | null = null;
+function getSharedAudioContext(): AudioContext | null {
+  try {
+    if (!sharedAudioContext) {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!Ctx) return null;
+      sharedAudioContext = new Ctx();
+    }
+    if (sharedAudioContext.state === "suspended") {
+      void sharedAudioContext.resume();
+    }
+    return sharedAudioContext;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Play a wheel tick — a short note that varies pitch with rotation speed.
+ * Uses shared context + click-free envelope.
+ */
 function playWheelTick(pitch: number = 1) {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = getSharedAudioContext();
+    if (!ctx) return;
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
     osc.connect(gain);
     gain.connect(ctx.destination);
 
@@ -60,56 +96,56 @@ function playWheelTick(pitch: number = 1) {
     osc.frequency.value = 800 * pitch;
 
     const now = ctx.currentTime;
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+    const duration = 0.08;
+    const ATTACK = 0.006;
+    const peak = 0.15;
+
+    // Click-free envelope: linear attack 0 → peak, exponential release to ~0
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(peak, now + ATTACK);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
     osc.start(now);
-    osc.stop(now + 0.08);
-  } catch (e) {
-    // Silently fail
+    osc.stop(now + duration);
+  } catch {
+    // Silently fail — mic-only setup might not have an output device
   }
 }
 
-// Play win fanfare
+/**
+ * Play win fanfare for the wheel result. 3-note ascending for normal wins,
+ * 5-note for high-value wins (≥5×).
+ */
 function playWheelWin(isHigh: boolean) {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const now = ctx.currentTime;
+    const ctx = getSharedAudioContext();
+    if (!ctx) return;
 
-    if (isHigh) {
-      // Epic win sound for high multipliers
-      const notes = [523, 659, 784, 1047, 1319];
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        const startTime = now + i * 0.15;
-        gain.gain.setValueAtTime(0.25, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
-        osc.start(startTime);
-        osc.stop(startTime + 0.3);
-      });
-    } else {
-      // Standard win sound
-      const notes = [523, 659, 784];
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        const startTime = now + i * 0.12;
-        gain.gain.setValueAtTime(0.2, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.25);
-        osc.start(startTime);
-        osc.stop(startTime + 0.25);
-      });
-    }
-  } catch (e) {
+    const notes = isHigh ? [523, 659, 784, 1047, 1319] : [523, 659, 784];
+    const perNoteDuration = isHigh ? 0.3 : 0.25;
+    const perNoteDelay = isHigh ? 0.15 : 0.12;
+    const peak = isHigh ? 0.25 : 0.2;
+    const ATTACK = 0.008;
+
+    const now = ctx.currentTime;
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+
+      const startTime = now + i * perNoteDelay;
+      // Click-free envelope per note
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(peak, startTime + ATTACK);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + perNoteDuration);
+
+      osc.start(startTime);
+      osc.stop(startTime + perNoteDuration);
+    });
+  } catch {
     // Silently fail
   }
 }
@@ -294,7 +330,7 @@ export default function BonusWheel({ baseReward, maxMultiplier, onWin, onTrigger
               backgroundClip: "text",
             }}
           >
-            🎡 LUCKY WHEEL 🎡
+            🌀 SPIRIT WHEEL 🌀
           </div>
           <p className="text-yellow-200/80 text-sm">Spin to multiply your reward!</p>
           <p className="text-amber-300 text-xs mt-1">

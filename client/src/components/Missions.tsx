@@ -14,22 +14,20 @@ interface MissionsProps {
 
 export function Missions({ missions, onClaimReward, onClose }: MissionsProps) {
   const [claimingId, setClaimingId] = useState<string | null>(null);
-  const [justClaimed, setJustClaimed] = useState<string | null>(null);
 
   const handleClaim = (mission: Mission) => {
-    if (!mission.completed || claimingId) return;
+    if (!mission.completed || mission.claimed || claimingId) return;
 
     setClaimingId(mission.id);
     
     // Small delay for animation
     setTimeout(() => {
       const reward = onClaimReward(mission.id);
-      setJustClaimed(mission.id);
-      
-      setTimeout(() => {
-        setClaimingId(null);
-        setJustClaimed(null);
-      }, 1000);
+      setClaimingId(null);
+      // We rely on the persistent mission.claimed flag (set inside
+      // useRetention.claimMissionReward) for the visual state now, so
+      // there's no ephemeral justClaimed to clear here.
+      void reward;
     }, 300);
   };
 
@@ -97,7 +95,7 @@ export function Missions({ missions, onClaimReward, onClose }: MissionsProps) {
             const progressPercent = Math.min(100, (mission.progress / mission.target) * 100);
             const isComplete = mission.completed;
             const isClaiming = claimingId === mission.id;
-            const wasClaimed = justClaimed === mission.id;
+            const wasClaimed = mission.claimed;
 
             return (
               <div
@@ -197,8 +195,8 @@ export function Missions({ missions, onClaimReward, onClose }: MissionsProps) {
                   {isComplete ? (
                     <button
                       onClick={() => handleClaim(mission)}
-                      disabled={!!claimingId}
-                      className="w-full py-2 rounded-lg font-semibold text-sm transition-all duration-200 active:scale-95"
+                      disabled={!!claimingId || wasClaimed}
+                      className="w-full py-2 rounded-lg font-semibold text-sm transition-all duration-200 active:scale-95 disabled:cursor-default disabled:active:scale-100"
                       style={{
                         background: wasClaimed
                           ? "linear-gradient(135deg, #22C55E, #16A34A)"

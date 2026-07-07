@@ -107,8 +107,11 @@ export function registerOAuthRoutes(app: Express) {
       return;
     }
 
+    // Supabase calls Azure AD "azure", not "microsoft" — map the public name.
+    const supabaseProvider = provider === "microsoft" ? "azure" : provider;
+
     const { data, error } = await supabaseAdmin.auth.signInWithOAuth({
-      provider,
+      provider: supabaseProvider,
       options: {
         redirectTo: redirectUri,
         skipBrowserRedirect: true,

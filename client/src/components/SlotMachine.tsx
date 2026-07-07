@@ -7,9 +7,9 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
-import { playSound } from "@/lib/sounds";
+import { playSound, playWinSound, setSoundEnabled as setLibSoundEnabled, isSoundEnabled } from "@/lib/sounds";
+import { detectNearMisses, playNearMissSound } from "@/lib/nearMiss";
 import { WinParticles } from "./WinParticles";
-import { soundManager } from "@/lib/soundManager";
 import ScratchGame from "./ScratchGame";
 import DealsModal from "./DealsModal";
 import BigWinOverlay from "./BigWinOverlay";
@@ -37,10 +37,14 @@ interface Props {
   bet: number;
   setBet: (b: number) => void;
   spin: () => void;
+  triggerDemoSpin?: () => void;
   autoplay: boolean;
   setAutoplay: (a: boolean) => void;
   spinCount: number;
   soundEnabled: boolean;
+  consecutiveWins?: number;
+  maxStreak?: number;
+  rescueOffered?: boolean;
   paylines?: number;
   setPaylines?: (p: number) => void;
   onCoinShop?: () => void;
@@ -49,6 +53,7 @@ interface Props {
   externalShowScratch?: boolean;
   onDealsClose?: () => void;
   onScratchClose?: () => void;
+  onScratchWin?: (amount: number) => void;
   selectedCurrency?: 'gold' | 'green';
 }
 
@@ -96,10 +101,10 @@ function getRandomSymbolId(): SymbolId {
 function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
   return (
     <div className="relative" style={{
-      background: "linear-gradient(180deg, #1a1005 0%, #2d1f0a 40%, #3d2a0f 100%)",
+      background: "linear-gradient(180deg, #0d0512 0%, #1a0a25 40%, #2d0e30 100%)",
       borderBottom: "3px solid #D4AF37",
       borderRadius: "1rem 1rem 0 0",
-      padding: "12px 16px 8px",
+      padding: "clamp(8px, 2vw, 12px) clamp(10px, 3vw, 16px) clamp(6px, 1.5vw, 8px)",
       position: "relative",
       overflow: "hidden",
     }}>
@@ -109,49 +114,65 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
         boxShadow: "0 0 20px #FFD700, 0 0 40px #D4AF37",
         animation: "cabinetGlow 3s ease-in-out infinite",
       }} />
-      
+
       {/* Game title area */}
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3">
-          {/* Side cabinet ornament */}
-          <div className="w-10 h-10" style={{
-            background: "linear-gradient(135deg, #8B5E0A, #C8860A, #FFD700, #C8860A, #8B5E0A)",
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Left ornament: warrior bow arrow icon (hidden on mobile) */}
+          <div className="hidden sm:flex w-10 h-10 items-center justify-center" style={{
+            background: "radial-gradient(circle, #4A1A5C 0%, #1A0A2A 100%)",
             borderRadius: "50%",
-            boxShadow: "0 0 15px rgba(212,175,55,0.8), inset 0 2px 4px rgba(255,255,255,0.3)",
-            border: "2px solid #F5E6C8",
-          }} />
-          <div className="text-center">
-            <div className="font-display font-black tracking-widest uppercase text-gold-gradient" 
-                 style={{ fontSize: "clamp(1rem, 3.5vw, 1.5rem)", letterSpacing: "0.1em", textShadow: "0 0 20px rgba(212,175,55,0.8)" }}>
-              Rolling in the Dough
+            boxShadow: "0 0 15px rgba(255,107,170,0.5), inset 0 0 8px rgba(212,175,55,0.4)",
+            border: "2px solid #D4AF37",
+            animation: "cabinetOrnamentGlow 5s ease-in-out infinite",
+          }}>
+            <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🏹</span>
+          </div>
+          <div className="text-center flex-1">
+            <div className="font-display font-black tracking-widest uppercase"
+                 style={{
+                   fontSize: "clamp(0.95rem, 3.2vw, 1.5rem)",
+                   letterSpacing: "0.1em",
+                   background: "linear-gradient(135deg, #D4AF37 0%, #F5E6C8 30%, #FFD700 50%, #FF6BAA 75%, #D4AF37 100%)",
+                   WebkitBackgroundClip: "text",
+                   WebkitTextFillColor: "transparent",
+                   backgroundClip: "text",
+                   textShadow: "0 0 25px rgba(212,175,55,0.6), 0 0 50px rgba(255,107,170,0.4)",
+                   filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.7))",
+                 }}>
+              HUNTRESS WARRIOR
             </div>
-            <div className="font-numbers tracking-wider uppercase" style={{ fontSize: "clamp(0.6rem, 1.5vw, 0.8rem)", color: "#C8860A" }}>
-              ◆ Sweepstakes Slots ◆
+            <div className="font-numbers tracking-wider uppercase hidden sm:block" style={{ fontSize: "clamp(0.6rem, 1.5vw, 0.8rem)", color: "#FF6BAA" }}>
+              ◆ Spirit of the Plains ◆
             </div>
           </div>
-          <div className="w-10 h-10" style={{
-            background: "linear-gradient(135deg, #8B5E0A, #C8860A, #FFD700, #C8860A, #8B5E0A)",
+          {/* Right ornament: mirror (hidden on mobile) */}
+          <div className="hidden sm:flex w-10 h-10 items-center justify-center" style={{
+            background: "radial-gradient(circle, #4A1A5C 0%, #1A0A2A 100%)",
             borderRadius: "50%",
-            boxShadow: "0 0 15px rgba(212,175,55,0.8), inset 0 2px 4px rgba(255,255,255,0.3)",
-            border: "2px solid #F5E6C8",
+            boxShadow: "0 0 15px rgba(255,107,170,0.5), inset 0 0 8px rgba(212,175,55,0.4)",
+            border: "2px solid #D4AF37",
             transform: "scaleX(-1)",
-          }} />
+            animation: "cabinetOrnamentGlow 5s ease-in-out infinite",
+          }}>
+            <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🏹</span>
+          </div>
         </div>
       </div>
 
       {/* Free spins badge */}
       <FreeSpinsDisplay freeSpins={freeSpins} />
 
-      {/* Scrolling marquee - legal disclaimer */}
-      <div className="overflow-hidden" style={{
-        background: "linear-gradient(90deg, #0a0500, #1a1000, #0a0500)",
+      {/* Scrolling marquee - thematic legal disclaimer (hidden on mobile to save ~30px; visible on tablet+) */}
+      <div className="hidden sm:block overflow-hidden" style={{
+        background: "linear-gradient(90deg, #0a0500, #1a0825, #0a0500)",
         border: "1px solid rgba(212,175,55,0.3)",
         borderRadius: "0.5rem",
         padding: "4px 8px",
         marginTop: "8px",
       }}>
         <div className="marquee-text text-xs font-numbers px-2" style={{ color: "#C8860A", fontSize: "0.6rem" }}>
-          ◆ FREE SWEEPSTAKES GAME — NO PURCHASE NECESSARY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🍀 WILD SUBSTITUTES ALL ◆ ⭐ 3 SCATTERS = 10 FREE SPINS ◆ ⭐ 5 SCATTERS = JACKPOT ◆ 🗡️ 3 HUNTRESS = BONUS ROUND ◆ JACKPOT GROWS WITH EVERY SPIN ◆
+          ◆ FREE SWEEPSTAKES GAME — NO PURCHASE NECESSARY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🔥 SACRED FIRE WILD SUBSTITUTES ALL ◆ ⚔️ 3 HUNTRESS = BONUS ROUND ◆ 🌟 3 SPIRIT ARROWS = 10 FREE SPINS ◆ 🌟 5 SPIRIT ARROWS = JACKPOT ◆ 🐺 SPIRIT WOLF PAYS UP TO 180X ◆ 🏹 HUNT BY THE LIGHT OF THE FULL MOON ◆
         </div>
       </div>
     </div>
@@ -173,17 +194,17 @@ function LEDDisplay({ label, value, color = "#FFD700", labelColor = "rgba(212,17
       background: "linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%)",
       border: "2px solid #333",
       borderRadius: "8px",
-      padding: "8px 12px",
+      padding: "clamp(4px, 1.2vw, 8px) clamp(6px, 1.8vw, 12px)",
       boxShadow: "inset 0 0 20px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.5)",
-      minWidth: "120px",
+      minWidth: 0,
     }}>
-      <div className="text-[0.6rem] font-numbers uppercase tracking-widest mb-1" style={{ color: labelColor }}>
+      <div className="text-[0.55rem] font-numbers uppercase tracking-widest mb-0.5 sm:mb-1" style={{ color: labelColor }}>
         {label}
       </div>
-      <div 
+      <div
         className="font-numbers tabular-nums text-center"
-        style={{ 
-          fontSize: "clamp(1.2rem, 4vw, 2rem)", 
+        style={{
+          fontSize: "clamp(0.95rem, 3.2vw, 2rem)",
           color,
           textShadow: `0 0 10px ${color}, 0 0 20px ${color}`,
           fontFamily: '"Orbitron", "Share Tech Mono", monospace',
@@ -276,8 +297,11 @@ function GameInfoPanel({ freeSpins }: { freeSpins: number }) {
   );
 }
 
-// Physics-based spinning reel strip with elastic slam stop
-function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number; reelIndex?: number }) {
+// Physics-based spinning reel strip with elastic slam stop.
+// Phases: 200ms accel ramp → ~900-1400ms cruise at target velocity with
+// sin-wave organic jitter → spring decel back to targetY with overshoot.
+// Total visible motion is ~1.4-1.6s per reel (staggered by reelIndex).
+function ReelStrip({ symbols, spinning, done, size = 80, reelIndex = 0 }: { symbols: SymbolId[]; spinning: boolean; done: boolean; size?: number; reelIndex?: number }) {
   const [translateY, setTranslateY] = useState(0);
   const [velocity, setVelocity] = useState(0);
   const [animFrame, setAnimFrame] = useState<number | null>(null);
@@ -288,67 +312,101 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
   useEffect(() => {
     if (spinning && !done) {
       const startTime = Date.now();
-      const targetVelocity = size * 22;
-      const acceleration = targetVelocity / 15;
-      
+      // Velocity tuned to size — bigger reels scroll faster for the same
+      // visual cadence, so the user can clearly see the strip moving.
+      // size=80 → targetVelocity = 2400 px/s = 40 px/frame at 60fps.
+      const targetVelocity = size * 30;
+      // Quick accel: hit cruise velocity in 12 frames (~200ms).
+      const acceleration = targetVelocity / 12;
+
       let currentVelocity = 0;
       let currentY = 0;
-      
+
       const animate = () => {
         const elapsed = Date.now() - startTime;
         const frameId = requestAnimationFrame(animate);
         setAnimFrame(frameId);
-        
-        if (elapsed < 250) {
+
+        if (elapsed < 200) {
+          // Acceleration ramp
           currentVelocity = Math.min(currentVelocity + acceleration, targetVelocity);
         } else {
-          currentVelocity = targetVelocity + Math.sin(elapsed * 0.01) * 50;
+          // Cruise with organic variation so the strip doesn't look
+          // mechanically uniform. Each reel gets a phase offset so they
+          // don't all jitter in sync.
+          const phase = reelIndex * 0.7;
+          const jitter = Math.sin(elapsed * 0.012 + phase) * 60;
+          currentVelocity = targetVelocity + jitter;
         }
-        
+
         currentY += currentVelocity / 60;
         setTranslateY(currentY);
         setVelocity(currentVelocity);
       };
-      
+
       const frameId = requestAnimationFrame(animate);
       setAnimFrame(frameId);
-      
+
       return () => { if (frameId) cancelAnimationFrame(frameId); };
     } else if (done && spinning === false) {
       const targetIndex = 10;
       const symbolHeight = size;
       const targetY = -targetIndex * symbolHeight;
-      
+
       let currentY = translateY;
       let currentV = velocity > 0 ? velocity : -targetY * 0.03;
-      
+
+      // Track if we've fired the slam event (only once per stop)
+      let slamFired = false;
+      // Track if we've triggered the sticky-lock for winning symbols
+      let stickyLockFired = false;
+
       const animateStop = () => {
-        const stiffness = 0.08;
-        const damping = 0.12;
+        // Spring constants tuned for a HEAVY SLAM with overshoot + stick.
+        // Higher stiffness = harder snap-back; lower damping = more bounce cycles.
+        // These values create a "thunk... boing... stick" feel like Vegas cabinets.
+        const stiffness = 0.18;   // was 0.10 — snaps harder
+        const damping = 0.08;     // was 0.14 — more oscillation before settle
         const displacement = currentY - targetY;
-        
+
         const acceleration = -stiffness * displacement - damping * currentV;
         currentV += acceleration;
         currentY += currentV / 60;
-        
-        const settled = Math.abs(displacement) < 0.5 && Math.abs(currentV) < 0.5;
-        
+
+        const settled = Math.abs(displacement) < 0.3 && Math.abs(currentV) < 0.3;
+
         setTranslateY(currentY);
         setVelocity(currentV);
-        
+
+        // Fire the "reel-slam" event on first crossing of targetY (the impact moment)
+        // This is when the symbols physically HIT the payline — the "thunk".
+        if (!slamFired && displacement <= 0 && currentV < 0) {
+          slamFired = true;
+          window.dispatchEvent(new CustomEvent('reel-slam', { detail: { reelIndex, impact: true } }));
+        }
+
+        // Fire sticky-lock for winning/bonus symbols after the main slam settles
+        // This triggers the "symbol locks into place" animation
+        if (!stickyLockFired && settled) {
+          stickyLockFired = true;
+          window.dispatchEvent(new CustomEvent('reel-sticky-lock', { detail: { reelIndex } }));
+        }
+
         if (!settled) {
           const frameId = requestAnimationFrame(animateStop);
           setAnimFrame(frameId);
         } else {
           setTranslateY(targetY);
           setVelocity(0);
-          window.dispatchEvent(new CustomEvent('reel-slam', { detail: { reelIndex } }));
+          if (!slamFired) {
+            window.dispatchEvent(new CustomEvent('reel-slam', { detail: { reelIndex, impact: true } }));
+          }
         }
       };
-      
+
       const frameId = requestAnimationFrame(animateStop);
       setAnimFrame(frameId);
-      
+
       return () => { if (frameId) cancelAnimationFrame(frameId); };
     }
   }, [spinning, done, size, translateY, velocity, reelIndex]);
@@ -367,22 +425,38 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
 
   if (spinning) {
     const startIdx = Math.max(0, Math.floor(-translateY / size));
-    const visibleCount = Math.ceil(360 / size) + 2;
-    
+    const visibleCount = Math.ceil(360 / size) + 4;
+
+    // Normalized speed factor: 0 = stopped, 1 = at cruise velocity.
+    const speedFactor = Math.min(Math.abs(velocity) / (size * 22), 1);
+
     return (
-      <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ transform: `translateY(${translateY}px)` }}>
+      <div
+        className="absolute inset-0 flex flex-col overflow-hidden"
+        style={{
+          transform: `translateY(${translateY}px)`,
+          // Top + bottom band darken deepens with speed — when cruising
+          // at full speed the symbols at the edges melt into darkness,
+          // creating the classic "spinning reel slot" look.
+          WebkitMaskImage: `linear-gradient(180deg, rgba(0,0,0,${0.2 + speedFactor * 0.3}) 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, rgba(0,0,0,${0.2 + speedFactor * 0.3}) 100%)`,
+          maskImage: `linear-gradient(180deg, rgba(0,0,0,${0.2 + speedFactor * 0.3}) 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, rgba(0,0,0,${0.2 + speedFactor * 0.3}) 100%)`,
+        }}
+      >
         {Array.from({ length: visibleCount }, (_, i) => {
           const idx = (startIdx + i) % stripSymbols.length;
           const symId = stripSymbols[idx];
           const sym = getSymbol(symId);
-          const blur = Math.min(Math.abs(velocity) / (size * 22), 1) * 4;
+          // Velocity-dependent blur: at cruise speed symbols smear into
+          // vertical streaks (up to 12px). Maximum blur ALSO increases
+          // with reel size — bigger reels need more blur to read as motion.
+          const blur = speedFactor * Math.min(size * 0.18, 14);
           return (
             <div
               key={i}
               className="flex-1 flex items-center justify-center"
-              style={{ 
-                filter: `blur(${blur}px)`, 
-                opacity: Math.max(0.3, 1 - blur * 0.15)
+              style={{
+                filter: `blur(${blur.toFixed(2)}px)`,
+                opacity: Math.max(0.25, 1 - blur * 0.06),
               }}
             >
               <SymbolIcon symbolId={sym.id} size={Math.floor(size * 0.9)} />
@@ -396,18 +470,60 @@ function ReelStrip({ symbols, spinning, done, size = 56, reelIndex = 0 }: { symb
   return null;
 }
 
-function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActive, cascadeWinningCells, cascadeAnimatingCells, cascadeGrid, stickyWildCells, wildLockAnimating, nearMissCells, nearMissAnimating, scatterSlowdownActive, lastWinType, scatterFanfareActive }: any) {
-  const displayGrid = cascadeGrid || reels;
+function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActive, cascadeWinningCells, cascadeAnimatingCells, cascadeGrid, stickyWildCells, wildLockAnimating, nearMissCells, nearMissAnimating, scatterSlowdownActive, lastWinType, scatterFanfareActive, symbolLockAnimating, displayGrid }: any) {
 
   return (
     <div className="relative" style={{
+      // Ornate gold frame inspired by Starburst/maxresdefault references.
+      // Triple-layer border: outer dark wood, middle gold bezel, inner purple.
       background: "linear-gradient(180deg, #030308 0%, #080814 50%, #030308 100%)",
-      border: "4px solid #1a1005",
-      borderRadius: "8px",
-      boxShadow: "inset 0 0 60px rgba(0,0,0,0.9), inset 0 2px 0 rgba(212,175,55,0.1), 0 0 30px rgba(212,175,55,0.1)",
-      padding: "8px",
+      border: "4px solid #2A1A0A",
+      borderRadius: "10px",
+      boxShadow: `
+        inset 0 0 60px rgba(0,0,0,0.9),
+        inset 0 0 0 1px rgba(212,175,55,0.4),
+        inset 0 0 0 3px rgba(74,26,92,0.6),
+        inset 0 0 0 4px rgba(212,175,55,0.5),
+        0 0 25px rgba(212,175,55,0.25),
+        0 0 50px rgba(255,107,170,0.1)
+      `,
+      padding: "10px",
       position: "relative",
     }}>
+      {/* (chrome pillars removed — they were a Starburst reference
+          experiment but their 6-col grid math didn't align with the
+          cabinet-rim's actual 5-col grid + 4px gap layout, so they
+          sat 89px to the left of where the reel boundaries are.
+          Cleaner without them — the rim's double-keyline + glow
+          already frames each reel cell.) */}
+      {/* Gold corner ornaments — top-left */}
+      <div className="absolute -top-1 -left-1 w-6 h-6 pointer-events-none" style={{
+        background: "radial-gradient(circle, #FFD700 0%, #8B6914 60%, transparent 100%)",
+        borderRadius: "50%",
+        boxShadow: "0 0 10px rgba(255,215,0,0.6)",
+        zIndex: 5,
+      }} />
+      {/* top-right */}
+      <div className="absolute -top-1 -right-1 w-6 h-6 pointer-events-none" style={{
+        background: "radial-gradient(circle, #FFD700 0%, #8B6914 60%, transparent 100%)",
+        borderRadius: "50%",
+        boxShadow: "0 0 10px rgba(255,215,0,0.6)",
+        zIndex: 5,
+      }} />
+      {/* bottom-left */}
+      <div className="absolute -bottom-1 -left-1 w-6 h-6 pointer-events-none" style={{
+        background: "radial-gradient(circle, #FFD700 0%, #8B6914 60%, transparent 100%)",
+        borderRadius: "50%",
+        boxShadow: "0 0 10px rgba(255,215,0,0.6)",
+        zIndex: 5,
+      }} />
+      {/* bottom-right */}
+      <div className="absolute -bottom-1 -right-1 w-6 h-6 pointer-events-none" style={{
+        background: "radial-gradient(circle, #FFD700 0%, #8B6914 60%, transparent 100%)",
+        borderRadius: "50%",
+        boxShadow: "0 0 10px rgba(255,215,0,0.6)",
+        zIndex: 5,
+      }} />
       {/* Reel glass bezel - inner glow */}
       <div className="absolute inset-0 pointer-events-none" style={{
         border: "2px solid rgba(212,175,55,0.15)",
@@ -415,33 +531,51 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
         boxShadow: "inset 0 0 40px rgba(212,175,55,0.05)",
       }} />
 
-      {/* Payline indicator dots on sides */}
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 flex flex-col gap-1 z-10">
+      {/* Payline indicator columns — Starburst-style numbered circles flanking the reels */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-7 flex flex-col gap-1.5 z-10 py-2 px-1 rounded" style={{
+        background: "linear-gradient(180deg, rgba(20,10,5,0.6), rgba(40,20,10,0.6))",
+        border: "1px solid rgba(212,175,55,0.3)",
+        boxShadow: "inset 0 0 8px rgba(0,0,0,0.6), 0 0 8px rgba(212,175,55,0.15)",
+      }}>
         {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={`left-${i}`}
-            className="w-1.5 h-1.5 rounded-full"
+            className="w-4 h-4 rounded-full flex items-center justify-center font-numbers"
             style={{
-              background: `hsl(${(i * 30) % 360}, 100%, 55%)`,
-              boxShadow: `0 0 8px hsl(${(i * 30) % 360}, 100%, 55%)`,
+              fontSize: "0.55rem",
+              fontWeight: 800,
+              background: "linear-gradient(180deg, #1a1005, #050510)",
+              border: "1px solid rgba(212,175,55,0.5)",
+              color: "#FFD700",
+              boxShadow: "0 0 4px rgba(212,175,55,0.4), inset 0 0 2px rgba(255,215,0,0.3)",
               animation: `paylinePulse 1.5s ease-in-out ${i * 0.1}s infinite`,
-              opacity: 0.6,
             }}
-          />
+          >
+            {i + 1}
+          </div>
         ))}
       </div>
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 flex flex-col gap-1 z-10">
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-7 flex flex-col gap-1.5 z-10 py-2 px-1 rounded" style={{
+        background: "linear-gradient(180deg, rgba(20,10,5,0.6), rgba(40,20,10,0.6))",
+        border: "1px solid rgba(212,175,55,0.3)",
+        boxShadow: "inset 0 0 8px rgba(0,0,0,0.6), 0 0 8px rgba(212,175,55,0.15)",
+      }}>
         {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={`right-${i}`}
-            className="w-1.5 h-1.5 rounded-full"
+            className="w-4 h-4 rounded-full flex items-center justify-center font-numbers"
             style={{
-              background: `hsl(${(i * 30) % 360}, 100%, 55%)`,
-              boxShadow: `0 0 8px hsl(${(i * 30) % 360}, 100%, 55%)`,
+              fontSize: "0.55rem",
+              fontWeight: 800,
+              background: "linear-gradient(180deg, #1a1005, #050510)",
+              border: "1px solid rgba(212,175,55,0.5)",
+              color: "#FFD700",
+              boxShadow: "0 0 4px rgba(212,175,55,0.4), inset 0 0 2px rgba(255,215,0,0.3)",
               animation: `paylinePulse 1.5s ease-in-out ${i * 0.1}s infinite`,
-              opacity: 0.6,
             }}
-          />
+          >
+            {i + 1}
+          </div>
         ))}
       </div>
 
@@ -457,23 +591,21 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
         />
       )}
 
-      {/* Reels */}
-      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
-        {displayGrid.map((reel, reelIdx) => (
+      {/* Reels — wrapped in cabinet-rim (CSS provides grid + gap, plus
+          the gold gradient rim via ::before). flex-grow so the grid
+          expands to fill cabinet space, not fixed 200px. */}
+      <div className="cabinet-rim relative" style={{ minHeight: "280px", flex: "1 1 auto" }}>
+        {displayGrid.map((reel: SymbolId[], reelIdx: number) => (
           <div
             key={reelIdx}
-            className={`reel-container rounded relative ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
+            className={`reel-container relative ${scatterSlowdownActive && reelIdx >= 2 && reelIdx <= 4 ? 'scatter-anticipation' : ''} ${scatterSlowdownActive && reelIdx === 2 ? 'scatter-slowdown-reel' : ''} ${wildLockAnimating && stickyWildCells.has(`${reelIdx}-${getPaylinePath(0)[reelIdx]}`) ? 'wild-lock-shake' : ''}`}
             style={{
-              minHeight: "200px",
+              minHeight: "280px",
               height: "100%",
-              maxHeight: "500px",
               transition: "box-shadow 0.3s ease",
-              background: "linear-gradient(180deg, #050510 0%, #0a0a1a 50%, #050510 100%)",
-              border: "2px solid rgba(212,175,55,0.1)",
-              borderRadius: "6px",
               boxShadow: reelDone[reelIdx] && showWin && !cascadeActive && reel.some((_, rowIdx) => isWinningCell(reelIdx, rowIdx, winLines))
                 ? "0 0 30px rgba(255,215,0,0.7), inset 0 0 20px rgba(255,215,0,0.15)"
-                : "inset 0 0 30px rgba(0,0,0,0.9), 0 0 15px rgba(212,175,55,0.3)",
+                : "inset 0 0 28px rgba(0,0,0,0.85), inset 0 0 0 1px rgba(212,175,55,0.35), inset 0 1px 0 rgba(255,220,160,0.18), 0 0 18px rgba(212,175,55,0.35)",
             }}
           >
             {/* Reel frame highlight when stopped with win */}
@@ -486,44 +618,74 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
               }} />
             )}
 
+            {/* SPINNING STREAK OVERLAY — only visible while this reel is
+                actually spinning. Multi-position bright bands scroll
+                upward, giving an unmistakable visual cue that the strip
+                is in motion. The bands progress across the reel tile
+                and the top/bottom masks fade them into the bezel. */}
+            {spinning && !reelDone[reelIdx] && (
+                <div
+                  className="absolute inset-0 pointer-events-none z-[7]"
+                  aria-hidden="true"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.05) 6%, rgba(0,0,0,0) 14%, rgba(0,0,0,0) 86%, rgba(0,0,0,0.05) 94%, rgba(0,0,0,0.32) 100%)",
+                  }}
+                />
+            )}
+            {spinning && !reelDone[reelIdx] && (
+                <div
+                  className="absolute inset-0 pointer-events-none z-[8] overflow-hidden"
+                  aria-hidden="true"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, transparent 0%, transparent 25%, rgba(255,235,180,0.55) 26%, rgba(255,255,255,0.95) 27%, rgba(255,235,180,0.55) 28%, transparent 29%, transparent 54%, rgba(212,175,55,0.55) 55%, rgba(255,255,255,0.95) 56%, rgba(212,175,55,0.55) 57%, transparent 58%, transparent 80%, rgba(255,255,255,0.55) 81%, rgba(255,235,180,0.95) 82%, rgba(255,255,255,0.55) 83%, transparent 84%)",
+                    backgroundSize: "100% 280px",
+                    animation: "spinStreaks 0.45s linear infinite",
+                  }}
+                />
+            )}
+
             {/* Spinning blur overlay */}
             <ReelStrip symbols={reel} spinning={spinning} done={reelDone[reelIdx]} reelIndex={reelIdx} />
 
             {/* Symbols */}
-            {reel.map((symId, rowIdx) => {
-              const isWin = showWin && !cascadeActive && isWinningCell(reelIdx, rowIdx, winLines);
-              const isCascadeWinner = cascadeWinningCells.has(`${reelIdx}-${rowIdx}`);
-              const isCascadeAnimating = cascadeAnimatingCells.has(`${reelIdx}-${rowIdx}`);
-              const isStickyWild = stickyWildCells.has(`${reelIdx}-${rowIdx}`);
-              const isNearMiss = nearMissCells.has(`${reelIdx}-${rowIdx}`);
-              const sym = getSymbol(symId);
+            {reel.map((symId: SymbolId, rowIdx: number) => {
+                          const isWin = showWin && !cascadeActive && isWinningCell(reelIdx, rowIdx, winLines);
+                          const isCascadeWinner = cascadeWinningCells.has(`${reelIdx}-${rowIdx}`);
+                          const isCascadeAnimating = cascadeAnimatingCells.has(`${reelIdx}-${rowIdx}`);
+                          const isStickyWild = stickyWildCells.has(`${reelIdx}-${rowIdx}`);
+                          const isNearMiss = nearMissCells.has(`${reelIdx}-${rowIdx}`);
+                          const isSymbolLock = symbolLockAnimating.has(`${reelIdx}-${rowIdx}`);
+                          const sym = getSymbol(symId);
 
-              return (
-                <div
-                  key={rowIdx}
-                  className={`
-                    flex items-center justify-center transition-all duration-300 
-                    ${isWin ? "cell-win-glow symbol-win" : ""}
-                    ${isCascadeWinner ? "cascade-disappear" : ""}
-                    ${isCascadeAnimating && !isCascadeWinner ? "cascade-fall" : ""}
-                    ${isStickyWild && wildLockAnimating ? "sticky-wild-lock" : ""}
-                    ${isStickyWild && !wildLockAnimating ? "sticky-wild-glow" : ""}
-                    ${isNearMiss && nearMissAnimating ? "near-miss-gold" : ""}
-                    ${symId === 'empty' ? "empty-cell" : ""}
-                  `}
-                  style={{
-                    flex: "1 1 0%",
-                    minHeight: 0,
-                    background: isWin
-                      ? `radial-gradient(circle at center, ${sym.bgColor}ff 0%, #050510 100%)`
-                      : isCascadeWinner
-                      ? `radial-gradient(circle at center, ${sym.bgColor}66 0%, #050510 100%)`
-                      : `radial-gradient(circle at center, ${sym.bgColor}55 0%, #030308 100%)`,
-                    borderBottom: rowIdx < 2 ? "1px solid rgba(212,175,55,0.1)" : "none",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
+                          return (
+                            <div
+                              key={rowIdx}
+                              className={`  
+                                symbol-tile flex items-center justify-center transition-all duration-300 
+                                ${isWin ? "cell-win-glow symbol-win" : ""}
+                                ${isCascadeWinner ? "cascade-disappear" : ""}
+                                ${isCascadeAnimating && !isCascadeWinner ? "cascade-fall" : ""}
+                                ${isStickyWild && wildLockAnimating ? "sticky-wild-lock" : ""}
+                                ${isStickyWild && !wildLockAnimating ? "sticky-wild-glow" : ""}
+                                ${isNearMiss && nearMissAnimating ? "near-miss-gold" : ""}
+                                ${isSymbolLock ? "symbol-lock-slam" : ""}
+                                ${symId === 'empty' ? "empty-cell" : ""}
+                              : ""}
+                              `}
+                              style={{
+                                flex: "1 1 0%",
+                                minHeight: 0,
+                                background: isWin
+                                  ? `radial-gradient(circle at center, ${sym.bgColor}ff 0%, #14081c 100%)`
+                                  : isCascadeWinner
+                                  ? `radial-gradient(circle at center, ${sym.bgColor}66 0%, #14081c 100%)`
+                                  : `radial-gradient(circle at center, ${sym.bgColor}66 0%, #14081c 100%)`,
+                                position: "relative",
+                                overflow: "hidden",
+                              }}
+                            >
                   {isWin && (
                     <div
                       className="absolute inset-0"
@@ -553,7 +715,7 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
                   {symId !== 'empty' && (
                     <SymbolIcon
                       symbolId={symId}
-                      size={56}
+                      size={80}
                       className={`${isWin ? 'symbol-win-pop symbol-bounce' : ''}`}
                       style={{
                         filter: isWin ? "brightness(1.3) drop-shadow(0 0 8px #FFD700)" : "none",
@@ -572,7 +734,7 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
       <WinLineHighlight winLines={winLines} show={showWin && !cascadeActive} />
       
       {/* Payline highlights for each winning line */}
-      {showWin && winLines.map((line, idx) => (
+      {(winLines as WinLine[] | undefined)?.map((line: WinLine, idx: number) => (
         <PaylineHighlight key={idx} paylineIndex={line.row} isActive={true} reelCount={5} rowCount={3} />
       ))}
 
@@ -582,10 +744,10 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
   );
 }
 
-function CabinetButtonPanel({ 
-  bet, setBet, paylines, setPaylines, spin, autoplay, setAutoplay, 
-  canSpin, totalBet, coins, onCoinShop, soundEnabled, setSoundMuted, soundMuted, 
-  spinButtonPulse, shakeIntensity, selectedCurrency 
+function CabinetButtonPanel({
+  bet, setBet, paylines, setPaylines, spin, autoplay, setAutoplay,
+  canSpin, totalBet, coins, onCoinShop, soundEnabled, setSoundMuted, soundMuted,
+  spinButtonPulse, shakeIntensity, selectedCurrency, spinning, freeSpins, rescueOffered
 }: any) {
   return (
     <div className="w-full px-2 pb-4" style={{
@@ -595,118 +757,152 @@ function CabinetButtonPanel({
       boxShadow: "inset 0 2px 0 rgba(0, 150, 255, 0.2), 0 -4px 20px rgba(0,0,0,0.5)",
       borderTop: "1px solid rgba(212,175,55,0.1)",
     }}>
-      {/* Bet / Lines Row */}
-      <div className="flex items-center justify-between gap-3 mb-3 px-2 overflow-x-auto scrollbar-hide" style={{ minWidth: 0 }}>
-        {/* Bet controls */}
-        <div className="flex items-center gap-2 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
-          <button
-            onClick={() => setBet(Math.max(10, bet - 10))}
-            disabled={spinning || bet <= 10}
-            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
-            style={{
-              background: "linear-gradient(180deg, #3a2a00, #1a1500)",
-              border: "2px solid #D4AF37",
+      {/* Bet / Lines Row — stacks on mobile to avoid 41px horizontal overflow on phones */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-3 px-2" style={{ minWidth: 0 }}>
+        <div className="flex items-center justify-between gap-2">
+          {/* Bet controls */}
+          <div className="flex items-center gap-1.5 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
+            <button
+              onClick={() => { playSound("button_click"); setBet(Math.max(10, bet - 10)); }}
+              disabled={spinning || bet <= 10}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
+              style={{
+                background: "linear-gradient(180deg, #3a2a00, #1a1500)",
+                border: "2px solid #D4AF37",
+                color: "#FFD700",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+              }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              −
+            </button>
+            <div className="w-12 sm:w-20 text-center font-numbers tabular-nums" style={{
+              fontSize: "1rem",
               color: "#FFD700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-            }}
-            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          >
-            −
-          </button>
-          <div className="w-20 text-center font-numbers tabular-nums" style={{ 
-            fontSize: "1.1rem", 
-            color: "#FFD700",
-            textShadow: "0 0 10px rgba(212,175,55,0.5)",
-          }}>
-            {bet}
-          </div>
-          <button
-            onClick={() => setBet(Math.min(200, bet + 10))}
-            disabled={spinning || bet >= 200}
-            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
-            style={{
-              background: "linear-gradient(180deg, #3a2a00, #1a1500)",
-              border: "2px solid #D4AF37",
-              color: "#FFD700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-            }}
-            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          >
-            +
-          </button>
-        </div>
-
-        {/* Paylines controls */}
-        <div className="flex items-center gap-2 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
-          <button
-            onClick={() => setPaylines?.(Math.max(1, (paylines || 1) - 1))}
-            disabled={spinning || (paylines || 1) <= 1}
-            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
-            style={{
-              background: "linear-gradient(180deg, #2a1a00, #1a1000)",
-              border: "2px solid #FFA500",
-              color: "#FFD700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-            }}
-            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          >
-            −
-          </button>
-          <div className="w-16 text-center font-numbers tabular-nums" style={{ 
-            fontSize: "1.1rem", 
-            color: "#FFD700",
-            textShadow: "0 0 10px rgba(212,175,55,0.5)",
-          }}>
-            {paylines || 1} LINES
-          </div>
-          <button
-            onClick={() => setPaylines?.(Math.min(25, (paylines || 1) + 1))}
-            disabled={spinning || (paylines || 1) >= 25}
-            className="w-10 h-10 rounded-full font-bold text-lg transition-all"
-            style={{
-              background: "linear-gradient(180deg, #2a1a00, #1a1000)",
-              border: "2px solid #FFA500",
-              color: "#FFD700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-            }}
-            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          >
-            +
-          </button>
-        </div>
-
-        {/* Total Bet Display */}
-        <div className="flex-1 min-w-0" style={{ marginLeft: "auto" }}>
-          <div className="text-right">
-            <div className="text-[0.55rem] font-numbers uppercase tracking-widest mb-1" style={{ color: "rgba(212,175,55,0.5)" }}>
-              TOTAL BET
-            </div>
-            <div className="font-numbers tabular-nums" style={{ 
-              fontSize: "clamp(1rem, 3vw, 1.4rem)",
-              color: selectedCurrency === 'gold' ? "#FFD700" : "#90EE90",
-              textShadow: selectedCurrency === 'gold' ? "0 0 10px rgba(255,215,0,0.8)" : "0 0 10px rgba(144,238,144,0.8)",
-              fontFamily: '"Orbitron", monospace',
+              textShadow: "0 0 10px rgba(212,175,55,0.5)",
             }}>
-              {totalBet.toLocaleString()}
+              {bet}
             </div>
+            <button
+              onClick={() => { playSound("button_click"); setBet(Math.min(200, bet + 10)); }}
+              disabled={spinning || bet >= 200}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
+              style={{
+                background: "linear-gradient(180deg, #3a2a00, #1a1500)",
+                border: "2px solid #D4AF37",
+                color: "#FFD700",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+              }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              +
+            </button>
+          </div>
+
+          {/* Paylines controls */}
+          <div className="flex items-center gap-1.5 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
+            <button
+              onClick={() => { playSound("button_click"); setPaylines?.(Math.max(1, (paylines || 1) - 1)); }}
+              disabled={spinning || (paylines || 1) <= 1}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
+              style={{
+                background: "linear-gradient(180deg, #2a1a00, #1a1000)",
+                border: "2px solid #FFA500",
+                color: "#FFD700",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+              }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              −
+            </button>
+            <div className="w-14 sm:w-16 text-center font-numbers tabular-nums" style={{
+              fontSize: "0.95rem",
+              color: "#FFD700",
+              textShadow: "0 0 10px rgba(212,175,55,0.5)",
+            }}>
+              {paylines || 1} L
+            </div>
+            <button
+              onClick={() => { playSound("button_click"); setPaylines?.(Math.min(25, (paylines || 1) + 1)); }}
+              disabled={spinning || (paylines || 1) >= 25}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
+              style={{
+                background: "linear-gradient(180deg, #2a1a00, #1a1000)",
+                border: "2px solid #FFA500",
+                color: "#FFD700",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+              }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Total Bet Display — right-aligned on sm+, full-width on mobile so it sits on its own row */}
+        <div className="w-full sm:w-auto sm:flex-1 sm:min-w-0 flex sm:block items-center justify-between gap-2" style={{ marginLeft: "auto" }}>
+          <div className="text-[0.55rem] font-numbers uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.5)" }}>
+            TOTAL BET
+          </div>
+          <div className="font-numbers tabular-nums sm:text-right" style={{
+            fontSize: "clamp(1rem, 3vw, 1.4rem)",
+            color: selectedCurrency === 'gold' ? "#FFD700" : "#90EE90",
+            textShadow: selectedCurrency === 'gold' ? "0 0 10px rgba(255,215,0,0.8)" : "0 0 10px rgba(144,238,144,0.8)",
+            fontFamily: '"Orbitron", monospace',
+          }}>
+            {totalBet.toLocaleString()}
           </div>
         </div>
       </div>
 
+      {/* Rescue spin indicator (Vegas "save the player" mechanic).
+          Visible only when rescueOffered is true, i.e. player just lost
+          and is running low. Shows the guaranteed half-bet return so
+          they know this next spin is a 'free pass'. */}
+      {rescueOffered && (
+        <div
+          className="w-full flex justify-center mb-2 px-2 pointer-events-none"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className="font-display font-black uppercase tracking-widest select-none"
+            style={{
+              fontSize: "clamp(0.75rem, 2.2vw, 0.95rem)",
+              color: "#FFD700",
+              background: "linear-gradient(180deg, rgba(255,215,0,0.22) 0%, rgba(0,0,0,0.7) 100%)",
+              border: "2px solid #FFD700",
+              borderRadius: "999px",
+              padding: "4px 14px",
+              textShadow: "0 0 10px rgba(255,215,0,0.9)",
+              boxShadow: "0 0 18px rgba(255,215,0,0.5)",
+              animation: "freeSpinButtonPulse 1.2s ease-in-out infinite",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <span aria-hidden="true">🎟️</span>
+            <span>RESCUE SPIN — GUARANTEED {Math.floor(bet * 0.5)} RETURN!</span>
+          </div>
+        </div>
+      )}
+
       {/* Main Button Row */}
-      <div className="flex items-center justify-between gap-3 px-2">
-        {/* Coin Shop */}
+      <div className="flex items-center justify-between gap-2 sm:gap-3 px-2">
+        {/* Coin Shop — icon-only on mobile, full pill on sm+ */}
         <button
           onClick={onCoinShop}
-          className="flex items-center gap-2 px-4 py-3 rounded-lg shrink-0 transition-all"
+          aria-label="Open coin shop"
+          className="flex items-center justify-center gap-2 w-12 h-12 sm:w-auto sm:h-auto sm:px-4 sm:py-3 rounded-lg shrink-0 transition-all"
           style={{
             background: "linear-gradient(180deg, #3a2a00, #2a1a00)",
             border: "2px solid #D4AF37",
@@ -720,17 +916,18 @@ function CabinetButtonPanel({
           onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         >
           <span style={{ fontSize: "1.2rem" }}>💰</span>
-          <span className="font-numbers">COINS</span>
+          <span className="font-numbers hidden sm:inline">COINS</span>
         </button>
 
-        {/* AUTOSPIN */}
+        {/* AUTOSPIN — icon-only on mobile */}
         <button
           onClick={() => setAutoplay(!autoplay)}
           disabled={spinning}
-          className={`flex items-center gap-2 px-4 py-3 rounded-lg shrink-0 transition-all ${autoplay ? 'ring-2' : ''}`}
+          aria-label={autoplay ? "Stop autoplay" : "Start autoplay"}
+          className={`flex items-center justify-center gap-2 w-12 h-12 sm:w-auto sm:h-auto sm:px-4 sm:py-3 rounded-lg shrink-0 transition-all ${autoplay ? 'ring-2' : ''}`}
           style={{
-            background: autoplay 
-              ? "linear-gradient(180deg, #3a002a, #2a001a)" 
+            background: autoplay
+              ? "linear-gradient(180deg, #3a002a, #2a001a)"
               : "linear-gradient(180deg, #1a2a1a, #0d1a0d)",
             border: `2px solid ${autoplay ? "#FF6B6B" : "#4CAF50"}`,
             color: autoplay ? "#FF6B6B" : "#90EE90",
@@ -744,42 +941,56 @@ function CabinetButtonPanel({
           onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         >
           <span style={{ fontSize: "1.2rem" }}>{autoplay ? "⏹" : "▶"}</span>
-          <span className="font-numbers">AUTO</span>
+          <span className="font-numbers hidden sm:inline">AUTO</span>
         </button>
 
         {/* SPIN BUTTON - MASSIVE, DOMINANT */}
         <button
-          onClick={spin}
+          onClick={() => { playSound("button_click"); spin(); }}
           disabled={!canSpin}
           className="flex-1 flex items-center justify-center gap-3 py-5 px-8 rounded-xl transition-all min-h-[80px]"
           style={{
-            background: canSpin 
-              ? "linear-gradient(180deg, #8B5E0A 0%, #D4AF37 30%, #FFD700 50%, #D4AF37 70%, #8B5E0A 100%)" 
-              : "linear-gradient(180deg, #3a2a00, #2a1a00)",
-            border: "3px solid #FFD700",
+            background: freeSpins > 0
+              ? "linear-gradient(180deg, #2E7D32 0%, #4CAF50 30%, #90EE90 50%, #4CAF50 70%, #2E7D32 100%)"
+              : canSpin
+                ? "linear-gradient(180deg, #8B5E0A 0%, #D4AF37 30%, #FFD700 50%, #D4AF37 70%, #8B5E0A 100%)"
+                : "linear-gradient(180deg, #3a2a00, #2a1a00)",
+            border: freeSpins > 0 ? "3px solid #90EE90" : "3px solid #FFD700",
             borderRadius: "20px",
             color: "#1a1000",
-            boxShadow: `
-              0 8px 30px rgba(0,0,0,0.6),
-              0 0 40px rgba(212,175,55,0.6),
-              0 0 80px rgba(212,175,55,0.3),
-              inset 0 2px 4px rgba(255,255,255,0.3),
-              inset 0 -2px 4px rgba(0,0,0,0.3)
-            `,
+            boxShadow: freeSpins > 0
+              ? `
+                0 8px 30px rgba(0,0,0,0.6),
+                0 0 40px rgba(76,175,80,0.7),
+                0 0 80px rgba(76,175,80,0.4),
+                inset 0 2px 4px rgba(255,255,255,0.3),
+                inset 0 -2px 4px rgba(0,0,0,0.3)
+              `
+              : `
+                0 8px 30px rgba(0,0,0,0.6),
+                0 0 40px rgba(212,175,55,0.6),
+                0 0 80px rgba(212,175,55,0.3),
+                inset 0 2px 4px rgba(255,255,255,0.3),
+                inset 0 -2px 4px rgba(0,0,0,0.3)
+              `,
             fontWeight: 900,
             fontSize: "clamp(1.5rem, 5vw, 2.5rem)",
             letterSpacing: "0.1em",
             textShadow: "0 2px 4px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.2)",
             opacity: canSpin ? 1 : 0.4,
             transform: spinButtonPulse ? "scale(1.02)" : "scale(1)",
-            animation: spinButtonPulse ? "spinPulse 1.5s ease-in-out infinite" : "none",
+            animation: freeSpins > 0
+              ? "freeSpinButtonPulse 1s ease-in-out infinite"
+              : spinButtonPulse ? "spinPulse 1.5s ease-in-out infinite" : "none",
           }}
           onMouseDown={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(0.96)"; }}
           onMouseUp={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(1)"; }}
           onMouseLeave={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(1)"; }}
         >
           <span style={{ fontSize: "2rem", animation: "spinIconRotate 0.8s linear infinite", display: spinning ? "inline-block" : "none" }}>⟳</span>
-          <span className="font-display font-black" style={{ display: spinning ? "none" : "inline" }}>SPIN</span>
+          <span className="font-display font-black" style={{ display: spinning ? "none" : "inline" }}>
+            {freeSpins > 0 ? `FREE ${freeSpins}` : "SPIN"}
+          </span>
           <span style={{ fontSize: "2rem", display: spinning ? "none" : "inline-block" }}>⟳</span>
         </button>
 
@@ -801,8 +1012,8 @@ function CabinetButtonPanel({
         </button>
       </div>
 
-      {/* Cabinet base - bill validator / ticket printer simulation */}
-      <div className="w-full mt-4 flex items-center justify-center gap-8 px-2" style={{ opacity: 0.6 }}>
+      {/* Cabinet base - bill validator / ticket printer simulation (decorative; hidden on mobile where bottom nav already provides nav chrome) */}
+      <div className="hidden sm:flex w-full mt-4 items-center justify-center gap-8 px-2" style={{ opacity: 0.6 }}>
         <div className="flex items-center gap-2" style={{ color: "rgba(212,175,55,0.5)", fontSize: "0.7rem" }}>
           <span>💵</span>
           <span className="font-numbers">BILL ACCEPTOR</span>
@@ -833,10 +1044,14 @@ export default function SlotMachine({
   bet,
   setBet,
   spin,
+  triggerDemoSpin,
   autoplay,
   setAutoplay,
   spinCount,
   soundEnabled,
+  consecutiveWins = 0,
+  maxStreak = 0,
+  rescueOffered = false,
   paylines,
   setPaylines,
   onCoinShop,
@@ -845,6 +1060,7 @@ export default function SlotMachine({
   externalShowScratch,
   onDealsClose,
   onScratchClose,
+  onScratchWin,
   selectedCurrency = 'gold',
 }: Props) {
   const [reelDone, setReelDone] = useState<boolean[]>([true, true, true, true, true]);
@@ -852,7 +1068,12 @@ export default function SlotMachine({
   const [winFlash, setWinFlash] = useState(false);
   const [showCoinShower, setShowCoinShower] = useState(false);
   const [particleTrigger, setParticleTrigger] = useState(0);
-  const [soundMuted, setSoundMuted] = useState(false);
+  // Local UI flag for the speaker icon (reflects the sound state
+  // visually). The actual mute gate is audioCore.setMuted, set via
+  // the setLibSoundEnabled wrapper. We sync the icon to the audio
+  // library's true state on mount and after each toggle.
+  const [soundMuted, setSoundMuted] = useState(() => !isSoundEnabled());
+  useEffect(() => { setLibSoundEnabled(!soundMuted); }, [soundMuted]);
   const [showScratchGame, setShowScratchGame] = useState(false);
   const [showDealsModal, setShowDealsModal] = useState(false);
   const [showBigWin, setShowBigWin] = useState(false);
@@ -882,25 +1103,78 @@ export default function SlotMachine({
   const [nearMissCells, setNearMissCells] = useState<Set<string>>(new Set());
   const [nearMissAnimating, setNearMissAnimating] = useState(false);
 
+  // Sticky-lock animation for winning/bonus symbols (slam + lock)
+  const [symbolLockAnimating, setSymbolLockAnimating] = useState<Set<string>>(new Set());
+
   // Sync external triggers
   useEffect(() => { if (externalShowDeals) setShowDealsModal(true); }, [externalShowDeals]);
   useEffect(() => { if (externalShowScratch) setShowScratchGame(true); }, [externalShowScratch]);
 
   // Listen for reel slam events
   useEffect(() => {
-    const handleReelSlam = (event: CustomEvent<{ reelIndex: number }>) => {
-      const { reelIndex } = event.detail;
+    const handleReelSlam = (event: CustomEvent<{ reelIndex: number; impact?: boolean }>) => {
+      const { reelIndex, impact } = event.detail;
       if (!soundEnabled) return;
-      
+
       const shakeIntensity: 'light' | 'medium' | 'heavy' = reelIndex >= 3 ? 'heavy' : reelIndex >= 2 ? 'medium' : 'light';
       setShakeIntensity(shakeIntensity);
       const shakeDuration = shakeIntensity === 'heavy' ? 400 : shakeIntensity === 'medium' ? 300 : 200;
       setTimeout(() => setShakeIntensity('none'), shakeDuration);
-      playSound("reel_stop");
+
+      // Impact thunk — the physical "thunk" when reel hits payline
+      if (impact) {
+        playSound("reel_stop");
+      }
     };
-    
     window.addEventListener('reel-slam', handleReelSlam as EventListener);
-    return () => window.removeEventListener('reel-slam', handleReelSlam as EventListener);
+
+    // Sticky lock — winning/bonus symbols lock into place with a satisfying "ka-chunk"
+    const handleStickyLock = (event: CustomEvent<{ reelIndex: number }>) => {
+      const { reelIndex } = event.detail;
+      if (!soundEnabled) return;
+      // Heavier shake for the lock moment
+      setShakeIntensity('medium');
+      setTimeout(() => setShakeIntensity('none'), 200);
+      playSound("wild_lock"); // repurpose for "symbol locks in"
+
+      // Find winning/bonus symbols on this reel and trigger lock animation
+      const winningKeys: string[] = [];
+      // Winning payline symbols
+      if (showWin && winLines.length > 0) {
+        winLines.forEach(line => {
+          const path = getPaylinePath(line.row);
+          const rowIdx = path[reelIndex];
+          if (rowIdx >= 0 && rowIdx < 3) {
+            winningKeys.push(`${reelIndex}-${rowIdx}`);
+          }
+        });
+      }
+      // Scatter symbols (bonus triggers)
+      if (displayGrid) {
+        for (let rowIdx = 0; rowIdx < 3; rowIdx++) {
+          const symId = displayGrid[reelIndex][rowIdx];
+          if (isScatterSymbol(symId) || isWildSymbol(symId)) {
+            winningKeys.push(`${reelIndex}-${rowIdx}`);
+          }
+        }
+      }
+      // Trigger lock animation for each
+      winningKeys.forEach((key, i) => {
+        setTimeout(() => {
+          setSymbolLockAnimating(prev => new Set(prev).add(key));
+          // Auto-clear after animation
+          setTimeout(() => {
+            setSymbolLockAnimating(prev => { const next = new Set(prev); next.delete(key); return next; });
+          }, 500);
+        }, i * 60); // Stagger the locks
+      });
+    };
+    window.addEventListener('reel-sticky-lock', handleStickyLock as EventListener);
+
+    return () => {
+      window.removeEventListener('reel-slam', handleReelSlam as EventListener);
+      window.removeEventListener('reel-sticky-lock', handleStickyLock as EventListener);
+    };
   }, [soundEnabled]);
 
   // Pulse SPIN button when idle
@@ -912,6 +1186,33 @@ export default function SlotMachine({
       setSpinButtonPulse(false);
     }
   }, [spinning, cascadeActive, lastSpinTime]);
+
+  // ─── Idle attract mode (Vegas methodology) ───────────────────────────────
+  // Standard behavior of physical casino cabinets: when no one has played
+  // for ~15s, run a free demo spin to attract attention. The demo spin
+  // doesn't deduct bet, doesn't award coins, doesn't grant bonuses — it
+  // just shows the reels spinning so a passerby sees what the machine does.
+  // Any user interaction (real spin, button click, etc.) resets the timer
+  // because lastSpinTime updates whenever spinning starts.
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!triggerDemoSpin) return; // Older callers without this prop = no attract
+    // Only run attract when: not spinning, no free spins, no autoplay,
+    // player has enough coins for at least one real spin (don't demo on
+    // a busted cabinet — that's depressing).
+    const activeBalance = selectedCurrency === 'gold' ? coins : coins;
+    const canAfford = activeBalance >= bet;
+    if (spinning || autoplay || freeSpins > 0 || !canAfford) {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      return;
+    }
+    idleTimerRef.current = setTimeout(() => {
+      triggerDemoSpin();
+    }, 15000);
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [spinning, autoplay, freeSpins, bet, coins, selectedCurrency, lastSpinTime, triggerDemoSpin]);
 
   const displayGrid = cascadeGrid || reels;
 
@@ -1019,7 +1320,20 @@ export default function SlotMachine({
         setTimeout(() => {
           const result = checkCascadeWin(newGrid);
           if (result.hasWin && cascadeLevel < MAX_CASCADE_LEVEL) {
+            const nextLevel = cascadeLevel + 1;
             setCascadeLevel(prev => prev + 1);
+            // Cascade level-up sound: ascending "klaxon" each level so
+            // the player feels the multiplier climbing. The variation
+            // cascade_1..5 in sounds.ts has a higher fundamental +
+            // brighter timbre as the level rises. Capped at 5 to match
+            // MAX_CASCADE_LEVEL.
+            const cascadeLevelNum = Math.min(nextLevel, 5);
+            const soundName = `cascade_${cascadeLevelNum}` as
+              | "cascade_1" | "cascade_2" | "cascade_3" | "cascade_4" | "cascade_5";
+            playSound(soundName);
+            // Coin drop on every cascade step — falling money = payoff
+            // for the multiplier climbing.
+            setTimeout(() => playSound("coin_drop"), 80);
             const newWinningCells = new Set<string>();
             result.winLines.forEach(line => {
               const path = getPaylinePath(line.row);
@@ -1031,7 +1345,7 @@ export default function SlotMachine({
             if (newWilds.size > 0) {
               setWildLockAnimating(true);
               setStickyWildCells(prev => { const merged = new Set(prev); newWilds.forEach(w => merged.add(w)); return merged; });
-              if (soundEnabled) playSound("wild_lock");
+              playSound("wild_lock");
               setTimeout(() => setWildLockAnimating(false), 800);
             }
             setTimeout(() => {
@@ -1139,20 +1453,46 @@ export default function SlotMachine({
             setTimeout(() => setShowBigWin(true), 600);
           }
 
-          if (!soundMuted) {
-            const winLineCount = winLines.length;
-            if (lastWinType === "JACKPOT") { playSound("jackpot"); soundManager.playJackpot(); }
-            else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); soundManager.playBigWin(); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
-            else if (lastWinType === "BIG_WIN") { playSound("big_win"); soundManager.playBigWin(); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
-            else { playWinSound(winLines.length); soundManager.playSmallWin(); }
+          // Fire the win sting. playSound is already gated by the
+          // unified audioCore mute flag, so the !soundMuted check is
+          // belt-and-suspenders for the local React state.
+          const winLineCount = winLines.length;
+          if (lastWinType === "JACKPOT") { playSound("jackpot"); }
+          else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
+          else if (lastWinType === "BIG_WIN") { playSound("big_win"); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
+          else { playWinSound(winLines.length); }
+
+          // Coin particle audio: each "shower" of falling coins gets a
+          // coin_drop sound so the visual money has a metallic clink
+          // to match. Stagger 3-5 clinks across ~600ms so the rain
+          // feels layered, not a single click.
+          if (winAmount > 0) {
+            const coinCount = lastWinType === "JACKPOT" ? 5 : lastWinType === "MEGA_WIN" ? 4 : lastWinType === "BIG_WIN" ? 3 : 2;
+            for (let i = 0; i < coinCount; i++) {
+              setTimeout(() => playSound("coin_drop"), i * 130);
+            }
           }
 
           if (winLines.length > 0) startCascade(reels, winLines);
         } else {
+          // Loss branch — fire Loss-Disguised-as-Win (LDW) sound
+          // when a losing spin still had a near-miss event, so the
+          // player feels like they "almost" won. Wood & Griffiths
+          // (2007) showed LDW audio measurably increases playing time.
           const misses = findNearMiss(reels, []);
           if (misses.length > 0 && !spinning) {
             setNearMissCells(new Set(misses.map(m => `${m.reelIdx}-${m.rowIdx}`)));
             setNearMissAnimating(true);
+            // Fire the abstract near-miss sound (in sounds.ts) + a
+            // detectNearMisses event for the typed handler.
+            const events = detectNearMisses(reels);
+            events.forEach((ev, i) => {
+              setTimeout(() => playNearMissSound(ev), i * 200);
+            });
+            // LDW only when player lost coins — gate on net loss.
+            // (We don't have post-spin coins here; loss branch implies
+            // a real net loss because the win branch is the alternative.)
+            setTimeout(() => playSound("near_miss"), 100);
             setTimeout(() => { setNearMissAnimating(false); setTimeout(() => setNearMissCells(new Set()), 300); }, 800);
           }
         }
@@ -1176,21 +1516,45 @@ export default function SlotMachine({
         <BigWinOverlay winType={lastWinType} winAmount={winAmount} onDismiss={() => setShowBigWin(false)} />
       )}
 
+      {/* Scratch Game modal (opens from bottom-nav 🎰 Scratch) */}
+      {showScratchGame && (
+        <ScratchGame
+          onClose={() => {
+            setShowScratchGame(false);
+            onScratchClose?.();
+          }}
+          onWin={(amount) => onScratchWin?.(amount)}
+        />
+      )}
+
+      {/* Deals modal (opens from bottom-nav 🎁 Deals) */}
+      {showDealsModal && (
+        <DealsModal
+          onClose={() => {
+            setShowDealsModal(false);
+            onDealsClose?.();
+          }}
+        />
+      )}
+
       {/* ── Physical Cabinet Structure ── */}
-      <div className="w-full relative" style={{
-        background: "linear-gradient(180deg, #0a0a12 0%, #050510 50%, #030308 100%)",
-        borderRadius: "16px 16px 0 0",
-        boxShadow: `
-          inset 0 0 60px rgba(0,0,0,0.8),
-          0 0 40px rgba(0, 100, 255, 0.15),
-          0 0 80px rgba(0, 80, 200, 0.1),
-          inset 0 2px 0 rgba(0, 150, 255, 0.3),
-          inset 0 -2px 0 rgba(0, 150, 255, 0.1)
-        `,
-        border: "none",
-        position: "relative",
-        overflow: "hidden",
-      }}>
+      <div
+        className={`w-full relative ${scatterFanfareActive ? 'bonus-alert bonus-alert-shake' : ''}`}
+        style={{
+          background: "linear-gradient(180deg, #0a0a12 0%, #050510 50%, #030308 100%)",
+          borderRadius: "16px 16px 0 0",
+          boxShadow: `
+            inset 0 0 60px rgba(0,0,0,0.8),
+            0 0 40px rgba(0, 100, 255, 0.15),
+            0 0 80px rgba(0, 80, 200, 0.1),
+            inset 0 2px 0 rgba(0, 150, 255, 0.3),
+            inset 0 -2px 0 rgba(0, 150, 255, 0.1)
+          `,
+          border: "none",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
         {/* Blue LED edge strips - left & right */}
         <div className="absolute inset-y-0 left-0 w-1 pointer-events-none" style={{
           background: "linear-gradient(180deg, transparent, #0066ff, #0088ff, #00aaff, #0088ff, #0066ff, transparent)",
@@ -1208,13 +1572,13 @@ export default function SlotMachine({
         {/* ── Top Glass ── */}
         <CabinetTopGlass freeSpins={freeSpins} />
 
-        {/* ── Jackpot Meters ── */}
-        <div className="w-full px-4 mb-3">
+        {/* ── Jackpot Meters (hidden on mobile to keep cabinet compact; jackpot is still shown in overlay during wins) ── */}
+        <div className="hidden sm:block w-full px-4 mb-3">
           <CabinetJackpotMeters jackpotPool={jackpotPool} />
         </div>
 
-        {/* ── Game Info Panel ── */}
-        <div className="w-full px-4 mb-2">
+        {/* ── Game Info Panel (hidden on mobile — long marquee adds ~40px height, info is on desktop) ── */}
+        <div className="hidden md:block w-full px-4 mb-2">
           <GameInfoPanel freeSpins={freeSpins} />
         </div>
 
@@ -1244,6 +1608,49 @@ export default function SlotMachine({
           />
         </div>
 
+        {/* ── Hot Streak Indicator (Vegas continuation-of-play mechanic) ── */}
+        {/* Hidden until 2+ consecutive wins, then pulses + scales with intensity.
+            "MAX: N" subtitle shows the player's best streak this session. */}
+        {consecutiveWins >= 2 && (
+          <div
+            className="w-full px-4 mb-2 flex justify-center pointer-events-none"
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              className="font-display font-black tracking-widest uppercase select-none"
+              style={{
+                fontSize: "clamp(0.85rem, 2.5vw, 1.15rem)",
+                color: consecutiveWins >= 5 ? "#FF6B35" : "#FFD700",
+                background: consecutiveWins >= 5
+                  ? "linear-gradient(180deg, rgba(255,107,53,0.18) 0%, rgba(0,0,0,0.6) 100%)"
+                  : "linear-gradient(180deg, rgba(255,215,0,0.15) 0%, rgba(0,0,0,0.6) 100%)",
+                border: `2px solid ${consecutiveWins >= 5 ? "#FF6B35" : "#FFD700"}`,
+                borderRadius: "999px",
+                padding: "4px 16px",
+                textShadow: consecutiveWins >= 5
+                  ? "0 0 12px rgba(255,107,53,0.9)"
+                  : "0 0 10px rgba(255,215,0,0.8)",
+                boxShadow: consecutiveWins >= 5
+                  ? "0 0 20px rgba(255,107,53,0.5)"
+                  : "0 0 15px rgba(255,215,0,0.4)",
+                animation: consecutiveWins >= 5
+                  ? "streakPulse 0.5s ease-in-out infinite alternate"
+                  : "streakPulse 1s ease-in-out infinite alternate",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "10px",
+              }}
+            >
+              <span aria-hidden="true">🔥</span>
+              <span>{consecutiveWins}x STREAK!</span>
+              {maxStreak > consecutiveWins && (
+                <span style={{ fontSize: "0.7em", opacity: 0.7 }}>MAX: {maxStreak}</span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Reel Window ── */}
         <div className="w-full px-4 mb-3">
           <ReelWindow 
@@ -1263,6 +1670,8 @@ export default function SlotMachine({
             scatterSlowdownActive={scatterSlowdownActive}
             lastWinType={lastWinType}
             scatterFanfareActive={scatterFanfareActive}
+            symbolLockAnimating={symbolLockAnimating}
+            displayGrid={displayGrid}
           />
         </div>
 
@@ -1299,26 +1708,43 @@ export default function SlotMachine({
           spinButtonPulse={spinButtonPulse}
           shakeIntensity={shakeIntensity}
           selectedCurrency={selectedCurrency}
+          spinning={spinning}
+          freeSpins={freeSpins}
+          rescueOffered={rescueOffered}
         />
       </div>
 
       {/* Global styles */}
-      <style jsx global>{`
+      <style>{`
         @keyframes cabinetGlow {
-          0%, 100% { opacity: 0.8; }
-          50% { opacity: 1; }
+          0%, 100% { opacity: 0.7; box-shadow: 0 0 12px #D4AF37, 0 0 24px rgba(212,175,55,0.4); }
+          50%      { opacity: 1.0; box-shadow: 0 0 24px #FFD700, 0 0 48px rgba(255,215,0,0.7); }
+        }
+        @keyframes cabinetOrnamentGlow {
+          0%, 100% { box-shadow: 0 0 10px rgba(212,175,55,0.5), inset 0 2px 4px rgba(255,255,255,0.3); }
+          50%      { box-shadow: 0 0 22px rgba(255,215,0,0.95), inset 0 2px 4px rgba(255,255,255,0.5); }
+        }
+        @keyframes winFlash {
+          0%   { opacity: 0; }
+          20%  { opacity: 1; }
+          100% { opacity: 0; }
         }
         @keyframes ledPulse {
           0%, 100% { opacity: 0.6; }
           50% { opacity: 1; }
         }
-        @keyframes ledPulse {
+        @keyframes ledPulseDim {
           0%, 100% { opacity: 0.3; }
           50% { opacity: 0; }
         }
         @keyframes spinPulse {
           0%, 100% { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.6), 0 0 80px rgba(212,175,55,0.3), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3); }
           50% { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 60px rgba(212,175,55,0.9), 0 0 120px rgba(212,175,55,0.5), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3); }
+        }
+        /* Free-spin mode: faster green pulse to telegraph "this spin is free" */
+        @keyframes freeSpinButtonPulse {
+          0%, 100% { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 40px rgba(76,175,80,0.6), 0 0 80px rgba(76,175,80,0.3), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.3); }
+          50%      { box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 70px rgba(144,238,144,1), 0 0 140px rgba(76,175,80,0.6), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.3); }
         }
         @keyframes spinIconRotate {
           from { transform: rotate(0deg); }
@@ -1385,6 +1811,75 @@ export default function SlotMachine({
         .wild-lock-shake { animation: stickyWildLock 0.6s ease-in-out; }
         .scatter-slowdown-reel { animation: scatterSlowdown 0.5s ease-in-out; }
         @keyframes scatterSlowdown { 0%, 100% { border-color: rgba(255,107,107,0.5); } 50% { border-color: #FF6B6B; box-shadow: 0 0 30px rgba(255,107,107,0.5); } }
+        /* Symbol lock slam — winning/bonus symbols slam and stick into place.
+           Heavy overshoot + quick settle = "ka-chunk" feel. */
+        .symbol-lock-slam { animation: symbolLockSlam 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+        @keyframes symbolLockSlam {
+          0%   { transform: translateY(0) scale(1); filter: brightness(1); }
+          25%  { transform: translateY(-8px) scale(1.15); filter: brightness(1.4); }
+          50%  { transform: translateY(4px) scale(0.92); filter: brightness(1.2); }
+          75%  { transform: translateY(-2px) scale(1.05); filter: brightness(1.1); }
+          100% { transform: translateY(0) scale(1); filter: brightness(1); }
+        }
+        /* Sustained shimmer while scatter is approaching — runs as long as
+           scatterSlowdownActive is true, gives the player anticipatory
+           feedback that "something's coming" (Langer & Imber 2007). */
+        .scatter-anticipation { position: relative; }
+        .scatter-anticipation::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          pointer-events: none;
+          background: linear-gradient(
+            105deg,
+            transparent 0%,
+            transparent 40%,
+            rgba(255, 107, 107, 0.35) 50%,
+            transparent 60%,
+            transparent 100%
+          );
+          background-size: 250% 250%;
+          animation: scatterShimmer 1.4s linear infinite;
+          mix-blend-mode: screen;
+          z-index: 2;
+        }
+        @keyframes scatterShimmer {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -150% 0; }
+        }
+        /* Bonus entry strobe — 5 quick red flashes over 700ms when 3+
+           scatters land (which also triggers the bonus game overlay).
+           Pulses the entire cabinet body border so the alert reads
+           even with peripheral vision. */
+        @keyframes bonusAlertStrobe {
+          0%, 100% { box-shadow: inset 0 0 60px rgba(0,0,0,0.8), 0 0 40px rgba(0, 100, 255, 0.15), 0 0 80px rgba(0, 80, 200, 0.1); }
+          10%, 30%, 50%, 70%, 90% { box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.5), 0 0 60px rgba(255, 50, 50, 0.9), 0 0 120px rgba(255, 30, 30, 0.6); }
+          20%, 40%, 60%, 80%     { box-shadow: inset 0 0 60px rgba(0,0,0,0.8), 0 0 40px rgba(255, 30, 30, 0.3), 0 0 80px rgba(255, 50, 50, 0.2); }
+        }
+        .bonus-alert { animation: bonusAlertStrobe 0.7s ease-in-out 2; }
+        /* Brief screen shake to amplify the alert (~140ms, 2 cycles) */
+        @keyframes bonusAlertShake {
+          0%, 100% { transform: translate(0, 0); }
+          20%      { transform: translate(-4px, 2px); }
+          40%      { transform: translate(4px, -2px); }
+          60%      { transform: translate(-3px, -1px); }
+          80%      { transform: translate(3px, 1px); }
+        }
+        .bonus-alert-shake { animation: bonusAlertShake 0.7s ease-in-out 2; }
+        @keyframes toastSlideIn {
+          0%   { opacity: 0; transform: translateY(40px) scale(0.85); }
+          70%  { opacity: 1; transform: translateY(-4px) scale(1.04); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes toastSlideOut {
+          0%   { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-20px); }
+        }
+        @keyframes streakPulse {
+          0%   { transform: scale(1); }
+          100% { transform: scale(1.06); }
+        }
         .screen-shake-light { animation: screenShakeLight 0.3s ease-out; }
         @keyframes screenShakeLight { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
         .screen-shake-medium { animation: screenShakeMedium 0.5s ease-out; }

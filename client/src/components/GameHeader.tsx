@@ -2,29 +2,24 @@
  * Rolling in the Dough — Game Header (Professional Casino Edition)
  * Matches Jackpot Party / Chumba Casino header standards
  * Features: animated coin counter, level badge, XP bar, daily bonus, compact layout
+ * Enhanced: Jackpot ticker with shake animation on each step
  */
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { useGameState } from "@/hooks/useGameState";
+import { useRetention } from "@/hooks/useRetention";
+import { useAchievements } from "@/hooks/useAchievements";
+import { LoyaltyBadge } from "@/components/LoyaltyBadge";
+import { Badge } from "@/components/ui/badge";
 
-interface Props {
-  coins: number;
-  level: number;
-  xp: number;
-  xpToNext: number;
-  totalWins: number;
-  jackpotPool: number;
-  soundEnabled: boolean;
-  setSoundEnabled: (v: boolean) => void;
-  onLoginClick?: () => void;
-}
-
-// Animated number counter with color flash
-function AnimatedNumber({ value, flashOnChange = false }: { value: number; flashOnChange?: boolean }) {
+// Animated number counter with color flash and optional shake on step
+function AnimatedNumber({ value, flashOnChange = false, shakeOnStep = false }: { value: number; flashOnChange?: boolean; shakeOnStep?: boolean }) {
   const [display, setDisplay] = useState(value);
   const [direction, setDirection] = useState<"up" | "down" | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [shake, setShake] = useState(false);
 
   useEffect(() => {
     if (display === value) return;
@@ -39,6 +34,10 @@ function AnimatedNumber({ value, flashOnChange = false }: { value: number; flash
       current += step;
       count++;
       setDisplay(Math.round(current));
+      if (shakeOnStep) {
+        setShake(true);
+        setTimeout(() => setShake(false), 50); // Shake for 50ms
+      }
       if (count >= steps) {
         setDisplay(value);
         setDirection(null);
@@ -47,20 +46,21 @@ function AnimatedNumber({ value, flashOnChange = false }: { value: number; flash
       }
     }, 25);
     return () => clearInterval(interval);
-  }, [value]);
+  }, [value, shakeOnStep]);
 
   return (
     <span
       className="inline-block font-numbers tabular-nums"
       style={{
         display: "inline-block",
-        transition: "color 0.3s ease",
+        transition: "transform 0.05s ease-in-out, color 0.3s ease",
+        transform: shake ? "translateX(2px)" : "none",
         color: direction === "up" ? "#90EE90" : direction === "down" ? "#FF6B6B" : "#F5E6C8",
         textShadow: isAnimating && direction === "up"
           ? "0 0 12px rgba(144,238,144,0.8)"
           : isAnimating && direction === "down"
-          ? "0 0 12px rgba(255,107,107,0.8)"
-          : "none",
+            ? "0 0 12px rgba(255,107,107,0.8)"
+            : "none",
       }}
     >
       {display.toLocaleString()}
@@ -105,12 +105,27 @@ export default function GameHeader({
   soundEnabled,
   setSoundEnabled,
   onLoginClick,
-}: Props) {
+}: {
+  coins: number;
+  level: number;
+  xp: number;
+  xpToNext: number;
+  totalWins: number;
+  jackpotPool: number;
+  soundEnabled: boolean;
+  setSoundEnabled: (v: boolean) => void;
+  onLoginClick?: () => void;
+}) {
   const { isAuthenticated } = useAuth();
+  const gameState = useGameState();
+  const retentionState = useRetention();
+  const { achievements, loading } = useAchievements();
+
+  // Jackpot state
   const [jackpotFlash, setJackpotFlash] = useState(false);
   const [jackpotDisplay, setJackpotDisplay] = useState(jackpotPool);
 
-  // Animate jackpot counter
+  // Animate jackpot counter (with shake on each step for ticker effect)
   useEffect(() => {
     if (jackpotDisplay === jackpotPool) return;
     const diff = jackpotPool - jackpotDisplay;
@@ -158,9 +173,8 @@ export default function GameHeader({
           background: "linear-gradient(90deg, transparent 0%, #C8860A 20%, #FFD700 50%, #C8860A 80%, transparent 100%)",
         }}
       />
-
       <div className="max-w-3xl mx-auto px-2 py-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
 
           {/* ── Jackpot pool (compact) ── */}
           <div
@@ -172,7 +186,7 @@ export default function GameHeader({
               border: `1px solid ${jackpotFlash ? "#FFD700" : "rgba(212,175,55,0.35)"}`,
               boxShadow: jackpotFlash
                 ? "0 0 30px rgba(255,215,0,0.7), 0 0 60px rgba(255,215,0,0.3), inset 0 0 15px rgba(255,215,0,0.15)"
-                : "inset 0 0 8px rgba(0,0,0,0.4), 0 0 12px rgba(255,215,0,0.08)",
+                : "inset 0 0 8px rgba(0,0,0,0.4), 0 0 12px rgba(212,175,55,0.1)",
             }}
           >
             {/* Ambient pulse ring */}
@@ -203,19 +217,8 @@ export default function GameHeader({
               >
                 Jackpot
               </div>
-              <div
-                className="font-numbers font-bold"
-                style={{
-                  fontSize: "0.85rem",
-                  color: jackpotFlash ? "#FFD700" : "#D4AF37",
-                  textShadow: jackpotFlash
-                    ? "0 0 12px rgba(255,215,0,1)"
-                    : "0 0 4px rgba(212,175,55,0.4)",
-                  lineHeight: 1.2,
-                  transition: "color 0.3s ease, text-shadow 0.3s ease",
-                }}
-              >
-                {jackpotDisplay.toLocaleString()}
+              <div className="font-numbers font-bold">
+                <AnimatedNumber value={jackpotDisplay} flashOnChange shakeOnStep />
               </div>
             </div>
           </div>
@@ -276,7 +279,7 @@ export default function GameHeader({
               </div>
               <div className="w-16 h-1.5 rounded-full overflow-hidden mt-0.5" style={{ background: "rgba(212,175,55,0.15)" }}>
                 <div
-                  className="h-full rounded-full level-bar transition-all duration-700"
+                  className="h-full rounded-footer level-bar transition-all duration-700"
                   style={{ width: `${xpPercent}%` }}
                 />
               </div>
@@ -287,6 +290,20 @@ export default function GameHeader({
                 {xpToNextLevel.toLocaleString()} XP to next
               </div>
             </div>
+          </div>
+
+          {/* ── Achievements — label hidden on mobile, badge icon stays ── */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="font-numbers uppercase tracking-widest text-xs hidden sm:block">
+              Achievements
+            </div>
+            {!loading && (
+              <Badge variant="secondary" className="text-xs font-medium">
+                <span>🏆</span>
+                <span>{achievements.length}</span>
+              </Badge>
+            )}
+            {loading && <span className="text-xs hidden sm:inline">Loading...</span>}
           </div>
 
           {/* ── Sound toggle ── */}
@@ -307,6 +324,11 @@ export default function GameHeader({
           >
             <span style={{ fontSize: "1.1rem" }}>{soundEnabled ? "🔊" : "🔇"}</span>
           </button>
+
+          {/* Loyalty badge — hidden on mobile to keep header compact */}
+          <div className="hidden md:block shrink-0">
+            <LoyaltyBadge />
+          </div>
 
           {!isAuthenticated && (
             <button

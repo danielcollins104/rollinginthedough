@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createSharedState, useSharedState } from "./useSharedState";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface StreakDay {
@@ -21,6 +22,9 @@ export interface Mission {
   progress: number;
   reward: number;
   completed: boolean;
+  /** Whether the reward for this mission has already been claimed. Persisted
+   *  so the UI can show ✓ CLAIMED! across modal re-opens. */
+  claimed: boolean;
   type: "spin" | "win" | "bonus" | "coins_one_spin" | "scatter";
 }
 
@@ -71,6 +75,7 @@ function generateDailyMissions(): Mission[] {
       progress: 0,
       reward: 100,
       completed: false,
+      claimed: false,
       type: "spin",
     },
     {
@@ -81,6 +86,7 @@ function generateDailyMissions(): Mission[] {
       progress: 0,
       reward: 200,
       completed: false,
+      claimed: false,
       type: "bonus",
     },
     {
@@ -91,6 +97,7 @@ function generateDailyMissions(): Mission[] {
       progress: 0,
       reward: 150,
       completed: false,
+      claimed: false,
       type: "coins_one_spin",
     },
   ];
@@ -140,75 +147,75 @@ function getYesterdayStr(): string {
   return d.toISOString().split("T")[0];
 }
 
-// ─── Hook ────────────────────────────────────────────────────────────────────
-export function useRetention() {
-  const saved = loadRetention();
+// ─── Module-level shared store ────────────────────────────────────────────────
+// Single RetentionState instance shared by every useRetention() caller.
+// Prevents "two instances in different components diverge and clobber each
+// other's localStorage writes" — the bug that caused level/XP save lag when
+// retention was used in Home, GameHeader, LoyaltyBadge, and useAchievements.
+function createInitialRetentionState(): RetentionState {
   const today = getTodayStr();
   const yesterday = getYesterdayStr();
-  
-  // Determine if missions need reset (new day)
+  const saved = loadRetention();
   const needsMissionReset = saved?.lastMissionReset !== today;
-  
-  const [state, setState] = useState<RetentionState>(() => {
-    if (!saved) {
-      return {
-        streakDays: [],
-        currentStreak: 0,
-        lastLoginDate: null,
-        lastClaimDate: null,
-        level: 1,
-        xp: 0,
-        xpToNext: xpForLevel(1),
-        lifetimeXp: 0,
-        missions: generateDailyMissions(),
-        lastMissionReset: today,
-        sessionStartTime: Date.now(),
-        lastSessionRewardTime: null,
-        hasShown30MinReward: false,
-      };
-    }
-    
-    // Check streak continuity
-    let currentStreak = saved.currentStreak ?? 0;
-    let streakDays = [...(saved.streakDays ?? [])];
-    
-    if (saved.lastLoginDate === yesterday) {
-      // User was here yesterday, streak continues (if they claimed yesterday)
-      // If they didn't claim, streak stays but they need to claim today
-    } else if (saved.lastLoginDate !== today) {
-      // Missed a day - reset streak
-      currentStreak = 0;
-      streakDays = [];
-    }
-    
-    // Check if today's bonus was already claimed
-    const alreadyClaimedToday = saved.lastClaimDate === today;
-    
-    // Ensure all required fields have default values to prevent undefined errors
+
+  if (!saved) {
     return {
-      streakDays,
-      currentStreak: alreadyClaimedToday ? currentStreak : currentStreak,
-      lastLoginDate: saved.lastLoginDate ?? null,
-      lastClaimDate: saved.lastClaimDate ?? null,
-      level: saved.level ?? 1,
-      xp: saved.xp ?? 0,
-      xpToNext: saved.xpToNext ?? xpForLevel(saved.level ?? 1),
-      lifetimeXp: saved.lifetimeXp ?? 0,
-      missions: needsMissionReset ? generateDailyMissions() : (saved.missions ?? generateDailyMissions()),
-      lastMissionReset: needsMissionReset ? today : (saved.lastMissionReset ?? today),
-      sessionStartTime: saved.sessionStartTime ?? Date.now(),
-      lastSessionRewardTime: saved.lastSessionRewardTime ?? null,
-      hasShown30MinReward: saved.hasShown30MinReward ?? false,
+      streakDays: [],
+      currentStreak: 0,
+      lastLoginDate: null,
+      lastClaimDate: null,
+      level: 1,
+      xp: 0,
+      xpToNext: xpForLevel(1),
+      lifetimeXp: 0,
+      missions: generateDailyMissions(),
+      lastMissionReset: today,
+      sessionStartTime: Date.now(),
+      lastSessionRewardTime: null,
+      hasShown30MinReward: false,
     };
-  });
-  
+  }
+
+  let currentStreak = saved.currentStreak ?? 0;
+  let streakDays = [...(saved.streakDays ?? [])];
+
+  if (saved.lastLoginDate !== today && saved.lastLoginDate !== yesterday) {
+    // Missed a day — reset streak
+    currentStreak = 0;
+    streakDays = [];
+  }
+
+  return {
+    streakDays,
+    currentStreak,
+    lastLoginDate: saved.lastLoginDate ?? null,
+    lastClaimDate: saved.lastClaimDate ?? null,
+    level: saved.level ?? 1,
+    xp: saved.xp ?? 0,
+    xpToNext: saved.xpToNext ?? xpForLevel(saved.level ?? 1),
+    lifetimeXp: saved.lifetimeXp ?? 0,
+    missions: needsMissionReset ? generateDailyMissions() : (saved.missions ?? generateDailyMissions()),
+    lastMissionReset: needsMissionReset ? today : (saved.lastMissionReset ?? today),
+    sessionStartTime: saved.sessionStartTime ?? Date.now(),
+    lastSessionRewardTime: saved.lastSessionRewardTime ?? null,
+    hasShown30MinReward: saved.hasShown30MinReward ?? false,
+  };
+}
+
+const retentionStore = createSharedState<RetentionState>(createInitialRetentionState());
+
+// ─── Hook ────────────────────────────────────────────────────────────────────
+export function useRetention() {
+  const [state, setState] = useSharedState(retentionStore);
+  const today = getTodayStr();
+
   const [showCelebration, setShowCelebration] = useState<string | null>(null);
   const [levelUpData, setLevelUpData] = useState<{ from: number; to: number } | null>(null);
-  
+
   // Track if today's bonus was claimed
   const todayClaimed = state.lastClaimDate === today;
   
-  // Save on state changes
+  // Save on state changes (shared across all hook instances now)
   useEffect(() => {
     saveRetention(state);
   }, [state]);
@@ -339,9 +346,9 @@ export function useRetention() {
     let reward = 0;
     setState((prev) => {
       const missions = prev.missions.map((m) => {
-        if (m.id === missionId && m.completed) {
+        if (m.id === missionId && m.completed && !m.claimed) {
           reward = m.reward;
-          return { ...m, completed: true }; // Keep as completed
+          return { ...m, claimed: true };
         }
         return m;
       });
