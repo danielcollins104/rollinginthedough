@@ -10,6 +10,7 @@ import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useG
 import { playSound, playWinSound, setSoundEnabled as setLibSoundEnabled, isSoundEnabled } from "@/lib/sounds";
 import { detectNearMisses, playNearMissSound } from "@/lib/nearMiss";
 import { WinParticles } from "./WinParticles";
+import CoinParticles from "./CoinParticles";
 import ScratchGame from "./ScratchGame";
 import DealsModal from "./DealsModal";
 import BigWinOverlay from "./BigWinOverlay";
@@ -1511,6 +1512,42 @@ export default function SlotMachine({
       {/* Win Particle Animations */}
       <WinParticles trigger={particleTrigger} winAmount={winAmount} isJackpot={lastWinType === "JACKPOT" } />
 
+      {/* Coin Shower — continuous falling coins during/win moment */}
+      {showCoinShower && (
+        <CoinParticles count={lastWinType === "JACKPOT" ? 60 : lastWinType === "MEGA_WIN" ? 45 : lastWinType === "BIG_WIN" ? 35 : winAmount > 0 ? 25 : 0} />
+      )}
+
+      {/* Win flash overlay — full-screen lightning flash on any win */}
+      {winFlash && (
+        <div
+          className="fixed inset-0 pointer-events-none z-[70]"
+          style={{
+            background: lastWinType === "JACKPOT"
+              ? "radial-gradient(circle at 50% 45%, rgba(255,215,0,0.55) 0%, rgba(255,140,0,0.25) 40%, transparent 70%)"
+              : lastWinType === "MEGA_WIN"
+              ? "radial-gradient(circle at 50% 45%, rgba(255,107,53,0.5) 0%, rgba(255,69,0,0.2) 40%, transparent 70%)"
+              : "radial-gradient(circle at 50% 45%, rgba(255,215,0,0.4) 0%, rgba(212,175,55,0.15) 40%, transparent 70%)",
+            animation: "winFlash 900ms ease-out forwards",
+          }}
+        />
+      )}
+
+      {/* Cabinet backdrop glow — pulses behind the whole cabinet during big wins */}
+      {showWin && winAmount > 0 && (lastWinType === "BIG_WIN" || lastWinType === "MEGA_WIN" || lastWinType === "JACKPOT") && (
+        <div
+          className="fixed inset-0 pointer-events-none z-[-1]"
+          style={{
+            background:
+              lastWinType === "JACKPOT"
+                ? "radial-gradient(ellipse at center, rgba(255,215,0,0.35) 0%, rgba(255,140,0,0.1) 35%, transparent 65%)"
+                : lastWinType === "MEGA_WIN"
+                ? "radial-gradient(ellipse at center, rgba(255,107,53,0.3) 0%, rgba(255,69,0,0.08) 35%, transparent 65%)"
+                : "radial-gradient(ellipse at center, rgba(255,215,0,0.22) 0%, rgba(212,175,55,0.06) 35%, transparent 65%)",
+            animation: "cabinetWinGlow 2s ease-in-out infinite alternate",
+          }}
+        />
+      )}
+
       {/* Big Win Overlay */}
       {showBigWin && (lastWinType === "BIG_WIN" || lastWinType === "MEGA_WIN" || lastWinType === "JACKPOT") && (
         <BigWinOverlay winType={lastWinType} winAmount={winAmount} onDismiss={() => setShowBigWin(false)} />
@@ -1728,6 +1765,10 @@ export default function SlotMachine({
           0%   { opacity: 0; }
           20%  { opacity: 1; }
           100% { opacity: 0; }
+        }
+        @keyframes cabinetWinGlow {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
         }
         @keyframes ledPulse {
           0%, 100% { opacity: 0.6; }

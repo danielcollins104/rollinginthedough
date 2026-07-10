@@ -43,11 +43,32 @@ export default function IdleAnimations({ spinning, lastSpinTime }: Props) {
         </div>
       ))}
 
+      {/* Floating coins */}
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={`coin-${i}`}
+          className="absolute"
+          style={{
+            left: `${10 + i * 20}%`,
+            bottom: "5%",
+            animation: `idleCoinFloat ${4 + i * 0.7}s ease-in-out ${i * 1.1}s infinite`,
+            opacity: 0,
+          }}
+        >
+          <span style={{ fontSize: "1.4rem" }}>🪙</span>
+        </div>
+      ))}
+
       <style>{`
         @keyframes idleFloat {
           0% { transform: translateY(0) scale(0.5); opacity: 0; }
           30% { opacity: 0.8; }
           100% { transform: translateY(-80px) scale(1); opacity: 0; }
+        }
+        @keyframes idleCoinFloat {
+          0% { transform: translateY(0) rotate(0deg) scale(0.6); opacity: 0; }
+          25% { opacity: 0.9; }
+          100% { transform: translateY(-120px) rotate(360deg) scale(1.1); opacity: 0; }
         }
       `}</style>
     </div>
