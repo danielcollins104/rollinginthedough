@@ -27,7 +27,7 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     // Skip API routes and other non-HTML requests
-    if (url.startsWith("/api") || url.startsWith("/@vite") || url.startsWith("/src/") || url.includes(".")) {
+    if (url.startsWith("/api") || url.startsWith("/@vite") || url.startsWith("/src/") || url.startsWith("/health") || url.startsWith("/test") || url.includes(".")) {
       return next();
     }
 
