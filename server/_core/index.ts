@@ -9,14 +9,6 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { applySecurityMiddleware } from "./securityMiddleware";
 
-// Simple health check endpoint for Render and load balancers
-function addHealthEndpoint(app: any) {
-  app.get("/health", (req: any, res: any) => {
-    console.log("[HEALTH] Health endpoint hit!");
-    res.status(200).json({ ok: true, timestamp: Date.now() });
-  });
-}
-
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
@@ -37,39 +29,39 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  console.log("[START] Creating express app");
   const app = express();
   const server = createServer(app);
 
-  // Add health/test endpoints as MIDDLEWARE at the VERY TOP
-  // This runs BEFORE Vite middleware (which is added inside setupVite)
+  // ===== HEALTH CHECK MIDDLEWARE - MUST BE FIRST =====
+  console.log("[SETUP] Adding health check middleware");
   app.use((req, res, next) => {
-    if (req.path === "/health") {
-      console.log("[HEALTH] Health endpoint hit!");
-      return res.status(200).json({ ok: true, timestamp: Date.now() });
+    console.log(`[HEALTH-MW] ${req.method} ${req.url}`);
+    const url = req.originalUrl || req.url;
+    if (url === "/health" || url.startsWith("/health?")) {
+      console.log("[HEALTH-MW] ✓ HEALTH CHECK MATCHED");
+      return res.status(200).json({ ok: true, timestamp: Date.now(), url });
     }
-    if (req.path === "/test") {
-      console.log("[TEST] Test endpoint hit!");
-      return res.status(200).json({ ok: true, message: "Test endpoint works" });
-    }
+    console.log("[HEALTH-MW] ✗ Not health check, calling next()");
     next();
   });
 
-  // Add request logging middleware
+  // ===== REQUEST LOGGING =====
   app.use((req, res, next) => {
-    console.log(`[REQUEST] ${req.method} ${req.path}`);
+    console.log(`[LOG-MW] ${req.method} ${req.path}`);
     next();
   });
 
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // ===== BODY PARSING =====
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
-  // TEMPORARILY DISABLE SECURITY MIDDLEWARE TO TEST HEALTH ENDPOINT
-  // applySecurityMiddleware(app);
-
-  // OAuth callback under /api/oauth/callback
+  // ===== OAUTH ROUTES =====
+  console.log("[SETUP] Adding OAuth routes");
   registerOAuthRoutes(app);
-  // tRPC API
+
+  // ===== TRPC ROUTER =====
+  console.log("[SETUP] Adding tRPC router");
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -78,25 +70,33 @@ async function startServer() {
     })
   );
 
-  // development mode uses Vite, production mode uses static files
+  // ===== VITE OR STATIC SERVING =====
   if (process.env.NODE_ENV === "development") {
-    console.log("[STARTUP] Before setupVite");
+    console.log("[SETUP] Setting up Vite middleware");
+    console.log("[SETUP] Before setupVite");
     await setupVite(app, server);
-    console.log("[STARTUP] After setupVite - Vite setup complete");
+    console.log("[SETUP] After setupVite - Vite setup complete");
   } else {
+    console.log("[SETUP] Setting up static serving");
     serveStatic(app);
   }
 
+  // ===== START SERVER =====
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+    console.log(`[SERVER] Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
   server.listen(port, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${port}/`);
+    console.log(`[SERVER] ✓ Server running on http://0.0.0.0:${port}/`);
+    console.log(`[SERVER] Health check: http://0.0.0.0:${port}/health`);
   });
 }
 
-startServer().catch(console.error);
+console.log("[MAIN] Starting server initialization");
+startServer().catch(err => {
+  console.error("[MAIN] ❌ Server startup failed:", err);
+  process.exit(1);
+});

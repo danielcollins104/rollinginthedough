@@ -20,21 +20,35 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
-  app.use(vite.middlewares);
+  console.log("[VITE] Vite server created");
+
+  // Vite middleware - but skip health check first
+  app.use((req, res, next) => {
+    const url = req.originalUrl || req.url;
+    if (url === "/health" || url.startsWith("/health?") || url === "/test" || url.startsWith("/test?")) {
+      return next();
+    }
+    return vite.middlewares(req, res, next);
+  });
+  console.log("[VITE] Vite middleware applied (with health check bypass)");
 
   // Only serve index.html for browser page requests, not for assets/modules
   app.use("*", async (req, res, next) => {
+    console.log(`[VITE] * handler called for: ${req.originalUrl}`);
     const url = req.originalUrl;
 
-    // Skip API routes and other non-HTML requests
-    if (url.startsWith("/api") || url.startsWith("/@vite") || url.startsWith("/src/") || url.startsWith("/health") || url.startsWith("/test") || url.includes(".")) {
+    // Skip API routes, Vite, src, assets, health, test
+    if (url.startsWith("/api") || url.startsWith("/@vite") || url.startsWith("/src/") || url === "/health" || url.startsWith("/health?") || url === "/test" || url.startsWith("/test?") || url.includes(".")) {
+      console.log("[VITE] Skipping - calling next()");
       return next();
     }
 
     try {
+      console.log("[VITE] Serving index.html");
       const clientTemplate = path.resolve(
         import.meta.dirname,
-        "../..",
+        "..",
+        "..",
         "client",
         "index.html"
       );
@@ -48,6 +62,7 @@ export async function setupVite(app: Express, server: Server) {
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
+      console.error("[VITE] Error:", e);
       vite.ssrFixStacktrace(e as Error);
       next(e);
     }
@@ -57,7 +72,7 @@ export async function setupVite(app: Express, server: Server) {
 export function serveStatic(app: Express) {
   const distPath =
     process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
+      ? path.resolve(import.meta.dirname, "..", "..", "dist", "public")
       : path.resolve(import.meta.dirname, "public");
   if (!fs.existsSync(distPath)) {
     console.error(
