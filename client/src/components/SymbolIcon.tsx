@@ -41,6 +41,8 @@ export default function SymbolIcon({ symbolId, size = 48, className, style }: Pr
     case "bun": return <FireIcon           size={size} className={className} style={style} />;
     case "huntress": return <HuntressPhoto size={size} className={className} style={style} />;
     case "dough": return <SpiritArrowIcon  size={size} className={className} style={style} />;
+    case "greenCoin": return <GreenCoinIcon size={size} className={className} style={style} />;
+    case "goldCoin": return <GoldCoinIcon  size={size} className={className} style={style} />;
     default: return <HuntressPhoto         size={size} className={className} style={style} />;
   }
 }
@@ -551,3 +553,41 @@ function SpiritArrowIcon({ size, className, style }: Props) {
 
 // Re-export typing-aware alias — keeps lint happy if a name differs
 function DreamCatcher({ size, className, style }: Props) { return <DreamCatcherIcon size={size} className={className} style={style} />; }
+
+/** Green Coin — Vegas Hold & Win sticky coin. */
+function GreenCoinIcon({ size, className, style }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className={className} style={style}>
+      <defs>
+        <radialGradient id="greenCoinGrad" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%" stopColor="#7CFC00" />
+          <stop offset="100%" stopColor="#006400" />
+        </radialGradient>
+      </defs>
+      <GlowRing color="#32CD32" />
+      <circle cx="24" cy="24" r="18" fill="url(#greenCoinGrad)" stroke="#228B22" strokeWidth="2" />
+      <circle cx="24" cy="24" r="14" fill="none" stroke="#ADFF2F" strokeWidth="1" opacity="0.6" />
+      <text x="24" y="29" textAnchor="middle" fontSize="16" fontWeight="bold" fill="#003300">$</text>
+      <ellipse cx="20" cy="16" rx="4" ry="2" fill="#FFFFFF" opacity="0.3" />
+    </svg>
+  );
+}
+
+/** Gold Coin — Vegas Hold & Win sticky coin. */
+function GoldCoinIcon({ size, className, style }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" className={className} style={style}>
+      <defs>
+        <radialGradient id="goldCoinGrad" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%" stopColor="#FFFACD" />
+          <stop offset="100%" stopColor="#B8860B" />
+        </radialGradient>
+      </defs>
+      <GlowRing color="#FFD700" />
+      <circle cx="24" cy="24" r="18" fill="url(#goldCoinGrad)" stroke="#DAA520" strokeWidth="2" />
+      <circle cx="24" cy="24" r="14" fill="none" stroke="#8B6914" strokeWidth="1" opacity="0.6" />
+      <text x="24" y="29" textAnchor="middle" fontSize="16" fontWeight="bold" fill="#5C3A0E">$</text>
+      <ellipse cx="20" cy="16" rx="4" ry="2" fill="#FFFFFF" opacity="0.35" />
+    </svg>
+  );
+}

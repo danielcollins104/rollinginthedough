@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BonusGameType } from "@/lib/bonusGames";
+import { runCoinBonus, isCoinSymbol, computeLdw, detectNearMisses, findCoinCells, type CoinBonusResult } from "@/lib/gameLogic";
 
 // ─── Symbol definitions ───────────────────────────────────────────────────────
 export type SymbolId =
@@ -19,6 +20,8 @@ export type SymbolId =
   | "bun"        // 🫓 Sweet Bun — high value (wild)
   | "huntress"   // 👑 Bakery Queen — bonus trigger (scatter)
   | "dough"      // 🍞 Rolling in the Dough — JACKPOT (scatter)
+  | "greenCoin"  // 🟢 Sticky green coin (Hold & Win bonus symbol)
+  | "goldCoin"   // 🟡 Sticky gold coin (Hold & Win bonus symbol)
   | "empty"      // Empty cell for cascade system
 
 export interface Symbol {
@@ -136,9 +139,27 @@ export const SYMBOLS: Symbol[] = [
     weight: 4,
     isScatter: true,
   },
+  {
+    id: "greenCoin",
+    emoji: "🟢",
+    name: "Green Coin",
+    color: "#32CD32",
+    bgColor: "#051a05",
+    payouts: [1, 2, 5],
+    weight: 10,
+  },
+  {
+    id: "goldCoin",
+    emoji: "🟡",
+    name: "Gold Coin",
+    color: "#FFD700",
+    bgColor: "#1a1500",
+    payouts: [2, 5, 10],
+    weight: 6,
+  },
 ];
 
-export type WinType = "SMALL_WIN" | "BIG_WIN" | "MEGA_WIN" | "JACKPOT" | "HUNTRESS_BONUS" | null;
+export type WinType = "SMALL_WIN" | "BIG_WIN" | "MEGA_WIN" | "JACKPOT" | "HUNTRESS_BONUS" | "COIN_BONUS" | null;
 
 export interface WinLine {
   row: number;
@@ -146,6 +167,30 @@ export interface WinLine {
   amount: number;
   count: number;
   cells?: { reelIdx: number; rowIdx: number }[]; // Optional cell positions for highlights
+}
+
+export interface StickyCoin {
+  reelIdx: number;
+  rowIdx: number;
+  type: "greenCoin" | "goldCoin";
+  value: number;
+}
+
+export interface StickyBonusState {
+  active: boolean;
+  coins: StickyCoin[];
+  respinsLeft: number;
+  totalWin: number;
+}
+
+export interface DebugStats {
+  spins: number;
+  wins: number;
+  totalBet: number;
+  totalWon: number;
+  ldws: number;
+  nearMisses: number;
+  lastError: string | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -159,6 +204,11 @@ const FREE_SPIN_TRIGGER = 3; // 3 scatters = free spins
 const FREE_SPIN_COUNT = 10;
 const HUNTRESS_BONUS_TRIGGER = 3; // 3 huntress symbols = bonus round
 const BET_OPTIONS = [10, 25, 50, 100, 200];
+const COIN_BONUS_TRIGGER = 6; // 6+ coin symbols trigger Hold & Win bonus
+const COIN_RESPIN_START = 3;
+const COIN_VALUE_GREEN = 1;
+const COIN_VALUE_GOLD = 5;
+const COIN_GRAND_JACKPOT_MULTIPLIER = 100;
 
 // ─── Weighted random symbol picker ───────────────────────────────────────────
 function pickSymbol(): SymbolId {
@@ -384,6 +434,17 @@ export function useGameState() {
   const [paylines, setPaylines] = useState(1); // 1, 5, 10, 15, 20, 25 - start with 1 for testing
   const [cascadeCount, setCascadeCount] = useState(0);
   const [bonusGameType, setBonusGameType] = useState<BonusGameType | null>(null);
+  const [stickyBonus, setStickyBonus] = useState<CoinBonusResult | null>(null);
+  const [stickyBonusSpinning, setStickyBonusSpinning] = useState(false);
+  const [debugStats, setDebugStats] = useState({
+    spins: saved?.spins ?? 0,
+    wins: saved?.wins ?? 0,
+    totalBet: saved?.totalBet ?? 0,
+    totalWon: saved?.totalWon ?? 0,
+    ldws: saved?.ldws ?? 0,
+    nearMisses: saved?.nearMisses ?? 0,
+    lastError: null as string | null,
+  });
 
   const autoplayRef = useRef(false);
   const spinningRef = useRef(false);
@@ -506,6 +567,28 @@ export function useGameState() {
       setBonusGameType('huntress_bonus' as BonusGameType);
     }
 
+    // ─── Coin Hold-&-Win bonus ─────────────────────────────────────────────────
+    let coinBonusWin = 0;
+    let coinBonusResult: CoinBonusResult | null = null;
+    const coinCells = findCoinCells(newReels);
+    if (!isDemo && coinCells.length >= COIN_BONUS_TRIGGER) {
+      coinBonusResult = runCoinBonus(
+        newReels,
+        COIN_BONUS_TRIGGER,
+        COIN_VALUE_GREEN * Math.max(1, Math.floor(bet / 25)),
+        COIN_VALUE_GOLD * Math.max(1, Math.floor(bet / 25)),
+        COIN_RESPIN_START
+      );
+      coinBonusWin = coinBonusResult.totalWin;
+      finalWin += coinBonusWin;
+      setStickyBonus(coinBonusResult);
+      setStickyBonusSpinning(true);
+      setTimeout(() => setStickyBonusSpinning(false), 1500);
+      window.dispatchEvent(new CustomEvent("toast", {
+        detail: { kind: "coinBonus", message: `🪙 COIN BONUS! +${coinBonusWin}` },
+      }));
+    }
+
     // Update coins in the active currency
     if (!isDemo && finalWin > 0) {
       if (selectedCurrency === 'gold') {
@@ -513,6 +596,7 @@ export function useGameState() {
       } else {
         setGreenCoins((c) => c + finalWin);
       }
+
       // Also keep legacy coins in sync
       setCoins((c) => c + finalWin);
       setTotalWins((t) => t + finalWin);
@@ -520,7 +604,14 @@ export function useGameState() {
 
     setWinAmount(finalWin);
     setWinLines(lines);
-    setLastWinType(isHuntressBonus ? "HUNTRESS_BONUS" : getWinType(finalWin, bet, isJackpot));
+    const resolvedWinType: WinType = isHuntressBonus
+      ? "HUNTRESS_BONUS"
+      : isJackpot
+      ? "JACKPOT"
+      : coinBonusWin > 0
+      ? "COIN_BONUS"
+      : getWinType(finalWin, bet, isJackpot);
+    setLastWinType(resolvedWinType);
 
     // ─── LDW (Loss Disguised as Win) ────────────────────────────────────────────
     // On genuinely empty spins, ~35% chance to briefly show a small fake win
@@ -558,6 +649,17 @@ export function useGameState() {
     }
 
     setSpinCount((s) => isDemo ? s : s + 1);
+
+    // Update debug stats
+    setDebugStats((prev) => ({
+      ...prev,
+      spins: prev.spins + 1,
+      totalBet: prev.totalBet + bet,
+      totalWon: prev.totalWon + finalWin,
+      wins: finalWin > 0 ? prev.wins + 1 : prev.wins,
+      lastError: null,
+    }));
+
 
     // Streak tracking: increment on real wins (not LDW, not demo), reset on losses.
     // Done after the spin resolves so the LDW fake-win doesn't count as a
@@ -660,6 +762,10 @@ export function useGameState() {
     setCascadeCount,
     bonusGameType,
     setBonusGameType,
+    stickyBonus,
+    stickyBonusSpinning,
+    debugStats,
+    setDebugStats,
     // Dual currency
     goldCoins,
     setGoldCoins,

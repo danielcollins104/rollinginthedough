@@ -56,6 +56,8 @@ interface Props {
   onScratchClose?: () => void;
   onScratchWin?: (amount: number) => void;
   selectedCurrency?: 'gold' | 'green';
+  stickyBonus?: { totalWin: number; grandJackpot: boolean; locked: { reelIdx: number; rowIdx: number; type: "greenCoin" | "goldCoin" }[] } | null;
+  stickyBonusSpinning?: boolean;
 }
 
 function getSymbol(id: SymbolId) {
@@ -1063,6 +1065,8 @@ export default function SlotMachine({
   onScratchClose,
   onScratchWin,
   selectedCurrency = 'gold',
+  stickyBonus,
+  stickyBonusSpinning = false,
 }: Props) {
   const [reelDone, setReelDone] = useState<boolean[]>([true, true, true, true, true]);
   const [showWin, setShowWin] = useState(false);
@@ -1723,6 +1727,30 @@ export default function SlotMachine({
             }}>
               {cascadeLevel}x CASCADE!
             </div>
+          </div>
+        )}
+
+        {/* ── Sticky Coin Bonus Display ── */}
+        {(stickyBonus || stickyBonusSpinning) && (
+          <div className="w-full px-4 mb-2 flex flex-col items-center justify-center pointer-events-none z-20">
+            <div className="font-display font-black" style={{
+              fontSize: "clamp(1rem, 4vw, 2.5rem)",
+              color: "#32CD32",
+              textShadow: "0 0 30px rgba(50,205,50,0.9)",
+              animation: "cascadeMultiplierPopup 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both",
+            }}>
+              🪙 COIN HOLD & WIN
+            </div>
+            {stickyBonus && (
+              <div className="font-numbers tabular-nums text-center" style={{ color: "#FFD700", fontSize: "1.25rem", textShadow: "0 0 10px #FFD700" }}>
+                +{stickyBonus.totalWin.toLocaleString()}
+              </div>
+            )}
+            {stickyBonus?.grandJackpot && (
+              <div className="font-display font-black uppercase" style={{ color: "#FFD700", fontSize: "1rem", animation: "pulse 1s infinite" }}>
+                GRAND JACKPOT
+              </div>
+            )}
           </div>
         )}
 

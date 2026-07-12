@@ -29,6 +29,8 @@ import { Missions } from "@/components/Missions";
 import { SessionTimeReward } from "@/components/SessionTimeReward";
 import ReferralScreen, { FloatingReferralBadge } from "@/components/ReferralScreen";
 import { Toasts } from "@/components/Toasts";
+import DebugOverlay from "@/components/DebugOverlay";
+
 
 export default function Home() {
   const {
@@ -60,6 +62,9 @@ export default function Home() {
     setPaylines,
     bonusGameType,
     setBonusGameType,
+    stickyBonus,
+    stickyBonusSpinning,
+    debugStats,
     goldCoins,
     setGoldCoins,
     greenCoins,
@@ -326,6 +331,8 @@ export default function Home() {
           onScratchClose={() => setExternalShowScratch(false)}
           onScratchWin={(amount) => setGoldCoins((c) => c + amount)}
           selectedCurrency={selectedCurrency}
+          stickyBonus={stickyBonus}
+          stickyBonusSpinning={stickyBonusSpinning}
         />
       </main>
 
@@ -418,6 +425,7 @@ export default function Home() {
       )}
       
 
+      <DebugOverlay stats={debugStats} />
 
       {/* Mobile Bottom Navigation */}
       <BottomNavBar
