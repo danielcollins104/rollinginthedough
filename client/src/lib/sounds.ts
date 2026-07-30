@@ -1,0 +1,688 @@
+/**
+ * Rolling in the Dough — Sound Effects Library (v4)
+ * Research-Backed Addictive Sound Design Edition
+ * Based on casino psychology research and neuroscience
+ * 
+ * Design Principles (from research):
+ * - Win Sounds: Ascending pitch + layered harmonics trigger dopamine release
+ * - Tempo: 120+ BPM for excitement, encourages quick decision-making
+ * - Frequency Mix: Bass (40-80Hz) + warmth (200-500Hz) + clarity (2-5kHz) + sparkle (8-16kHz)
+ * - Immediate Feedback: No delay between action and sound reinforcement
+ * - Variety: Slight variations prevent habituation while maintaining consistency
+ * - Huntress: Deep bass impact + metallic clash = memorable, distinctive cue
+ */
+
+let audioCtx: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  } catch {
+    return null;
+  }
+}
+
+export { getAudioContext };
+
+/**
+ * Play a smooth tone with optional frequency sweep
+ * Creates warm, analog-like sounds
+ */
+function playTone(
+  frequency: number,
+  duration: number,
+  type: OscillatorType = "sine",
+  gainValue = 0.3,
+  delay = 0,
+  endFrequency?: number
+) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const oscillator = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+
+  oscillator.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, ctx.currentTime + delay);
+  
+  // Frequency sweep for more interesting sound
+  if (endFrequency) {
+    oscillator.frequency.exponentialRampToValueAtTime(endFrequency, ctx.currentTime + delay + duration);
+  }
+
+  // Smooth attack and release envelope
+  gainNode.gain.setValueAtTime(0, ctx.currentTime + delay);
+  gainNode.gain.linearRampToValueAtTime(gainValue, ctx.currentTime + delay + 0.02);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+
+  oscillator.start(ctx.currentTime + delay);
+  oscillator.stop(ctx.currentTime + delay + duration);
+}
+
+/**
+ * Play filtered noise with smooth envelope
+ * Creates mechanical, organic textures
+ */
+function playNoise(duration: number, gainValue = 0.1, delay = 0, filterFreq = 1200) {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const bufferSize = ctx.sampleRate * duration;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+
+  const gainNode = ctx.createGain();
+  gainNode.gain.setValueAtTime(gainValue, ctx.currentTime + delay);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = filterFreq;
+  filter.Q.value = 1;
+
+  source.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  source.start(ctx.currentTime + delay);
+  source.stop(ctx.currentTime + delay + duration);
+}
+
+/**
+ * Play a harmonic chord (multiple frequencies together)
+ * Creates rich, satisfying sounds
+ */
+function playChord(frequencies: number[], duration: number, type: OscillatorType = "sine", gainValue = 0.2, delay = 0) {
+  frequencies.forEach((freq) => {
+    playTone(freq, duration, type, gainValue / frequencies.length, delay);
+  });
+}
+
+export type SoundName =
+  | "spin"
+  | "reel_stop"
+  | "small_win"
+  | "big_win"
+  | "mega_win"
+  | "jackpot"
+  | "coin_drop"
+  | "button_click"
+  | "free_spin"
+  | "cascade"
+  | "bonus_alert"
+  | "win_explosion"
+  | "huntress_slam"
+  | "huntress_slam_2"
+  | "huntress_slam_3"
+  | "huntress_slam_4"
+  | "huntress_slam_5"
+  | "multi_win"
+  | "scatter_win"
+  | "scatter_land"
+  | "wild_land"
+  | "wild_lock"
+  | "near_miss"
+  | "cascade_1"
+  | "cascade_2"
+  | "cascade_3"
+  | "cascade_4"
+  | "cascade_5";
+
+let soundEnabled = true;
+
+export function setSoundEnabled(enabled: boolean) {
+  soundEnabled = enabled;
+}
+
+// ── Scatter anticipation ───────────────────────────────────────────────────
+
+let scatterAnticipationOsc: OscillatorNode | null = null;
+let scatterAnticipationGain: GainNode | null = null;
+let scatterAnticipationInterval: ReturnType<typeof setInterval> | null = null;
+
+export function startScatterAnticipation() {
+  if (!soundEnabled) return;
+  stopScatterAnticipation();
+
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  scatterAnticipationOsc = ctx.createOscillator();
+  scatterAnticipationGain = ctx.createGain();
+
+  scatterAnticipationOsc.connect(scatterAnticipationGain);
+  scatterAnticipationGain.connect(ctx.destination);
+
+  scatterAnticipationOsc.type = "sine";
+  scatterAnticipationOsc.frequency.setValueAtTime(220, ctx.currentTime);
+  scatterAnticipationGain.gain.setValueAtTime(0, ctx.currentTime);
+  scatterAnticipationGain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.1);
+  scatterAnticipationOsc.start(ctx.currentTime);
+
+  let elapsed = 0;
+  const duration = 3000;
+  const targetFreq = 440;
+  const startFreq = 220;
+
+  scatterAnticipationInterval = setInterval(() => {
+    elapsed += 50;
+    const progress = Math.min(elapsed / duration, 1);
+    const currentFreq = startFreq + (targetFreq - startFreq) * progress;
+    if (scatterAnticipationOsc) {
+      scatterAnticipationOsc.frequency.setValueAtTime(currentFreq, ctx.currentTime);
+    }
+    if (scatterAnticipationGain) {
+      scatterAnticipationGain.gain.setValueAtTime(0.18 + progress * 0.08, ctx.currentTime);
+    }
+    if (progress >= 1 && scatterAnticipationInterval) {
+      clearInterval(scatterAnticipationInterval);
+    }
+  }, 50);
+}
+
+export function stopScatterAnticipation() {
+  if (scatterAnticipationInterval) {
+    clearInterval(scatterAnticipationInterval);
+    scatterAnticipationInterval = null;
+  }
+  if (scatterAnticipationOsc && scatterAnticipationGain) {
+    const ctx = getAudioContext();
+    if (ctx) {
+      scatterAnticipationGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+    }
+    setTimeout(() => {
+      try { scatterAnticipationOsc?.stop(); } catch {}
+      scatterAnticipationOsc = null;
+      scatterAnticipationGain = null;
+    }, 150);
+  }
+}
+
+export function playScatterFanfare() {
+  stopScatterAnticipation();
+  playTone(330, 0.25, "sine", 0.35);
+  playTone(440, 0.2, "sine", 0.32, 0.08);
+  playTone(550, 0.2, "sine", 0.3, 0.16);
+  playTone(660, 0.25, "sine", 0.32, 0.24);
+  playTone(880, 0.3, "sine", 0.35, 0.32);
+  playChord([440, 660, 880], 0.35, "sine", 0.28, 0.45);
+  playNoise(0.15, 0.12, 0.5, 4000);
+}
+
+// ── Background ambient music ──────────────────────────────────────────────
+
+let bgMusicOsc1: OscillatorNode | null = null;
+let bgMusicOsc2: OscillatorNode | null = null;
+let bgMusicGain1: GainNode | null = null;
+let bgMusicGain2: GainNode | null = null;
+
+export function startBackgroundMusic() {
+  if (bgMusicOsc1) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  bgMusicGain1 = ctx.createGain();
+  bgMusicOsc1 = ctx.createOscillator();
+  bgMusicOsc1.type = "sine";
+  bgMusicOsc1.frequency.setValueAtTime(55, ctx.currentTime);
+  bgMusicOsc1.connect(bgMusicGain1);
+  bgMusicGain1.connect(ctx.destination);
+  bgMusicGain1.gain.setValueAtTime(0, ctx.currentTime);
+  bgMusicGain1.gain.linearRampToValueAtTime(0.025, ctx.currentTime + 1);
+  bgMusicOsc1.start();
+
+  bgMusicGain2 = ctx.createGain();
+  bgMusicOsc2 = ctx.createOscillator();
+  bgMusicOsc2.type = "sine";
+  bgMusicOsc2.frequency.setValueAtTime(110, ctx.currentTime);
+  bgMusicOsc2.connect(bgMusicGain2);
+  bgMusicGain2.connect(ctx.destination);
+  bgMusicGain2.gain.setValueAtTime(0, ctx.currentTime);
+  bgMusicGain2.gain.linearRampToValueAtTime(0.015, ctx.currentTime + 1);
+  bgMusicOsc2.start();
+}
+
+export function stopBackgroundMusic() {
+  const ctx = getAudioContext();
+  if (ctx) {
+    if (bgMusicGain1) bgMusicGain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    if (bgMusicGain2) bgMusicGain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+  }
+  setTimeout(() => {
+    try { bgMusicOsc1?.stop(); } catch {}
+    try { bgMusicOsc2?.stop(); } catch {}
+    bgMusicOsc1 = null;
+    bgMusicOsc2 = null;
+    bgMusicGain1 = null;
+    bgMusicGain2 = null;
+  }, 600);
+}
+
+/**
+ * Play scaled win sound based on number of winning lines
+ * More wins = bigger, more intense sound
+ */
+export function playWinSound(winCount: number) {
+  if (!soundEnabled || winCount <= 0) return;
+  
+  if (winCount === 1) {
+    playSound("small_win");
+  } else if (winCount === 2) {
+    playSound("small_win");
+    setTimeout(() => playSound("small_win"), 200);
+  } else if (winCount === 3) {
+    playSound("big_win");
+  } else if (winCount >= 4 && winCount <= 6) {
+    playSound("big_win");
+    setTimeout(() => playSound("big_win"), 300);
+  } else if (winCount >= 7) {
+    playSound("mega_win");
+  }
+}
+
+export function playSound(name: SoundName) {
+  if (!soundEnabled) return;
+
+  switch (name) {
+    case "spin":
+      // Research-backed spin: mechanical whirring + ascending pitch = anticipation
+      // Rising tones create tension and encourage quick decision-making (120+ BPM effect)
+      playNoise(0.2, 0.08, 0, 1800);             // Mechanical whirring
+      playTone(100, 0.2, "sine", 0.1, 0, 160);   // Rising bass sweep
+      playTone(200, 0.15, "sine", 0.08, 0.05, 300); // Rising mid sweep
+      playTone(300, 0.1, "sine", 0.06, 0.1, 400);   // Rising high sweep
+      break;
+
+    case "reel_stop":
+      // Research-backed reel stop: satisfying mechanical click with harmonic resonance
+      // Triggers reward sensation through multi-frequency engagement
+      playTone(200, 0.12, "sine", 0.22);        // Deep thunk (warmth)
+      playTone(400, 0.08, "sine", 0.18, 0.02);  // Harmonic ring (clarity)
+      playTone(600, 0.06, "sine", 0.12, 0.04);  // Upper harmonic
+      playNoise(0.08, 0.05, 0.02, 2500);        // Mechanical texture
+      playTone(1200, 0.04, "sine", 0.08, 0.05); // Subtle sparkle
+      break;
+
+    case "small_win":
+      // Research-backed small win: ascending pitch + harmonic richness
+      // Triggers dopamine release through positive reinforcement
+      // 3 variations to prevent habituation
+      {
+        const variation = Math.floor(Math.random() * 3);
+        if (variation === 0) {
+          // Classic ascending major chord
+          playNoise(0.08, 0.12, 0, 4000);
+          playTone(330, 0.15, "sine", 0.25);
+          playTone(415, 0.12, "sine", 0.28, 0.08);
+          playTone(523, 0.12, "sine", 0.3, 0.14);
+          playTone(659, 0.15, "sine", 0.32, 0.2);
+          playTone(830, 0.2, "sine", 0.28, 0.28);
+        } else if (variation === 1) {
+          // Bright sparkle burst
+          playNoise(0.1, 0.18, 0, 5000);
+          playTone(392, 0.12, "sine", 0.22);
+          playTone(523, 0.1, "sine", 0.26, 0.06);
+          playTone(659, 0.1, "sine", 0.28, 0.12);
+          playTone(784, 0.12, "sine", 0.3, 0.18);
+          playTone(988, 0.18, "sine", 0.26, 0.24);
+          playNoise(0.06, 0.08, 0.28, 6000);
+        } else {
+          // Warm harmonic swell
+          playTone(262, 0.18, "sine", 0.2);
+          playTone(330, 0.15, "sine", 0.24, 0.04);
+          playTone(392, 0.12, "sine", 0.28, 0.1);
+          playTone(523, 0.15, "sine", 0.3, 0.16);
+          playTone(659, 0.2, "sine", 0.28, 0.22);
+          playTone(784, 0.25, "sine", 0.22, 0.28);
+        }
+      }
+      break;
+
+    case "big_win":
+      // Research-backed big win: multi-frequency engagement
+      // Bass impact + ascending melody + harmonic layering = strong dopamine response
+      // 3 variations to keep it fresh
+      {
+        const variation = Math.floor(Math.random() * 3);
+        if (variation === 0) {
+          // Full orchestral blast
+          playTone(60, 0.15, "sine", 0.3);
+          playNoise(0.1, 0.15, 0, 4500);
+          playTone(440, 0.1, "sine", 0.3, 0.05);
+          playTone(550, 0.1, "sine", 0.32, 0.12);
+          playTone(660, 0.1, "sine", 0.34, 0.19);
+          playTone(880, 0.15, "sine", 0.36, 0.26);
+          playTone(1100, 0.2, "sine", 0.3, 0.34);
+          playChord([440, 660, 880, 1100], 0.3, "sine", 0.2, 0.42);
+        } else if (variation === 1) {
+          // Deep bass punch with rising sirens
+          playTone(55, 0.2, "sine", 0.35);
+          playTone(110, 0.18, "sine", 0.3, 0.04);
+          playTone(220, 0.15, "sine", 0.28, 0.08);
+          playNoise(0.12, 0.18, 0.12, 4800);
+          playTone(660, 0.12, "sine", 0.32, 0.2);
+          playTone(880, 0.15, "sine", 0.34, 0.28);
+          playTone(1100, 0.2, "sine", 0.28, 0.36);
+          playChord([660, 990, 1320], 0.35, "sine", 0.22, 0.45);
+        } else {
+          // Sparkle cascade
+          playNoise(0.08, 0.2, 0, 5500);
+          playTone(880, 0.08, "sine", 0.28);
+          playTone(1100, 0.08, "sine", 0.3, 0.06);
+          playTone(1320, 0.1, "sine", 0.32, 0.12);
+          playTone(880, 0.12, "sine", 0.3, 0.18);
+          playTone(1100, 0.15, "sine", 0.32, 0.26);
+          playTone(60, 0.18, "sine", 0.25, 0.2);
+          playTone(1320, 0.2, "sine", 0.3, 0.34);
+          playTone(1760, 0.25, "sine", 0.22, 0.44);
+        }
+      }
+      break;
+
+    case "mega_win":
+      // Research-backed mega win: maximum dopamine trigger
+      // Multi-layered frequencies across entire spectrum + bass impact
+      // 3 variations to prevent habituation
+      {
+        const variation = Math.floor(Math.random() * 3);
+        if (variation === 0) {
+          // Standard mega celebration
+          playTone(50, 0.2, "sine", 0.35);
+          playTone(80, 0.18, "sine", 0.32, 0.02);
+          playNoise(0.12, 0.18, 0.04, 5000);
+          const megaFreqs = [330, 440, 550, 660, 880];
+          megaFreqs.forEach((freq, i) => {
+            playTone(freq, 0.2, "sine", 0.3, i * 0.06);
+          });
+          playChord([440, 660, 1100, 1320], 0.4, "sine", 0.25, 0.4);
+          playTone(1320, 0.5, "sine", 0.25, 0.5);
+          playTone(1760, 0.3, "sine", 0.15, 0.6);
+        } else if (variation === 1) {
+          // Deep sub-bass thunder
+          playTone(40, 0.25, "sine", 0.4);
+          playTone(60, 0.2, "sine", 0.38, 0.02);
+          playTone(80, 0.18, "sine", 0.35, 0.04);
+          playNoise(0.15, 0.2, 0.06, 5200);
+          playTone(523, 0.15, "sine", 0.3, 0.08);
+          playTone(659, 0.15, "sine", 0.32, 0.14);
+          playTone(784, 0.15, "sine", 0.34, 0.2);
+          playTone(1047, 0.2, "sine", 0.36, 0.26);
+          playChord([523, 784, 1047, 1319], 0.5, "sine", 0.28, 0.38);
+          playTone(1560, 0.4, "sine", 0.22, 0.5);
+          playTone(2090, 0.3, "sine", 0.15, 0.65);
+        } else {
+          // Ascending triumphant fanfare
+          playNoise(0.1, 0.2, 0, 5500);
+          playTone(262, 0.2, "sine", 0.3);
+          playTone(330, 0.18, "sine", 0.32, 0.06);
+          playTone(392, 0.15, "sine", 0.34, 0.12);
+          playTone(523, 0.15, "sine", 0.36, 0.18);
+          playTone(659, 0.18, "sine", 0.38, 0.24);
+          playTone(784, 0.2, "sine", 0.36, 0.3);
+          playTone(1047, 0.25, "sine", 0.32, 0.36);
+          playChord([659, 784, 1047, 1319], 0.5, "sine", 0.26, 0.5);
+          playTone(1560, 0.4, "sine", 0.2, 0.62);
+          playNoise(0.2, 0.12, 0.7, 6000);
+        }
+      }
+      break;
+
+    case "jackpot":
+      // Research-backed jackpot: MAXIMUM dopamine trigger
+      // Full frequency spectrum engagement + sustained excitement
+      // 2 intense variations
+      {
+        const variation = Math.floor(Math.random() * 2);
+        if (variation === 0) {
+          playTone(40, 0.25, "sine", 0.4);
+          playTone(80, 0.22, "sine", 0.38, 0.02);
+          playTone(120, 0.2, "sine", 0.35, 0.04);
+          playNoise(0.15, 0.2, 0.06, 5500);
+          const jackpotFreqs = [220, 330, 440, 550, 660, 880];
+          jackpotFreqs.forEach((freq, i) => {
+            playTone(freq, 0.25, "sine", 0.32, i * 0.06);
+          });
+          playChord([440, 660, 880, 1100], 0.5, "sine", 0.28, 0.38);
+          playTone(1320, 0.8, "sine", 0.3, 0.5);
+          playTone(1320, 0.8, "sine", 0.18, 0.5, 1400);
+          playNoise(0.4, 0.12, 0.8, 4000);
+          playTone(1760, 0.4, "sine", 0.2, 0.9);
+        } else {
+          playNoise(0.12, 0.25, 0, 5800);
+          playTone(30, 0.3, "sine", 0.45);
+          playTone(60, 0.25, "sine", 0.4, 0.03);
+          playTone(90, 0.22, "sine", 0.36, 0.06);
+          const jackpotFreqs2 = [196, 294, 392, 523, 659, 784, 988];
+          jackpotFreqs2.forEach((freq, i) => {
+            playTone(freq, 0.22, "sine", 0.3, i * 0.05);
+          });
+          playChord([392, 523, 784, 988, 1319], 0.6, "sine", 0.26, 0.42);
+          playTone(1480, 0.5, "sine", 0.28, 0.55);
+          playTone(1975, 0.4, "sine", 0.2, 0.7);
+          playNoise(0.3, 0.15, 0.85, 5000);
+          playTone(2200, 0.35, "sine", 0.18, 1.0);
+          playTone(50, 0.5, "sine", 0.22, 1.1);
+        }
+      }
+      break;
+
+    case "coin_drop":
+      // Satisfying metallic clink with resonance
+      // Triggers reward sensation
+      playTone(1200, 0.1, "sine", 0.22);
+      playTone(900, 0.08, "sine", 0.18, 0.05);
+      playTone(600, 0.06, "sine", 0.12, 0.08); // Resonance decay
+      break;
+
+    case "button_click":
+      // Soft, satisfying click
+      // Encourages interaction
+      playTone(900, 0.05, "sine", 0.15);
+      playTone(1200, 0.04, "sine", 0.1, 0.02);
+      break;
+
+    case "free_spin":
+      // Magical, ascending sparkle
+      // Feels exciting and rewarding
+      const sparkleFreqs = [880, 1100, 1320, 1760];
+      sparkleFreqs.forEach((freq, i) => {
+        playTone(freq, 0.15, "sine", 0.24, i * 0.06);
+      });
+      // Harmonic shimmer
+      playChord([880, 1320, 1760], 0.2, "sine", 0.15, 0.35);
+      break;
+
+    case "cascade":
+      // Cascading/falling sound (Candy Crush style)
+      playTone(800, 0.3, "sine", 0.2);
+      playTone(600, 0.25, "sine", 0.18, 0.1);
+      playTone(400, 0.2, "sine", 0.15, 0.2);
+      break;
+
+    case "bonus_alert":
+      // Exciting bonus game trigger
+      const bonusFreqs = [659, 784, 1047, 1319];
+      bonusFreqs.forEach((freq, i) => {
+        playTone(freq, 0.25, "sine", 0.3, i * 0.1);
+      });
+      break;
+
+    case "win_explosion":
+      // Research-backed win explosion: immediate, intense reward feedback
+      // Bass impact + high-freq sparkle + ascending melody = strong dopamine surge
+      playTone(60, 0.12, "sine", 0.35);         // Bass impact
+      playNoise(0.15, 0.3, 0, 5000);            // Explosive high-freq burst
+      playTone(880, 0.2, "sine", 0.35, 0.04);   // High impact tone
+      playTone(1100, 0.2, "sine", 0.32, 0.08);  // Ascending
+      playTone(1320, 0.25, "sine", 0.28, 0.12); // Peak
+      playTone(1760, 0.2, "sine", 0.2, 0.16);   // Ultra-high sparkle
+      break;
+
+    case "huntress_slam":
+      // Research-backed huntress slam: memorable, distinctive bonus trigger
+      // Deep bass impact (40-80Hz) + metallic clash (high-freq transient)
+      // Creates sonic branding for the huntress symbol
+      playTone(50, 0.18, "sine", 0.4);          // Deep bass impact (felt)
+      playTone(80, 0.2, "sine", 0.38, 0.01);    // Primary bass slam
+      playNoise(0.1, 0.25, 0.02, 3500);         // Metallic clash (sword strike)
+      playTone(120, 0.15, "sine", 0.3, 0.03);   // Secondary bass resonance
+      playTone(200, 0.12, "sine", 0.2, 0.05);   // Harmonic resonance
+      playTone(3000, 0.08, "sine", 0.15, 0.04); // High-freq metallic ring
+      break;
+
+    case "huntress_slam_2":
+      // Crescendo slam #2: Louder and more intense (2 huntress symbols)
+      playTone(45, 0.2, "sine", 0.5);           // Deeper bass impact
+      playTone(75, 0.22, "sine", 0.48, 0.01);   // Primary bass slam (louder)
+      playNoise(0.12, 0.35, 0.02, 3500);        // Metallic clash (more intense)
+      playTone(110, 0.18, "sine", 0.4, 0.03);   // Secondary bass (louder)
+      playTone(200, 0.15, "sine", 0.3, 0.05);   // Harmonic resonance (louder)
+      playTone(3000, 0.1, "sine", 0.2, 0.04);   // High-freq metallic ring (louder)
+      playTone(1500, 0.08, "sine", 0.15, 0.06); // Added mid-range impact
+      break;
+
+    case "huntress_slam_3":
+      // Crescendo slam #3: Even louder and more aggressive (3 huntress symbols)
+      playTone(40, 0.25, "sine", 0.6);          // Very deep bass impact
+      playTone(70, 0.25, "sine", 0.58, 0.01);   // Primary bass slam (very loud)
+      playNoise(0.15, 0.45, 0.02, 3500);        // Metallic clash (very intense)
+      playTone(100, 0.2, "sine", 0.5, 0.03);    // Secondary bass (very loud)
+      playTone(200, 0.18, "sine", 0.4, 0.05);   // Harmonic resonance (very loud)
+      playTone(3000, 0.12, "sine", 0.25, 0.04); // High-freq metallic ring (very loud)
+      playTone(1500, 0.1, "sine", 0.2, 0.06);   // Mid-range impact (louder)
+      playTone(4500, 0.08, "sine", 0.15, 0.08); // Ultra-high sparkle
+      break;
+
+    case "huntress_slam_4":
+      // Crescendo slam #4: Extreme intensity (4 huntress symbols)
+      playTone(35, 0.3, "sine", 0.7);           // Extreme bass impact
+      playTone(65, 0.28, "sine", 0.68, 0.01);   // Primary bass slam (extreme)
+      playNoise(0.18, 0.55, 0.02, 3500);        // Metallic clash (extreme)
+      playTone(90, 0.25, "sine", 0.6, 0.03);    // Secondary bass (extreme)
+      playTone(200, 0.22, "sine", 0.5, 0.05);   // Harmonic resonance (extreme)
+      playTone(3000, 0.15, "sine", 0.3, 0.04);  // High-freq metallic ring (extreme)
+      playTone(1500, 0.12, "sine", 0.25, 0.06); // Mid-range impact (extreme)
+      playTone(4500, 0.1, "sine", 0.2, 0.08);   // Ultra-high sparkle (extreme)
+      playTone(6000, 0.08, "sine", 0.15, 0.1);  // Hyper-high sparkle
+      break;
+
+    case "huntress_slam_5":
+      // Crescendo slam #5: Maximum intensity (5+ huntress symbols - JACKPOT!)
+      playTone(30, 0.35, "sine", 0.8);          // Maximum bass impact
+      playTone(60, 0.32, "sine", 0.78, 0.01);   // Primary bass slam (maximum)
+      playNoise(0.2, 0.65, 0.02, 3500);         // Metallic clash (maximum)
+      playTone(80, 0.3, "sine", 0.7, 0.03);     // Secondary bass (maximum)
+      playTone(200, 0.25, "sine", 0.6, 0.05);   // Harmonic resonance (maximum)
+      playTone(3000, 0.18, "sine", 0.35, 0.04); // High-freq metallic ring (maximum)
+      playTone(1500, 0.15, "sine", 0.3, 0.06);  // Mid-range impact (maximum)
+      playTone(4500, 0.12, "sine", 0.25, 0.08); // Ultra-high sparkle (maximum)
+      playTone(6000, 0.1, "sine", 0.2, 0.1);    // Hyper-high sparkle (maximum)
+      playNoise(0.15, 0.3, 0.15, 5000);         // Celebratory high-freq burst
+      break;
+
+    case "multi_win":
+      // Multi-win celebration: stacked wins on multiple paylines
+      // Intense, celebratory sound to reinforce excitement
+      playTone(40, 0.2, "sine", 0.4);            // Deep bass impact
+      playNoise(0.15, 0.35, 0.02, 5500);         // Explosive sparkle
+      playChord([440, 660, 880, 1100], 0.25, "sine", 0.3, 0.05); // Rich harmony
+      playTone(1320, 0.2, "sine", 0.35, 0.15);   // High peak
+      playTone(1760, 0.15, "sine", 0.25, 0.2);   // Ultra-high sparkle
+      break;
+
+    case "scatter_win":
+      // 3+ scatters trigger - triumphant fanfare
+      playTone(523, 0.3, "sine", 0.35); // C5 - opening chord
+      playTone(659, 0.25, "sine", 0.3, 0.1); // E5
+      playTone(784, 0.25, "sine", 0.3, 0.2); // G5
+      playTone(1047, 0.4, "sine", 0.4, 0.35); // C6 - peak
+      playNoise(0.3, 0.15, 0.4, 6000);
+      break;
+
+    case "scatter_land":
+      // Scatter lands on reel - suspenseful click
+      playTone(800, 0.08, "sine", 0.25);
+      playTone(1200, 0.06, "sine", 0.2, 0.04);
+      playNoise(0.05, 0.04, 0.06, 3000);
+      break;
+
+    case "wild_land":
+      // Wild lands on reel - golden thunk
+      playTone(200, 0.15, "sine", 0.28);
+      playTone(400, 0.1, "sine", 0.22, 0.06);
+      playTone(600, 0.08, "sine", 0.18, 0.1);
+      break;
+
+    case "wild_lock":
+      // Wild locks in winning combo - solid lock sound
+      playTone(150, 0.2, "sine", 0.35);
+      playTone(300, 0.15, "sine", 0.25, 0.08);
+      playTone(450, 0.12, "sine", 0.2, 0.14);
+      break;
+
+    case "near_miss":
+      // Near-miss tension - ascending question that doesn't resolve
+      playTone(440, 0.1, "sine", 0.22);
+      playTone(550, 0.12, "sine", 0.2, 0.08);
+      playTone(660, 0.15, "sine", 0.18, 0.16); // Stays up - unresolved
+      break;
+
+    case "cascade_1":
+      playTone(800, 0.3, "sine", 0.2);
+      playTone(600, 0.25, "sine", 0.18, 0.1);
+      break;
+
+    case "cascade_2":
+      playNoise(0.08, 0.1, 0, 3000);
+      playTone(600, 0.2, "sine", 0.25);
+      playTone(800, 0.15, "sine", 0.22, 0.08);
+      playTone(1000, 0.18, "sine", 0.24, 0.16);
+      break;
+
+    case "cascade_3":
+      playTone(50, 0.12, "sine", 0.3);
+      playNoise(0.1, 0.15, 0, 4000);
+      playTone(440, 0.1, "sine", 0.28, 0.05);
+      playTone(660, 0.12, "sine", 0.3, 0.12);
+      playTone(880, 0.2, "sine", 0.32, 0.2);
+      break;
+
+    case "cascade_4":
+    case "cascade_5": {
+      const intensity = Math.min(parseInt(name.split("_")[1]), 8);
+      playTone(40 + intensity * 2, 0.15, "sine", 0.3 + intensity * 0.05);
+      playNoise(0.12, 0.12 + intensity * 0.02, 0, 4500 + intensity * 100);
+      playTone(440, 0.1, "sine", 0.3, 0.05);
+      playTone(660, 0.1, "sine", 0.32, 0.12);
+      playTone(880, 0.15, "sine", 0.34, 0.2);
+      playTone(1100, 0.2, "sine", 0.32, 0.28);
+      playChord([440, 660, 880, 1100], 0.25, "sine", 0.22 + intensity * 0.02, 0.38);
+      break;
+    }
+  }
+}
+
+/**
+ * Determine if a win should play win music
+ * Based on behavioral psychology: play win music on ANY net positive outcome
+ * This reinforces the gambling behavior (variable ratio reinforcement schedule)
+ */
+export function shouldPlayWinMusic(netGain: number, bet: number): boolean {
+  // Play win music if net gain is positive (even if small)
+  return netGain > 0;
+}
