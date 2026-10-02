@@ -16,7 +16,7 @@ Improvement Areas:
 5. User Experience - Accessibility, haptic feedback, better onboarding
    [x] Haptics wired (spin, win tiers, near-miss) via lib/haptics.ts
    [x] Keyboard spin shortcut (Space) + aria-label/aria-keyshortcuts on SPIN
-   [ ] Onboarding/tutorial - pending
+   [x] Onboarding tutorial (OnboardingTutorial.tsx) - 4-step first-visit overlay, once per browser
 6. Retention Features - Enhanced loyalty system and social features
    [x] Loyalty badge + daily bonus + daily streak present
    [ ] Social features - pending

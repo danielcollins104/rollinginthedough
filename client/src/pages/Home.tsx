@@ -17,6 +17,7 @@ import CurrencyToggle, { type CurrencyType } from "@/components/CurrencyToggle";
 import BottomNavBar from "@/components/BottomNavBar";
 import LoginPromptModal from "@/components/LoginPromptModal";
 import DailyBonusModal from "@/components/DailyBonusModal";
+import OnboardingTutorial, { hasSeenIntro } from "@/components/OnboardingTutorial";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useGameState } from "@/hooks/useGameState";
 import { useRetention } from "@/hooks/useRetention";
@@ -82,6 +83,7 @@ export default function Home() {
   const [externalShowScratch, setExternalShowScratch] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [showDailyBonus, setShowDailyBonus] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
   const [dailyBonusStreak, setDailyBonusStreak] = useState(1);
   const { isAuthenticated } = useAuth();
 
@@ -125,6 +127,14 @@ export default function Home() {
     setActiveCurrency(currency);
     setSelectedCurrency(currency);
   };
+
+  // Show the how-to-play tutorial once per browser, before anything else.
+  useEffect(() => {
+    if (!hasSeenIntro()) {
+      const t = setTimeout(() => setShowIntro(true), 600);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   // Show daily login bonus modal on app open (once per day)
   useEffect(() => {
@@ -409,6 +419,7 @@ export default function Home() {
       
       <ReferralScreen isOpen={showReferral} onClose={() => setShowReferral(false)} />
       <LoginPromptModal isOpen={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
+      {showIntro && <OnboardingTutorial onClose={() => setShowIntro(false)} />}
       {bonusGameType && (
         <BonusGameOverlay
           gameType={bonusGameType}
