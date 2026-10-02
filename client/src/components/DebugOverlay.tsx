@@ -3,6 +3,7 @@
  */
 
 import { useState } from "react";
+import { getAnalyticsSummary } from "@/lib/analytics";
 
 interface DebugStats {
   spins: number;
@@ -20,6 +21,8 @@ interface Props {
 
 export default function DebugOverlay({ stats }: Props) {
   const [collapsed, setCollapsed] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const analytics = showAnalytics ? getAnalyticsSummary() : null;
 
   const copy = async () => {
     try {
@@ -69,6 +72,30 @@ export default function DebugOverlay({ stats }: Props) {
             <div>nearMisses: {stats.nearMisses}</div>
             <div className="text-red-400">lastError: {stats.lastError ?? "none"}</div>
           </div>
+          <button
+            onClick={() => setShowAnalytics((s) => !s)}
+            className="mt-2 w-full"
+            style={{
+              background: "#1a1000",
+              color: "#FFD700",
+              border: "1px solid #D4AF37",
+              borderRadius: 4,
+              padding: "2px 6px",
+              fontSize: "0.7rem",
+              fontWeight: "bold",
+            }}
+          >
+            {showAnalytics ? "Hide analytics" : "Show analytics"}
+          </button>
+          {analytics && (
+            <div className="space-y-1 mt-2 pt-2" style={{ borderTop: "1px solid rgba(212,175,55,0.3)" }}>
+              <div>events: {analytics.total}</div>
+              <div>winRate: {(analytics.winRate * 100).toFixed(1)}%</div>
+              <div>rtpProxy: {(analytics.rtp * 100).toFixed(1)}%</div>
+              <div>jackpots: {analytics.counts["jackpot"] ?? 0}</div>
+              <div>nearMiss: {analytics.counts["near_miss"] ?? 0}</div>
+            </div>
+          )}
           <button
             onClick={copy}
             className="mt-2 w-full"

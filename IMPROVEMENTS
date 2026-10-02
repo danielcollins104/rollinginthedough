@@ -23,7 +23,7 @@ Improvement Areas:
 7. Analytics - Comprehensive tracking and reporting
    [x] Local-only analytics lib (client/src/lib/analytics.ts): spin/win/big_win/mega_win/jackpot/near_miss
    [x] getAnalyticsSummary() reports win rate + RTP proxy
-   [ ] Dashboard wiring - pending
+   [x] Dashboard wiring - analytics summary surfaced in DebugOverlay (toggle)
 8. Security & Compliance - Regular audits and enhanced protections
    [x] Global Express error middleware + 404 fallback + crash handlers
    [x] No stack-trace leakage on 500s
