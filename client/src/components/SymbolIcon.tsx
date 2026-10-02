@@ -19,31 +19,85 @@
  * linework, accent reds/ambers.
  */
 
-import { type SymbolId } from "@/hooks/useGameState";
+import { SYMBOLS, type SymbolId } from "@/hooks/useGameState";
 
 interface Props {
   symbolId?: SymbolId;
   size?: number;
   className?: string;
   style?: React.CSSProperties;
+  // When true the icon stretches to fill its (sized) parent, so tiles grow
+  // with the reel instead of staying at a fixed pixel size.
+  fill?: boolean;
 }
 
-export default function SymbolIcon({ symbolId, size = 48, className, style }: Props) {
+// Generated painterly art per symbol (Pirates Gold theme). Coin symbols keep
+// their crisp SVG faces so the Hold & Win values stay legible at small sizes.
+const SYMBOL_ART: Partial<Record<SymbolId, string>> = {
+  bread: "chest",
+  rolling: "anchor",
+  pretzel: "compass",
+  croissant: "cutlass",
+  cookie: "wheel",
+  cupcake: "wolf",
+  cake: "ship",
+  muffin: "goldbars",
+  bun: "wild",
+  huntress: "captain",
+  dough: "scatter",
+};
+
+/** Painterly symbol tile: generated art inside a silver (low) → gold (high)
+ *  ring, so the reels read as ornate coin medallions at a glance. */
+function ArtSymbol({ symbolId, size = 48, className, style }: Props) {
+  const art = SYMBOL_ART[symbolId as SymbolId];
+  if (!art) return null;
+  const def = SYMBOLS.find((s) => s.id === symbolId) ?? SYMBOLS[0];
+  const high = (def.payouts?.[2] ?? 0) >= 90; // top-tier symbols pay gold
+  const ring = high
+    ? "linear-gradient(135deg,#FFF3C4 0%,#FFD700 25%,#B8860B 55%,#FFD700 80%,#FFF3C4 100%)"
+    : "linear-gradient(135deg,#F5F7FA 0%,#C9D2DC 30%,#8B98A8 55%,#DDE4EC 80%,#F5F7FA 100%)";
+  return (
+    <span
+      className={className}
+      style={{
+        display: "inline-flex",
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        padding: Math.max(2, Math.round(size * 0.035)),
+        background: ring,
+        boxShadow: high
+          ? "0 0 10px rgba(255,215,0,0.55), inset 0 0 6px rgba(0,0,0,0.55)"
+          : "0 0 7px rgba(200,210,220,0.45), inset 0 0 6px rgba(0,0,0,0.5)",
+        ...style,
+      }}
+    >
+      <img
+        src={`/pg/${art}.png`}
+        alt={def.name}
+        draggable={false}
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: "50%",
+          objectFit: "cover",
+          display: "block",
+        }}
+      />
+    </span>
+  );
+}
+
+export default function SymbolIcon({ symbolId, size = 48, className, style, fill }: Props) {
+  const s = fill ? { ...style, width: "100%", height: "100%" } : style;
+  if (SYMBOL_ART[symbolId as SymbolId]) {
+    return <ArtSymbol symbolId={symbolId} size={size} className={className} style={s} />;
+  }
   switch (symbolId) {
-    case "bread": return <SageIcon        size={size} className={className} style={style} />;
-    case "rolling": return <BowIcon       size={size} className={className} style={style} />;
-    case "pretzel": return <DreamCatcher  size={size} className={className} style={style} />;
-    case "croissant": return <FeathersIcon size={size} className={className} style={style} />;
-    case "cookie": return <ArrowsIcon      size={size} className={className} style={style} />;
-    case "cupcake": return <WolfIcon       size={size} className={className} style={style} />;
-    case "cake": return <DrumIcon           size={size} className={className} style={style} />;
-    case "muffin": return <SunstonesIcon   size={size} className={className} style={style} />;
-    case "bun": return <FireIcon           size={size} className={className} style={style} />;
-    case "huntress": return <HuntressPhoto size={size} className={className} style={style} />;
-    case "dough": return <SpiritArrowIcon  size={size} className={className} style={style} />;
-    case "greenCoin": return <GreenCoinIcon size={size} className={className} style={style} />;
-    case "goldCoin": return <GoldCoinIcon  size={size} className={className} style={style} />;
-    default: return <HuntressPhoto         size={size} className={className} style={style} />;
+    case "greenCoin": return <GreenCoinIcon size={size} className={className} style={s} />;
+    case "goldCoin": return <GoldCoinIcon  size={size} className={className} style={s} />;
+    default: return <HuntressPhoto         size={size} className={className} style={s} />;
   }
 }
 

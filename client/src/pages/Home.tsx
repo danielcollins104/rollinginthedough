@@ -23,7 +23,7 @@ import { useRetention } from "@/hooks/useRetention";
 import { DailyLoginBonus } from "@/components/DailyLoginBonus";
 import { DailyStreakDisplay } from "@/components/DailyStreakDisplay";
 import { LevelUp } from "@/components/LevelUp";
-import { HuntressHero } from "@/components/HuntressHero";
+import { PirateHero } from "@/components/PirateHero";
 import { CabinetScene } from "@/components/CabinetScene";
 import { Missions } from "@/components/Missions";
 import { SessionTimeReward } from "@/components/SessionTimeReward";
@@ -267,8 +267,8 @@ export default function Home() {
                 }}
               >
                 <img
-                  src="/huntress-warrior-square.png"
-                  alt="Huntress"
+                  src="/pg/captain.png"
+                  alt="Pirate Captain"
                   draggable={false}
                   style={{
                     width: "100%",
@@ -280,7 +280,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <div className="font-display font-bold text-sm" style={{ color: "#D4AF37" }}>Huntress Warrior</div>
+                <div className="font-display font-bold text-sm" style={{ color: "#D4AF37" }}>Pirates Gold</div>
                 <div className="text-xs" style={{ color: "rgba(212,175,55,0.6)" }}>3+ Symbols = Bonus Round</div>
               </div>
             </div>
@@ -297,7 +297,7 @@ export default function Home() {
           serpent head does. Full bleed inside the column, painterly SVG
           character + scene composition. */}
       <div className="flex-shrink-0 w-full max-w-4xl mx-auto px-1 relative z-10 mt-2">
-        <HuntressHero height={280} glow />
+        <PirateHero height={280} glow />
       </div>
 
       {/* Main Slot Machine Area */}
@@ -331,6 +331,8 @@ export default function Home() {
           onScratchClose={() => setExternalShowScratch(false)}
           onScratchWin={(amount) => setGoldCoins((c) => c + amount)}
           selectedCurrency={selectedCurrency}
+          goldCoins={goldCoins}
+          greenCoins={greenCoins}
           stickyBonus={stickyBonus}
           stickyBonusSpinning={stickyBonusSpinning}
         />

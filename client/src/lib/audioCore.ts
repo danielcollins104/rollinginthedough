@@ -22,6 +22,8 @@
 let audioCtx: AudioContext | null = null;
 let masterLimiter: DynamicsCompressorNode | null = null;
 let masterGain: GainNode | null = null;
+let masterLowpass: BiquadFilterNode | null = null;
+let masterHighShelf: BiquadFilterNode | null = null;
 let muted = false; // the single source of truth for the mute toggle
 
 /**
@@ -39,16 +41,38 @@ export function getAudioContext(): AudioContext | null {
       audioCtx = new Ctx();
       masterGain = audioCtx.createGain();
       masterGain.gain.value = muted ? 0 : 1;
+      // Tame the harsh ultra-highs (4-6kHz band) that read as "blown
+      // speaker" on small drivers and clippy earbuds. The shelf cut
+      // starts rolling off at 3kHz with -9dB at 6kHz+ — keeps the
+      // sparkle, kills the sizzle.
+      masterHighShelf = audioCtx.createBiquadFilter();
+      masterHighShelf.type = "highshelf";
+      masterHighShelf.frequency.value = 3000;
+      masterHighShelf.gain.value = -9;
+      // Final brick-wall lowpass at 5kHz. Anything above this would
+      // alias on cheap DACs and distort on phone speakers. Nothing
+      // musical lives above 5kHz in our sounds; this just protects
+      // the destination from artifacts.
+      masterLowpass = audioCtx.createBiquadFilter();
+      masterLowpass.type = "lowpass";
+      masterLowpass.frequency.value = 5000;
+      masterLowpass.Q.value = 0.7;
       masterLimiter = audioCtx.createDynamicsCompressor();
-      // Aggressive but musical. threshold -8dB catches typical peaks
-      // before they hit the ceiling; ratio 12 gives fast limiting without
-      // audible pumping on dense win stings.
-      masterLimiter.threshold.value = -8;
-      masterLimiter.knee.value = 6;
-      masterLimiter.ratio.value = 12;
-      masterLimiter.attack.value = 0.003;
-      masterLimiter.release.value = 0.08;
-      masterGain.connect(masterLimiter);
+      // Slightly relaxed limiter (was -8dB / ratio 12) — the high-shelf
+      // and lowpass now take most of the load off the limiter, so we
+      // can use gentler settings without re-introducing the wind/pump
+      // that aggressive limiting caused on dense win stings.
+      masterLimiter.threshold.value = -6;
+      masterLimiter.knee.value = 8;
+      masterLimiter.ratio.value = 8;
+      masterLimiter.attack.value = 0.005;
+      masterLimiter.release.value = 0.12;
+      // Chain: gain → highshelf → lowpass → limiter → destination.
+      // EQ first, then lowpass, then safety limiter last so it only
+      // catches genuine peaks (not sizzle that EQ already removed).
+      masterGain.connect(masterHighShelf);
+      masterHighShelf.connect(masterLowpass);
+      masterLowpass.connect(masterLimiter);
       masterLimiter.connect(audioCtx.destination);
     }
     if (audioCtx.state === "suspended") {

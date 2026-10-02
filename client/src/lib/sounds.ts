@@ -231,9 +231,10 @@ export function playSound(name: SoundName) {
           playChord([523, 659, 880, 1109], 0.40, "sine", 0.10, 0.35);
           playTone(1760, 0.50, "sine", 0.06, 0.50);
         } else if (v === 1) {
-          // Sub-bass thunder
-          playTone(40, 0.30, "sine", 0.14);
-          playTone(80, 0.25, "sine", 0.12, 0.05);
+          // Sub-bass thunder — raised from 40Hz to 65Hz so phone
+          // speakers can reproduce without buzzing.
+          playTone(65, 0.30, "sine", 0.12);
+          playTone(95, 0.25, "sine", 0.10, 0.05);
           playArpeggio([220, 330, 440, 554, 659, 880], 0.15, 0.05, "sine", 0.09);
           playChord([440, 659, 880, 1109], 0.45, "sine", 0.10, 0.40);
           playTone(1320, 0.50, "sine", 0.06, 0.55);
@@ -247,15 +248,18 @@ export function playSound(name: SoundName) {
       }
       break;
 
-    case "jackpot":
+case "jackpot":
       // Maximum celebration. Peak gain 0.50. Multiple staggered arpeggios
       // for the "payout is still climbing" feeling.
+      // Sub-bass was 30/40Hz; raised to 60/70Hz so phone speakers can
+      // actually reproduce it. Below 60Hz the cone can't move fast
+      // enough and the result reads as wind-rumble.
       {
         const v = Math.floor(Math.random() * 2);
         if (v === 0) {
           // Rising storm
-          playTone(40, 0.40, "sine", 0.14);
-          playTone(80, 0.30, "sine", 0.12, 0.05);
+          playTone(70, 0.40, "sine", 0.12);
+          playTone(110, 0.30, "sine", 0.10, 0.05);
           // Three overlapping arpeggios at different speeds = chord-stack payoff
           playArpeggio([220, 277, 330, 440, 554, 659, 880], 0.18, 0.04, "sine", 0.08);
           playArpeggio([330, 440, 554, 659, 880, 1109, 1320], 0.18, 0.04, "sine", 0.07, 0.10);
@@ -263,13 +267,15 @@ export function playSound(name: SoundName) {
           playTone(2200, 0.80, "sine", 0.05, 0.60);
         } else {
           // Cathedral bells
-          playTone(30, 0.50, "sine", 0.12);
-          playTone(60, 0.40, "sine", 0.12, 0.04);
+          playTone(60, 0.50, "sine", 0.11);
+          playTone(90, 0.40, "sine", 0.10, 0.04);
           playArpeggio([196, 247, 294, 392, 494, 587, 784, 988], 0.20, 0.05, "sine", 0.08);
           playArpeggio([247, 330, 392, 494, 659, 784, 988, 1319], 0.18, 0.04, "sine", 0.07, 0.12);
           playChord([392, 494, 659, 784, 988, 1319], 0.80, "sine", 0.10, 0.55);
-          playTone(1976, 0.80, "sine", 0.05, 0.70);
-          playTone(2637, 0.70, "sine", 0.04, 0.80);
+          // Was 1976/2637Hz — the 2637Hz bell at high harmonic content
+          // stacked with the chord triggered the limiter and sounded
+          // "wind-like" via compressor pump. Capped at 1900Hz.
+          playTone(1900, 0.80, "sine", 0.05, 0.70);
         }
       }
       break;
@@ -305,12 +311,14 @@ export function playSound(name: SoundName) {
       playTone(600, 0.08, "sine", 0.10, 0.08, 300);
       break;
 
-    case "bonus_alert":
+case "bonus_alert":
       // Red-alert-strobe style: dissonant interval cluster + bass drop.
-      // This is the only place a *dissonant* chord is used — it reads
-      // as "warning, something big is coming" rather than "win."
+      // Square wave was previously used here, but square waves contain
+      // every odd harmonic and read as "buzzy / blown-speaker" on small
+      // speakers. Sine with a tight tritone gives the same urgency cue
+      // without the harmonic clutter.
       playTone(80, 0.18, "sine", 0.12);                  // Bass drop
-      playArpeggio([659, 784, 988, 1047], 0.10, 0.06, "square", 0.07);  // Square wave = urgency
+      playArpeggio([659, 784, 988, 1047], 0.10, 0.06, "sine", 0.07);  // Sine tritone = urgency
       playTone(1319, 0.30, "sine", 0.08, 0.20);
       break;
 
@@ -352,13 +360,18 @@ export function playSound(name: SoundName) {
         playTone(1500, 0.08, "sine", tailGain * 0.8, 0.06);
       }
       if (level >= 4) {
-        playTone(2200, 0.08, "sine", tailGain * 0.6, 0.07);
-        playTone(3000, 0.06, "sine", tailGain * 0.4, 0.08);
+        // Was 2200 + 3000Hz, capped at 3000 to stay below the master
+        // lowpass cutoff (5000Hz) with a safe margin.
+        playTone(2200, 0.08, "sine", tailGain * 0.5, 0.07);
+        playTone(2800, 0.06, "sine", tailGain * 0.35, 0.08);
       }
       if (level >= 5) {
-        // Jackpot-level slam: high harmonic shimmer
-        playTone(4400, 0.08, "sine", tailGain * 0.4, 0.08);
-        playTone(5500, 0.06, "sine", tailGain * 0.3, 0.10);
+        // Jackpot-level slam: high harmonic shimmer. Was 4400 + 5500Hz,
+        // which on small speakers hard-clipped to a distorted hiss
+        // (the "blown speaker" report). Capped at 3800/3500 so the
+        // shimmer is still felt but not above the master lowpass margin.
+        playTone(3500, 0.08, "sine", tailGain * 0.3, 0.08);
+        playTone(3800, 0.06, "sine", tailGain * 0.25, 0.10);
         playChord([220, 330, 440, 550, 660, 880], 0.30, "sine", 0.08, 0.10);
       }
       break;

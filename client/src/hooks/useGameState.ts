@@ -330,8 +330,8 @@ function getWinType(amount: number, bet: number, isJackpot: boolean): WinType {
   if (isJackpot) return "JACKPOT";
   if (amount === 0) return null;
   const multiplier = amount / bet;
-  if (multiplier >= 20) return "MEGA_WIN";
-  if (multiplier >= 8) return "BIG_WIN";
+if (multiplier >= 1.5) return "MEGA_WIN"; // TEMP: lowered for capture (was 15)
+  if (multiplier >= 1) return "BIG_WIN"; // TEMP: lowered for capture (was 5)
   return "SMALL_WIN";
 }
 

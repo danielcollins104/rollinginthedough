@@ -81,6 +81,23 @@ async function startServer() {
     serveStatic(app);
   }
 
+  // ===== GLOBAL EXPRESS ERROR MIDDLEWARE (4-arg, must come last) =====
+  // Catches any unhandled error from a route handler or async middleware
+  // so the client gets a clean 500 JSON instead of an HTML stack trace,
+  // and so the process never dies on a single bad request.
+  app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    const status = typeof err?.status === "number" ? err.status : 500;
+    const code = err?.code || "INTERNAL_ERROR";
+    console.error(`[ERR] ${req.method} ${req.path} -> ${status} ${code}:`, err?.message || err);
+    if (res.headersSent) return;
+    res.status(status).json({ ok: false, error: { code, message: err?.message || "Internal server error" } });
+  });
+
+  // ===== 404 FALLBACK =====
+  app.use((req, res) => {
+    res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: `No route for ${req.method} ${req.path}` } });
+  });
+
   // ===== START SERVER =====
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);
@@ -94,6 +111,15 @@ async function startServer() {
     console.log(`[SERVER] Health check: http://0.0.0.0:${port}/health`);
   });
 }
+
+// ===== PROCESS-LEVEL CRASH HANDLERS =====
+// Log + continue instead of dying. Re-throw on truly fatal signals.
+process.on("uncaughtException", (err) => {
+  console.error("[CRASH] uncaughtException:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[CRASH] unhandledRejection:", reason);
+});
 
 console.log("[MAIN] Starting server initialization");
 startServer().catch(err => {

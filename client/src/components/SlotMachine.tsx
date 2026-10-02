@@ -18,6 +18,8 @@ import JackpotMeters from "./JackpotMeters";
 import WinLineHighlight from "./WinLineHighlight";
 import SymbolIcon from "./SymbolIcon";
 import FreeSpinsDisplay from "./FreeSpinsDisplay";
+import { PayTableDrawer } from "./PayTableDrawer";
+import { IdleAmbiance } from "./IdleAmbiance";
 import IdleAnimations from "./IdleAnimations";
 import PaylineHighlight from "./PaylineHighlight";
 
@@ -56,6 +58,8 @@ interface Props {
   onScratchClose?: () => void;
   onScratchWin?: (amount: number) => void;
   selectedCurrency?: 'gold' | 'green';
+  goldCoins?: number;
+  greenCoins?: number;
   stickyBonus?: { totalWin: number; grandJackpot: boolean; locked: { reelIdx: number; rowIdx: number; type: "greenCoin" | "goldCoin" }[] } | null;
   stickyBonusSpinning?: boolean;
 }
@@ -101,7 +105,14 @@ function getRandomSymbolId(): SymbolId {
 
 // ─── Cabinet Frame Components ─────────────────────────────────────────────────
 
-function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
+function CabinetTopGlass({ freeSpins, isFullscreen, onToggleFullscreen, goldCoins = 0, greenCoins = 0, selectedCurrency = 'gold' }: {
+  freeSpins: number;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
+  goldCoins?: number;
+  greenCoins?: number;
+  selectedCurrency?: 'gold' | 'green';
+}) {
   return (
     <div className="relative" style={{
       background: "linear-gradient(180deg, #0d0512 0%, #1a0a25 40%, #2d0e30 100%)",
@@ -143,10 +154,10 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
                    textShadow: "0 0 25px rgba(212,175,55,0.6), 0 0 50px rgba(255,107,170,0.4)",
                    filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.7))",
                  }}>
-              HUNTRESS WARRIOR
+              PIRATES GOLD
             </div>
             <div className="font-numbers tracking-wider uppercase hidden sm:block" style={{ fontSize: "clamp(0.6rem, 1.5vw, 0.8rem)", color: "#FF6BAA" }}>
-              ◆ Spirit of the Plains ◆
+              ◆ Plunder the High Seas ◆
             </div>
           </div>
           {/* Right ornament: mirror (hidden on mobile) */}
@@ -160,14 +171,70 @@ function CabinetTopGlass({ freeSpins }: { freeSpins: number }) {
           }}>
             <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🏹</span>
           </div>
+          {/* Fullscreen toggle */}
+          <button
+            onClick={onToggleFullscreen}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            className="flex w-9 h-9 sm:w-10 sm:h-10 items-center justify-center shrink-0 rounded-lg transition-all"
+            style={{
+              background: "linear-gradient(180deg, #2a1a00, #1a1000)",
+              border: "2px solid #D4AF37",
+              color: "#FFD700",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+              fontSize: "1.1rem",
+              lineHeight: 1,
+            }}
+          >
+            {isFullscreen ? "⛶" : "⛗"}
+          </button>
+        </div>
+      </div>
+
+      {/* Dual-currency display: gold coins + green sweepstakes coins */}
+      <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
+        <div
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+          style={{
+            background: "linear-gradient(180deg, rgba(212,175,55,0.18) 0%, rgba(0,0,0,0.55) 100%)",
+            border: `2px solid ${selectedCurrency === 'gold' ? '#FFD700' : 'rgba(212,175,55,0.4)'}`,
+            boxShadow: selectedCurrency === 'gold' ? "0 0 14px rgba(255,215,0,0.55)" : "none",
+          }}
+        >
+          <span style={{ fontSize: "1rem", lineHeight: 1 }}>🪙</span>
+          <span className="font-numbers tabular-nums" style={{ color: "#FFD700", fontSize: "clamp(0.8rem, 2.4vw, 1.05rem)", textShadow: "0 0 8px rgba(255,215,0,0.7)" }}>
+            {goldCoins.toLocaleString()}
+          </span>
+          <span className="font-numbers uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.7)", fontSize: "0.55rem" }}>
+            GOLD
+          </span>
+        </div>
+        <div
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+          style={{
+            background: "linear-gradient(180deg, rgba(50,205,50,0.18) 0%, rgba(0,0,0,0.55) 100%)",
+            border: `2px solid ${selectedCurrency === 'green' ? '#90EE90' : 'rgba(50,205,50,0.4)'}`,
+            boxShadow: selectedCurrency === 'green' ? "0 0 14px rgba(144,238,144,0.55)" : "none",
+          }}
+        >
+          <span style={{ fontSize: "1rem", lineHeight: 1 }}>💚</span>
+          <span className="font-numbers tabular-nums" style={{ color: "#90EE90", fontSize: "clamp(0.8rem, 2.4vw, 1.05rem)", textShadow: "0 0 8px rgba(144,238,144,0.7)" }}>
+            {greenCoins.toLocaleString()}
+          </span>
+          <span className="font-numbers uppercase tracking-widest" style={{ color: "rgba(144,238,144,0.7)", fontSize: "0.55rem" }}>
+            SWEEPS
+          </span>
         </div>
       </div>
 
       {/* Free spins badge */}
       <FreeSpinsDisplay freeSpins={freeSpins} />
 
-      {/* Scrolling marquee - thematic legal disclaimer (hidden on mobile to save ~30px; visible on tablet+) */}
-      <div className="hidden sm:block overflow-hidden" style={{
+      {/* Idle ambiance: drifting medallions behind the cabinet body */}
+      <IdleAmbiance />
+
+      {/* Scrolling marquee - thematic legal disclaimer (hidden on mobile to save ~30px; visible on tablet+; hidden in fullscreen) */}
+      <div className="hidden sm:block overflow-hidden sm-top-marquee" style={{
         background: "linear-gradient(90deg, #0a0500, #1a0825, #0a0500)",
         border: "1px solid rgba(212,175,55,0.3)",
         borderRadius: "0.5rem",
@@ -462,7 +529,9 @@ function ReelStrip({ symbols, spinning, done, size = 80, reelIndex = 0 }: { symb
                 opacity: Math.max(0.25, 1 - blur * 0.06),
               }}
             >
-              <SymbolIcon symbolId={sym.id} size={Math.floor(size * 0.9)} />
+              <div style={{ aspectRatio: "1", width: "min(100%, 88%)", maxHeight: "88%" }}>
+                <SymbolIcon symbolId={sym.id} fill />
+              </div>
             </div>
           );
         })}
@@ -476,7 +545,7 @@ function ReelStrip({ symbols, spinning, done, size = 80, reelIndex = 0 }: { symb
 function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActive, cascadeWinningCells, cascadeAnimatingCells, cascadeGrid, stickyWildCells, wildLockAnimating, nearMissCells, nearMissAnimating, scatterSlowdownActive, lastWinType, scatterFanfareActive, symbolLockAnimating, displayGrid }: any) {
 
   return (
-    <div className="relative" style={{
+    <div className="sm-reel-frame relative" style={{
       // Ornate gold frame inspired by Starburst/maxresdefault references.
       // Triple-layer border: outer dark wood, middle gold bezel, inner purple.
       background: "linear-gradient(180deg, #030308 0%, #080814 50%, #030308 100%)",
@@ -597,7 +666,7 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
       {/* Reels — wrapped in cabinet-rim (CSS provides grid + gap, plus
           the gold gradient rim via ::before). flex-grow so the grid
           expands to fill cabinet space, not fixed 200px. */}
-      <div className="cabinet-rim relative" style={{ minHeight: "280px", flex: "1 1 auto" }}>
+      <div className="cabinet-rim sm-reel-grid relative" style={{ minHeight: "280px", flex: "1 1 auto" }}>
         {displayGrid.map((reel: SymbolId[], reelIdx: number) => (
           <div
             key={reelIdx}
@@ -716,15 +785,21 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
                     />
                   )}
                   {symId !== 'empty' && (
-                    <SymbolIcon
-                      symbolId={symId}
-                      size={80}
-                      className={`${isWin ? 'symbol-win-pop symbol-bounce' : ''}`}
-                      style={{
-                        filter: isWin ? "brightness(1.3) drop-shadow(0 0 8px #FFD700)" : "none",
-                        zIndex: 1,
-                      }}
-                    />
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{ padding: "5%", zIndex: 1, pointerEvents: "none" }}
+                    >
+                      <div style={{ aspectRatio: "1", width: "min(100%, 88%)", maxHeight: "88%" }}>
+                        <SymbolIcon
+                          symbolId={symId}
+                          fill
+                          className={`${isWin ? 'symbol-win-pop symbol-bounce' : ''}`}
+                          style={{
+                            filter: isWin ? "brightness(1.3) drop-shadow(0 0 8px #FFD700)" : "none",
+                          }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
               );
@@ -1067,6 +1142,8 @@ export default function SlotMachine({
   selectedCurrency = 'gold',
   stickyBonus,
   stickyBonusSpinning = false,
+  goldCoins = 0,
+  greenCoins = 0,
 }: Props) {
   const [reelDone, setReelDone] = useState<boolean[]>([true, true, true, true, true]);
   const [showWin, setShowWin] = useState(false);
@@ -1087,6 +1164,59 @@ export default function SlotMachine({
   const [shakeIntensity, setShakeIntensity] = useState<'none' | 'light' | 'medium' | 'heavy'>('none');
   const prevSpinCount = useRef(spinCount);
   const prevSpinning = useRef(false);
+
+  // Fullscreen mode — lets the cabinet occupy the whole screen with all controls visible
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const toggleFullscreen = useCallback(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  }, []);
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  // ── AUTO-FULLSCREEN ON ENTRY ──
+  // Entering the play area should take the screen. Browsers refuse fullscreen
+  // without a user gesture, so: try on mount, and if refused, arm a one-time
+  // "tap/click anywhere to enter fullscreen" fallback plus the header button.
+  const [needsFullscreenTap, setNeedsFullscreenTap] = useState(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || document.fullscreenElement) return;
+
+    let cancelled = false;
+    const attempt = el.requestFullscreen?.();
+    if (attempt && typeof attempt.catch === "function") {
+      attempt.catch(() => {
+        if (!cancelled && !document.fullscreenElement) setNeedsFullscreenTap(true);
+      });
+    } else {
+      setNeedsFullscreenTap(true);
+    }
+
+    const arm = () => {
+      if (document.fullscreenElement) { setNeedsFullscreenTap(false); return; }
+      const onGesture = () => {
+        rootRef.current?.requestFullscreen?.().catch(() => {});
+        setNeedsFullscreenTap(false);
+        window.removeEventListener("pointerdown", onGesture);
+        window.removeEventListener("keydown", onGesture);
+      };
+      window.addEventListener("pointerdown", onGesture, { once: true });
+      window.addEventListener("keydown", onGesture, { once: true });
+    };
+
+    const t = setTimeout(arm, 150);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, []);
 
   // Cascade system state
   const [cascadeActive, setCascadeActive] = useState(false);
@@ -1509,10 +1639,35 @@ export default function SlotMachine({
   const totalBet = bet * (paylines || 1);
 
   return (
-    <div 
-      className={`w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''}`}
-      style={{ minHeight: "450px" }}
+    <div
+      ref={rootRef}
+      className={`sm-root w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''} ${isFullscreen ? 'sm-fullscreen' : ''}`}
+      style={isFullscreen
+        ? { width: "100%", height: "100dvh", overflow: "hidden", background: "#050510", position: "relative" }
+        : { minHeight: "450px", position: "relative" }}
     >
+      {/* Ocean hue drift backdrop — slow color cycle so the cabinet feels alive */}
+      <div className="sm-ocean-drift" aria-hidden style={{
+        position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse 80% 60% at 50% 30%, rgba(13,59,71,0.75) 0%, rgba(7,34,46,0.55) 45%, rgba(3,10,16,0) 100%)',
+      }} />
+      <div className="sm-ocean-shimmer" aria-hidden style={{
+        position: 'absolute', top: 0, bottom: 0, left: 0, width: '40%', zIndex: 0, pointerEvents: 'none',
+        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)',
+        filter: 'blur(40px)',
+      }} />
+      {/* Tap-to-enter-fullscreen fallback — browsers refuse fullscreen without a
+          user gesture. Shown only until the first interaction takes the screen. */}
+      {needsFullscreenTap && !isFullscreen && (
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="sm-fs-prompt"
+          aria-label="Enter fullscreen"
+        >
+          <span aria-hidden="true">⛗</span> Tap to play fullscreen
+        </button>
+      )}
       {/* Win Particle Animations */}
       <WinParticles trigger={particleTrigger} winAmount={winAmount} isJackpot={lastWinType === "JACKPOT" } />
 
@@ -1611,15 +1766,22 @@ export default function SlotMachine({
         }} />
 
         {/* ── Top Glass ── */}
-        <CabinetTopGlass freeSpins={freeSpins} />
+        <CabinetTopGlass
+          freeSpins={freeSpins}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          goldCoins={goldCoins}
+          greenCoins={greenCoins}
+          selectedCurrency={selectedCurrency}
+        />
 
-        {/* ── Jackpot Meters (hidden on mobile to keep cabinet compact; jackpot is still shown in overlay during wins) ── */}
-        <div className="hidden sm:block w-full px-4 mb-3">
+        {/* ── Jackpot Meters (hidden on mobile; hidden in fullscreen so reels fill the view) ── */}
+        <div className="hidden sm:block w-full px-4 mb-3 sm-jackpot-row">
           <CabinetJackpotMeters jackpotPool={jackpotPool} />
         </div>
 
-        {/* ── Game Info Panel (hidden on mobile — long marquee adds ~40px height, info is on desktop) ── */}
-        <div className="hidden md:block w-full px-4 mb-2">
+        {/* ── Game Info Panel (hidden on mobile; hidden in fullscreen) ── */}
+        <div className="hidden md:block w-full px-4 mb-2 sm-info-row">
           <GameInfoPanel freeSpins={freeSpins} />
         </div>
 
@@ -1693,7 +1855,7 @@ export default function SlotMachine({
         )}
 
         {/* ── Reel Window ── */}
-        <div className="w-full px-4 mb-3">
+        <div className="sm-reel-slot w-full px-4 mb-3">
           <ReelWindow 
             reels={reels}
             spinning={spinning}
@@ -1755,6 +1917,8 @@ export default function SlotMachine({
         )}
 
         {/* ── Button Panel ── */}
+        <PayTableDrawer />
+        <div className="sm-controls-slot w-full">
         <CabinetButtonPanel
           bet={bet}
           setBet={setBet}
@@ -1777,10 +1941,93 @@ export default function SlotMachine({
           freeSpins={freeSpins}
           rescueOffered={rescueOffered}
         />
+        </div>
       </div>
 
       {/* Global styles */}
       <style>{`
+        /* ── One-screen play layout ── */
+        .sm-root.sm-fullscreen {
+          display: flex;
+          flex-direction: column;
+          height: 100dvh;
+          max-height: 100dvh;
+          overflow: hidden;
+          background: radial-gradient(ellipse at 50% 40%, #1a0a2a 0%, #050510 70%) !important;
+        }
+        /* Cabinet width owned by CSS (inline styles would override). */
+        .sm-root.sm-fullscreen { width: 600px; }
+        @media (min-width: 900px) {
+          .sm-root.sm-fullscreen { width: 980px; max-width: 96vw; }
+        }
+        /* Cabinet fills the viewport; inner column becomes a flex stack. */
+        .sm-root.sm-fullscreen > div {
+          flex: 1 1 auto;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+        /* Reel area absorbs leftover space so controls stay pinned in view. */
+        .sm-root.sm-fullscreen .sm-reel-slot {
+          flex: 1 1 auto;
+          min-height: 0;
+          display: flex;
+          align-items: stretch;
+          justify-content: center;
+          overflow: hidden;
+        }
+        /* Let the reel window + grid stretch to fill the slot. */
+        .sm-root.sm-fullscreen .sm-reel-frame {
+          height: 100%;
+          width: 100%;
+          max-width: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+        .sm-root.sm-fullscreen .sm-reel-grid {
+          flex: 1 1 auto;
+          height: 100%;
+        }
+        .sm-root.sm-fullscreen .cabinet-rim,
+        .sm-root.sm-fullscreen .reel-container {
+          min-height: 0 !important;
+        }
+        .sm-root.sm-fullscreen .reel-container {
+          height: 100%;
+        }
+        .sm-root.sm-fullscreen .sm-controls-slot {
+          flex: 0 0 auto;
+        }
+        /* Hide non-essential chrome in fullscreen so the reels own the screen. */
+        .sm-root.sm-fullscreen .sm-top-marquee,
+        .sm-root.sm-fullscreen .sm-jackpot-row,
+        .sm-root.sm-fullscreen .sm-info-row {
+          display: none !important;
+        }
+        /* Never page-scroll while playing fullscreen. */
+        body:has(.sm-root.sm-fullscreen) { overflow: hidden; }
+        .sm-fs-prompt {
+          position: fixed;
+          top: 10px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 90;
+          padding: 8px 16px;
+          border-radius: 999px;
+          border: 2px solid #D4AF37;
+          background: linear-gradient(180deg, #2a1a00, #1a1000);
+          color: #FFD700;
+          font-weight: 700;
+          font-size: 0.85rem;
+          letter-spacing: 0.03em;
+          box-shadow: 0 4px 18px rgba(0,0,0,0.6), 0 0 16px rgba(255,215,0,0.35);
+          cursor: pointer;
+        }
+        .sm-fullscreen .sm-cabinet-inner {
+          max-width: none;
+        }
+        .sm-fullscreen::-webkit-scrollbar { display: none; }
         @keyframes cabinetGlow {
           0%, 100% { opacity: 0.7; box-shadow: 0 0 12px #D4AF37, 0 0 24px rgba(212,175,55,0.4); }
           50%      { opacity: 1.0; box-shadow: 0 0 24px #FFD700, 0 0 48px rgba(255,215,0,0.7); }
@@ -1957,6 +2204,32 @@ export default function SlotMachine({
         @keyframes screenShakeHeavy { 0%, 100% { transform: translate(0, 0); } 15% { transform: translate(-8px, -5px) rotate(-1deg); } 30% { transform: translate(8px, 5px) rotate(1deg); } 45% { transform: translate(-6px, 3px) rotate(-1deg); } 60% { transform: translate(6px, -3px) rotate(1deg); } 75% { transform: translate(-4px, 2px) rotate(-1deg); } 90% { transform: translate(4px, -2px) rotate(0deg); } }
         .marquee-text { display: inline-block; white-space: nowrap; animation: marquee 30s linear infinite; }
         @keyframes marquee { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+        @keyframes cabinetCoinOrbit {
+          0%   { transform: translateY(-50%) rotate(0deg)   translateX(0px); }
+          25%  { transform: translateY(-58%) rotate(45deg)  translateX(8px); }
+          50%  { transform: translateY(-50%) rotate(90deg)  translateX(0px); }
+          75%  { transform: translateY(-42%) rotate(135deg) translateX(-8px); }
+          100% { transform: translateY(-50%) rotate(180deg) translateX(0px); }
+        }
+/* Slow ocean-light drift on the cabinet backdrop — the dominant hue
+           swings between deep teal and warm teal-green to mimic sun on water,
+           so the cabinet reads as alive even when nothing else is happening. */
+        @keyframes cabinetOceanDrift {
+          0%   { background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(13,59,71,0.75) 0%, rgba(7,34,46,0.55) 45%, rgba(3,10,16,0) 100%); }
+          33%  { background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(11,79,90,0.78) 0%, rgba(9,42,55,0.58) 45%, rgba(3,10,16,0) 100%); }
+          66%  { background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(18,52,68,0.78) 0%, rgba(6,28,38,0.58) 45%, rgba(3,10,16,0) 100%); }
+          100% { background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(13,59,71,0.75) 0%, rgba(7,34,46,0.55) 45%, rgba(3,10,16,0) 100%); }
+        }
+        .sm-ocean-drift { animation: cabinetOceanDrift 14s ease-in-out infinite; pointer-events: none; }
+        /* Wave shimmer — a subtle moving highlight that overlays the cabinet
+           backdrop so the eye picks up motion even at a glance. */
+        @keyframes cabinetShimmer {
+          0%   { transform: translateX(-30%) skewX(-15deg); opacity: 0; }
+          15%  { opacity: 0.08; }
+          85%  { opacity: 0.08; }
+          100% { transform: translateX(30%) skewX(-15deg); opacity: 0; }
+        }
+        .sm-ocean-shimmer { animation: cabinetShimmer 9s ease-in-out infinite; pointer-events: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         @media (max-width: 480px) {
