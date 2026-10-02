@@ -167,6 +167,18 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Split heavyweight third-party libs into long-lived vendor chunks.
+        // They change far less often than app code, so browsers keep them
+        // cached across deploys instead of re-downloading one 1.2MB blob.
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-trpc": ["@trpc/client", "@trpc/react-query", "@tanstack/react-query"],
+          "vendor-ui": ["wouter", "sonner", "lucide-react"],
+        },
+      },
+    },
   },
   server: {
     host: true,

@@ -1,21 +1,41 @@
 Improvement Areas:
 1. Game Balance Tuning - Adjust symbol weights and payout tables
+   [x] Symbol weights + payout tables present (useGameState.ts SYMBOLS)
+   [ ] Deeper RTP tuning / A-B on weights - pending
 2. Visual Enhancements - Better win animations and particle effects
+   [x] WinParticles + CoinParticles + winCellPulse + symbolWinPop present
+   [x] BigWinOverlay celebration (BIG/MEGA/JACKPOT)
 3. Sound System - Add sound variations and prevent habituation
+   [x] 3 randomized variants per major sound
+   [x] Master EQ chain (high-shelf -9dB @3kHz + 5kHz lowpass + relaxed limiter)
+   [x] Removed square wave (bonus_alert), capped ultra-highs, raised sub-bass (blown-speaker + wind fix)
 4. Performance Optimization - Code splitting and bundle optimization
+   [x] ScratchGame + DealsModal lazy-loaded (React.lazy + Suspense)
+   [x] Vendor chunk splitting (vendor-react / vendor-trpc / vendor-ui) in vite.config.ts
+   [x] Main bundle 1263kB -> 1096kB; modals now 6-9kB on-demand chunks
 5. User Experience - Accessibility, haptic feedback, better onboarding
+   [x] Haptics wired (spin, win tiers, near-miss) via lib/haptics.ts
+   [x] Keyboard spin shortcut (Space) + aria-label/aria-keyshortcuts on SPIN
+   [ ] Onboarding/tutorial - pending
 6. Retention Features - Enhanced loyalty system and social features
+   [x] Loyalty badge + daily bonus + daily streak present
+   [ ] Social features - pending
 7. Analytics - Comprehensive tracking and reporting
+   [x] Local-only analytics lib (client/src/lib/analytics.ts): spin/win/big_win/mega_win/jackpot/near_miss
+   [x] getAnalyticsSummary() reports win rate + RTP proxy
+   [ ] Dashboard wiring - pending
 8. Security & Compliance - Regular audits and enhanced protections
+   [x] Global Express error middleware + 404 fallback + crash handlers
+   [x] No stack-trace leakage on 500s
 
 Immediate Actions:
-- Adjust symbol weights in useGameState.ts
-- Enhance win animations in SlotMachine.tsx
-- Add sound variations to sounds.ts
-- Implement code splitting and lazy loading
-- Improve accessibility with ARIA labels and keyboard navigation
-- Add haptic feedback for mobile wins
-- Implement A/B testing framework for game mechanics
-- Enhance loyalty rewards and daily bonuses
-- Add notification system for promotions
-- Conduct security audit and compliance review
+- Adjust symbol weights in useGameState.ts [present; tuning pending]
+- Enhance win animations in SlotMachine.tsx [done]
+- Add sound variations to sounds.ts [done]
+- Implement code splitting and lazy loading [done]
+- Improve accessibility with ARIA labels and keyboard navigation [done]
+- Add haptic feedback for mobile wins [done]
+- Implement A/B testing framework for game mechanics [pending]
+- Enhance loyalty rewards and daily bonuses [present]
+- Add notification system for promotions [pending]
+- Conduct security audit and compliance review [hardening done; full audit pending]

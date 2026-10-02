@@ -5,14 +5,19 @@
  *           glass bezel, prominent SPIN button, gold/black aesthetic
  */
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, lazy, Suspense } from "react";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
 import { playSound, playWinSound, setSoundEnabled as setLibSoundEnabled, isSoundEnabled } from "@/lib/sounds";
 import { detectNearMisses, playNearMissSound } from "@/lib/nearMiss";
+import { haptics } from "@/lib/haptics";
+import { track } from "@/lib/analytics";
 import { WinParticles } from "./WinParticles";
 import CoinParticles from "./CoinParticles";
-import ScratchGame from "./ScratchGame";
-import DealsModal from "./DealsModal";
+// On-demand modals are code-split so they don't inflate the initial
+// bundle — they only load when the player opens them. BigWinOverlay
+// stays eager because it must render instantly at the big-win moment.
+const ScratchGame = lazy(() => import("./ScratchGame"));
+const DealsModal = lazy(() => import("./DealsModal"));
 import BigWinOverlay from "./BigWinOverlay";
 import JackpotMeters from "./JackpotMeters";
 import WinLineHighlight from "./WinLineHighlight";
@@ -1026,6 +1031,8 @@ function CabinetButtonPanel({
         <button
           onClick={() => { playSound("button_click"); spin(); }}
           disabled={!canSpin}
+          aria-label={freeSpins > 0 ? "Spin free game" : "Spin reels"}
+          aria-keyshortcuts="Space"
           className="flex-1 flex items-center justify-center gap-3 py-5 px-8 rounded-xl transition-all min-h-[80px]"
           style={{
             background: freeSpins > 0
@@ -1526,6 +1533,8 @@ export default function SlotMachine({
       setNearMissCells(new Set());
 
       if (soundEnabled) playSound("spin");
+      haptics.spin();
+      track("spin", { bet: totalBet });
 
       let initialScatterCount = 0;
       reels.forEach(reel => reel.forEach(symId => { if (isScatterSymbol(symId)) initialScatterCount++; }));
@@ -1592,9 +1601,10 @@ export default function SlotMachine({
           // unified audioCore mute flag, so the !soundMuted check is
           // belt-and-suspenders for the local React state.
           const winLineCount = winLines.length;
-          if (lastWinType === "JACKPOT") { playSound("jackpot"); }
-          else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
-          else if (lastWinType === "BIG_WIN") { playSound("big_win"); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
+          if (winAmount > 0) track("win", { bet: totalBet, win: winAmount });
+          if (lastWinType === "JACKPOT") { playSound("jackpot"); haptics.bigWin(); track("jackpot"); }
+          else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); haptics.bigWin(); track("mega_win"); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
+          else if (lastWinType === "BIG_WIN") { playSound("big_win"); haptics.win(); track("big_win"); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
           else { playWinSound(winLines.length); }
 
           // Coin particle audio: each "shower" of falling coins gets a
@@ -1624,6 +1634,7 @@ export default function SlotMachine({
             events.forEach((ev, i) => {
               setTimeout(() => playNearMissSound(ev), i * 200);
             });
+            if (events.length > 0) { haptics.nearMiss(); track("near_miss"); }
             // LDW only when player lost coins — gate on net loss.
             // (We don't have post-spin coins here; loss branch implies
             // a real net loss because the win branch is the alternative.)
@@ -1637,6 +1648,24 @@ export default function SlotMachine({
 
   const canSpin = !spinning && !cascadeActive && (coins >= bet || freeSpins > 0);
   const totalBet = bet * (paylines || 1);
+
+  // Keyboard accessibility: Space (or Enter) triggers a spin when a spin
+  // is allowed. Skips when the user is typing in an input/textarea or
+  // when a dialog is open so we never hijack typing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space" && e.key !== " ") return;
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || t?.isContentEditable) return;
+      if (!canSpin) return;
+      e.preventDefault();
+      playSound("button_click");
+      spin();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canSpin, spin]);
 
   return (
     <div
@@ -1714,23 +1743,27 @@ export default function SlotMachine({
 
       {/* Scratch Game modal (opens from bottom-nav 🎰 Scratch) */}
       {showScratchGame && (
-        <ScratchGame
-          onClose={() => {
-            setShowScratchGame(false);
-            onScratchClose?.();
-          }}
-          onWin={(amount) => onScratchWin?.(amount)}
-        />
+        <Suspense fallback={null}>
+          <ScratchGame
+            onClose={() => {
+              setShowScratchGame(false);
+              onScratchClose?.();
+            }}
+            onWin={(amount) => onScratchWin?.(amount)}
+          />
+        </Suspense>
       )}
 
       {/* Deals modal (opens from bottom-nav 🎁 Deals) */}
       {showDealsModal && (
-        <DealsModal
-          onClose={() => {
-            setShowDealsModal(false);
-            onDealsClose?.();
-          }}
-        />
+        <Suspense fallback={null}>
+          <DealsModal
+            onClose={() => {
+              setShowDealsModal(false);
+              onDealsClose?.();
+            }}
+          />
+        </Suspense>
       )}
 
       {/* ── Physical Cabinet Structure ── */}
