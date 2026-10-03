@@ -43,7 +43,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Sacred Sage",
     color: "#88CC88",
     bgColor: "#0a1a0a",
-    payouts: [2, 5, 12],
+    payouts: [5, 14, 32],
     weight: 30,
   },
   {
@@ -52,7 +52,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Warrior Bow",
     color: "#C8860A",
     bgColor: "#1a0e00",
-    payouts: [3, 8, 22],
+    payouts: [8, 22, 59],
     weight: 26,
   },
   {
@@ -61,7 +61,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Dream Catcher",
     color: "#9C7CF4",
     bgColor: "#150a2a",
-    payouts: [6, 18, 45],
+    payouts: [16, 49, 122],
     weight: 24,
   },
   {
@@ -70,7 +70,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Eagle Feathers",
     color: "#D4AF37",
     bgColor: "#1a1200",
-    payouts: [10, 25, 60],
+    payouts: [27, 68, 162],
     weight: 20,
   },
   {
@@ -79,7 +79,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Spirit Arrows",
     color: "#FF6B6B",
     bgColor: "#1a0808",
-    payouts: [15, 40, 90],
+    payouts: [41, 108, 243],
     weight: 16,
   },
   {
@@ -88,7 +88,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Spirit Wolf",
     color: "#88AACC",
     bgColor: "#0a1525",
-    payouts: [25, 75, 180],
+    payouts: [68, 203, 486],
     weight: 14,
   },
   {
@@ -97,7 +97,7 @@ export const SYMBOLS: Symbol[] = [
     name: "War Drum",
     color: "#A8482A",
     bgColor: "#1a0808",
-    payouts: [40, 125, 300],
+    payouts: [108, 338, 810],
     weight: 9,
   },
   {
@@ -106,7 +106,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Sunstones",
     color: "#FF6BAA",
     bgColor: "#250a1a",
-    payouts: [20, 50, 120],
+    payouts: [54, 135, 324],
     weight: 14,
   },
   {
@@ -115,7 +115,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Sacred Fire",
     color: "#FF6B1A",
     bgColor: "#1a0500",
-    payouts: [60, 180, 450],
+    payouts: [162, 486, 1215],
     weight: 8,
     isWild: true,
   },
@@ -125,7 +125,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Huntress Warrior",
     color: "#FF6BAA",
     bgColor: "#250a1a",
-    payouts: [100, 350, 1500],
+    payouts: [270, 945, 4050],
     weight: 6,
     isScatter: true,
   },
@@ -135,7 +135,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Spirit Arrow",
     color: "#FFD700",
     bgColor: "#1a1500",
-    payouts: [150, 750, 3000],
+    payouts: [405, 2025, 8100],
     weight: 4,
     isScatter: true,
   },
@@ -145,7 +145,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Green Coin",
     color: "#32CD32",
     bgColor: "#051a05",
-    payouts: [1, 2, 5],
+    payouts: [3, 5, 14],
     weight: 10,
   },
   {
@@ -154,7 +154,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Gold Coin",
     color: "#FFD700",
     bgColor: "#1a1500",
-    payouts: [2, 5, 10],
+    payouts: [5, 14, 27],
     weight: 6,
   },
 ];
@@ -330,8 +330,8 @@ function getWinType(amount: number, bet: number, isJackpot: boolean): WinType {
   if (isJackpot) return "JACKPOT";
   if (amount === 0) return null;
   const multiplier = amount / bet;
-if (multiplier >= 1.5) return "MEGA_WIN"; // TEMP: lowered for capture (was 15)
-  if (multiplier >= 1) return "BIG_WIN"; // TEMP: lowered for capture (was 5)
+  if (multiplier >= 15) return "MEGA_WIN";
+  if (multiplier >= 5) return "BIG_WIN";
   return "SMALL_WIN";
 }
 

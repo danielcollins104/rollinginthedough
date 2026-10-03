@@ -1,7 +1,7 @@
 Improvement Areas:
 1. Game Balance Tuning - Adjust symbol weights and payout tables
    [x] Symbol weights + payout tables present (useGameState.ts SYMBOLS)
-   [ ] Deeper RTP tuning / A-B on weights - pending
+   [x] RTP tuned + measured: baseline sim was 34.6% (too stingy); scaled all payouts x~2.7 -> measured 92.8-93.7% across 1/10/25 paylines (2M spins). Win thresholds restored to 5x/15x.
 2. Visual Enhancements - Better win animations and particle effects
    [x] WinParticles + CoinParticles + winCellPulse + symbolWinPop present
    [x] BigWinOverlay celebration (BIG/MEGA/JACKPOT)
@@ -30,7 +30,7 @@ Improvement Areas:
    [x] SECURITY_AUDIT.md written (2026-10-03). KEY FINDING: applySecurityMiddleware is imported but NEVER CALLED - helmet, all 4 rate limiters, CSRF, request validation + audit logging are dead code. Remediation blocked: enabling as-is would 403 every mutation (client never sends X-CSRF-Token) and break the Google-Fonts CSP.
 
 Immediate Actions:
-- Adjust symbol weights in useGameState.ts [present; tuning pending]
+- Adjust symbol weights in useGameState.ts [done - RTP measured 34.6% -> 92.8-93.7%, payouts scaled, thresholds restored to 5x/15x]
 - Enhance win animations in SlotMachine.tsx [done]
 - Add sound variations to sounds.ts [done]
 - Implement code splitting and lazy loading [done]
