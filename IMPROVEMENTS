@@ -19,7 +19,7 @@ Improvement Areas:
    [x] Onboarding tutorial (OnboardingTutorial.tsx) - 4-step first-visit overlay, once per browser
 6. Retention Features - Enhanced loyalty system and social features
    [x] Loyalty badge + daily bonus + daily streak present
-   [ ] Social features - pending
+   [x] Social: referrals (ReferralScreen) + local solo "Practice Board" (clearly labelled, not live multiplayer)
 7. Analytics - Comprehensive tracking and reporting
    [x] Local-only analytics lib (client/src/lib/analytics.ts): spin/win/big_win/mega_win/jackpot/near_miss
    [x] getAnalyticsSummary() reports win rate + RTP proxy
@@ -36,6 +36,6 @@ Immediate Actions:
 - Improve accessibility with ARIA labels and keyboard navigation [done]
 - Add haptic feedback for mobile wins [done]
 - Implement A/B testing framework for game mechanics [done — client/src/lib/ab.ts + win_threshold exposure wired]
-- Enhance loyalty rewards and daily bonuses [present]
+- Enhance loyalty rewards and daily bonuses [present; practice board added for social]
 - Add notification system for promotions [done — client/src/lib/promotions.ts + runPromotions wired in Home]
 - Conduct security audit and compliance review [hardening done; full audit pending]

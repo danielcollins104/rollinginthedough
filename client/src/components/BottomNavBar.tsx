@@ -14,6 +14,7 @@ interface Props {
   onReferrals: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  onBoard?: () => void;
 }
 
 interface NavItem {
@@ -31,6 +32,7 @@ export default function BottomNavBar({
   onScratch,
   onMissions,
   onReferrals,
+  onBoard,
   soundEnabled,
   onToggleSound,
 }: Props) {
@@ -66,6 +68,11 @@ export default function BottomNavBar({
       icon: "👥",
       label: "Refer",
       onClick: onReferrals,
+    },
+    {
+      icon: "🏆",
+      label: "Board",
+      onClick: onBoard ?? (() => {}),
     },
     {
       icon: soundEnabled ? "🔊" : "🔇",

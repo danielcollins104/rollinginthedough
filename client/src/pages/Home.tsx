@@ -31,6 +31,7 @@ import { Missions } from "@/components/Missions";
 import { SessionTimeReward } from "@/components/SessionTimeReward";
 import ReferralScreen, { FloatingReferralBadge } from "@/components/ReferralScreen";
 import { Toasts } from "@/components/Toasts";
+import PracticeBoard from "@/components/PracticeBoard";
 import DebugOverlay from "@/components/DebugOverlay";
 
 
@@ -111,6 +112,7 @@ export default function Home() {
   const [showMissions, setShowMissions] = useState(false);
   const [showSessionReward, setShowSessionReward] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
+  const [showBoard, setShowBoard] = useState(false);
 
   const handleCurrencyChange = (currency: CurrencyType) => {
     // If switching to green (Sweeps), check if user is authenticated
@@ -426,6 +428,7 @@ export default function Home() {
       )}
       
       <ReferralScreen isOpen={showReferral} onClose={() => setShowReferral(false)} />
+      {showBoard && <PracticeBoard onClose={() => setShowBoard(false)} />}
       <LoginPromptModal isOpen={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
       {showIntro && <OnboardingTutorial onClose={() => setShowIntro(false)} />}
       {bonusGameType && (
@@ -462,6 +465,7 @@ export default function Home() {
         onScratch={() => setExternalShowScratch(true)}
         onMissions={() => setShowMissions(true)}
         onReferrals={() => setShowReferral(true)}
+        onBoard={() => setShowBoard(true)}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
       />
