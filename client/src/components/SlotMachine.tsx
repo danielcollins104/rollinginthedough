@@ -11,6 +11,7 @@ import { playSound, playWinSound, setSoundEnabled as setLibSoundEnabled, isSound
 import { detectNearMisses, playNearMissSound } from "@/lib/nearMiss";
 import { haptics } from "@/lib/haptics";
 import { track } from "@/lib/analytics";
+import { recordExposure, variantOf } from "@/lib/ab";
 import { WinParticles } from "./WinParticles";
 import CoinParticles from "./CoinParticles";
 // On-demand modals are code-split so they don't inflate the initial
@@ -1535,6 +1536,7 @@ export default function SlotMachine({
       if (soundEnabled) playSound("spin");
       haptics.spin();
       track("spin", { bet: totalBet });
+      recordExposure("win_threshold");
 
       let initialScatterCount = 0;
       reels.forEach(reel => reel.forEach(symId => { if (isScatterSymbol(symId)) initialScatterCount++; }));
@@ -1602,6 +1604,7 @@ export default function SlotMachine({
           // belt-and-suspenders for the local React state.
           const winLineCount = winLines.length;
           if (winAmount > 0) track("win", { bet: totalBet, win: winAmount });
+          if (winAmount > 0) recordExposure("win_threshold", true);
           if (lastWinType === "JACKPOT") { playSound("jackpot"); haptics.bigWin(); track("jackpot"); }
           else if (lastWinType === "MEGA_WIN") { playSound("mega_win"); haptics.bigWin(); track("mega_win"); if (winLineCount >= 3) setTimeout(() => playSound("multi_win"), 400); }
           else if (lastWinType === "BIG_WIN") { playSound("big_win"); haptics.win(); track("big_win"); if (winLineCount >= 2) setTimeout(() => playSound("multi_win"), 400); }
