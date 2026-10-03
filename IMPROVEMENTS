@@ -37,5 +37,5 @@ Immediate Actions:
 - Add haptic feedback for mobile wins [done]
 - Implement A/B testing framework for game mechanics [done — client/src/lib/ab.ts + win_threshold exposure wired]
 - Enhance loyalty rewards and daily bonuses [present]
-- Add notification system for promotions [pending]
+- Add notification system for promotions [done — client/src/lib/promotions.ts + runPromotions wired in Home]
 - Conduct security audit and compliance review [hardening done; full audit pending]

@@ -18,6 +18,7 @@ import BottomNavBar from "@/components/BottomNavBar";
 import LoginPromptModal from "@/components/LoginPromptModal";
 import DailyBonusModal from "@/components/DailyBonusModal";
 import OnboardingTutorial, { hasSeenIntro } from "@/components/OnboardingTutorial";
+import { runPromotions } from "@/lib/promotions";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useGameState } from "@/hooks/useGameState";
 import { useRetention } from "@/hooks/useRetention";
@@ -134,6 +135,13 @@ export default function Home() {
       const t = setTimeout(() => setShowIntro(true), 600);
       return () => clearTimeout(t);
     }
+  }, []);
+
+  // Evaluate the local promotion schedule a few seconds after load so
+  // promos don't collide with the onboarding / daily-bonus modals.
+  useEffect(() => {
+    const t = setTimeout(() => runPromotions(1), 4000);
+    return () => clearTimeout(t);
   }, []);
 
   // Show daily login bonus modal on app open (once per day)
