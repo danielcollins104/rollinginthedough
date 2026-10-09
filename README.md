@@ -1,96 +1,83 @@
-# Lucky Spins Slot Machine - Improvement Guide
+# Rolling in the Dough
 
-This document outlines key areas for improving the Lucky Spins slot machine application based on the current codebase analysis.
+A full-stack social casino slot machine — pirate-themed ("Pirates Gold"), with dual-currency play, a Hold & Win bonus, progressive jackpots, and Square/Coinbase payment processing.
 
-## Current State Assessment
+![Main game](screenshot-1-main-game.png)
 
-The Lucky Spins application is a React-based slot machine game with the following key features:
-- Dual currency system (Gold coins for free play, Green coins for real value)
-- Progressive jackpot system
-- Bonus games triggered by special symbols
-- Sound design based on psychological principles
-- Responsive design for mobile and desktop
-- Security features including authentication and payment processing
+## Features
 
-## Key Areas for Improvement
+- **Slot machine core** — 5-reel cabinet with 25 paylines, wilds, scatters, cascading wins, and near-miss mechanics; RTP tuned to ~93% (verified by 2M-spin simulation)
+- **Dual currency** — Gold Coins (free play, generous daily bonuses) and Green Coins (sweepstakes, cash-out eligible)
+- **Bonus games** — Vegas-style sticky coin Hold & Win, scratch cards, bonus wheel, coin flip
+- **Progressive jackpots** — MINI / MINOR / MAJOR / GRAND tiers with 2% contribution
+- **Retention systems** — daily streaks, achievements, onboarding tutorial, local practice leaderboard, local A/B testing framework
+- **Payments** — Square Checkout API for coin purchases, Coinbase Commerce for crypto, cash-out system ($5 minimum, 100 coins = $1)
+- **Audio** — Web Audio API sound design with per-tier win sounds, haptics on mobile
+- **Security** — bcrypt auth, rate limiting, helmet CSP, payment verification, anti-cheat validation (see [SECURITY_AUDIT.md](SECURITY_AUDIT.md))
 
-### 1. Game Mechanics & Probability
-- **Symbol Distribution**: Current symbol weights may need adjustment for optimal player engagement
-- **Win Frequency**: Consider adjusting hit frequency for better player retention
-- **Bonus Trigger Rates**: Evaluate if bonus game triggers occur at psychologically optimal rates
-- **Jackpot Contribution**: Review the 2% contribution rate to ensure sustainable jackpot growth
+## Tech stack
 
-### 2. User Experience Enhancements
-- **Onboarding Flow**: Improve initial user experience with better tutorials
-- **Visual Feedback**: Enhance win celebrations with more dramatic animations
-- **Sound Feedback**: Consider adding more varied sound effects to prevent habituation
-- **Haptic Feedback**: Add vibration feedback for mobile users on wins
-- **Accessibility**: Improve screen reader support and color contrast
+| Layer | Tech |
+|---|---|
+| Client | React 19, Vite 7, Tailwind CSS 4, Radix UI, wouter, framer-motion |
+| API | tRPC 11 over Express 4 |
+| Database | PostgreSQL via Drizzle ORM |
+| Payments | Square SDK, Coinbase Commerce |
+| Testing | Vitest (120 tests) |
+| Tooling | TypeScript 5.9, pnpm 10, Prettier |
 
-### 3. Technical Improvements
-- **Performance Optimization**: Consider code splitting and lazy loading for better initial load times
-- **State Management**: Evaluate if Redux or Zustand would be beneficial for complex state
-- **Testing**: Increase test coverage, particularly for edge cases in game logic
-- **Error Handling**: Improve error boundaries and user-friendly error messages
-- **Build Optimization**: Optimize bundle size for faster loading
+## Getting started
 
-### 4. Monetization & Retention
-- **Daily Rewards**: Consider implementing more varied daily reward systems
-- **Loyalty Program**: Enhance the existing streak system with more meaningful rewards
-- **Social Features**: Consider adding friend invitations or leaderboards
-- **Notification System**: Implement push notifications for promotions and bonuses
-- **A/B Testing Framework**: Set up framework for testing different game mechanics
+**Prerequisites:** Node.js ≥ 20.19 (or ≥ 22.12), pnpm 10, a PostgreSQL database.
 
-### 5. Content & Theme
-- **New Themes**: Consider adding seasonal or holiday-themed variations
-- **New Symbols**: Regularly introduce new symbols to keep the game fresh
-- **Bonus Games**: Add variety to bonus games beyond the current Huntress bonus
-- **Story Elements**: Consider adding light narrative elements or achievements
-- **Sound Library**: Expand the sound effects library for more variety
+```bash
+pnpm install
+cp .env.example .env   # fill in DATABASE_URL, JWT_SECRET, etc.
+pnpm db:push           # generate + run migrations
+pnpm dev               # starts server + Vite on http://localhost:3000
+```
 
-### 6. Analytics & Metrics
-- **Player Retention**: Track daily active users, session length, and retention rates
-- **Monetization Metrics**: Monitor conversion rates, average revenue per user
-- **Game Balance**: Track RTP (Return to Player) and volatility metrics
-- **User Feedback**: Implement in-game feedback mechanisms
-- **Heat Mapping**: Consider tracking where users interact most with the interface
+See [.env.example](.env.example) for all configuration options (Square, Coinbase, OAuth).
 
-### 7. Security & Compliance
-- **Regular Audits**: Schedule regular security audits
-- **Compliance**: Ensure compliance with gambling regulations in target jurisdictions
-- **Data Protection**: Enhance data protection measures
-- **Fraud Prevention**: Enhance fraud detection systems
-- **Responsible Gaming**: Add more responsible gaming features
+## Scripts
 
-## Implementation Priorities
+| Command | Description |
+|---|---|
+| `pnpm dev` | Dev server with HMR |
+| `pnpm build` | Production build (client + server bundle in `dist/`) |
+| `pnpm start` | Run production build |
+| `pnpm check` | Typecheck (`tsc --noEmit`) |
+| `pnpm test` | Run the Vitest suite |
+| `pnpm verify` | Typecheck + tests |
+| `pnpm db:push` | Generate and apply Drizzle migrations |
+| `pnpm format` | Prettier write |
 
-### High Priority (Immediate)
-1. **Game Balance Tuning**: Adjust symbol weights and payout tables for optimal engagement
-2. **Performance Optimization**: Implement code splitting and optimize bundle size
-3. **Enhanced Visual Feedback**: Improve win animations and particle effects
-4. **Sound Variety**: Add more sound variations to prevent habituation
+## Project structure
 
-### Medium Priority (Short Term)
-1. **Enhanced Loyalty System**: Add more meaningful rewards to the streak system
-2. **Social Features**: Implement basic social sharing or friend features
-3. **Notification System**: Add push notifications for promotions
-4. **Accessibility Improvements**: Enhance ARIA labels and keyboard navigation
+```
+client/          React app (Vite root)
+  src/components/  Slot machine, overlays, modals, shop UI
+  src/lib/         Game engine, audio, analytics, A/B, promotions
+server/          Express + tRPC backend
+  _core/           Server bootstrap, OAuth, security middleware, context
+  routers/         tRPC routers (game, shop, cashout, achievements, ...)
+shared/          Types shared between client and server
+drizzle/         Generated migrations
+docs/            Design and research notes
+```
 
-### Lower Priority (Long Term)
-1. **New Game Modes**: Consider adding tournament modes or special events
-2. **Advanced Analytics**: Implement comprehensive analytics dashboard
-3. **Cross-Platform**: Consider developing native mobile apps
-4. **Blockchain Integration**: Explore blockchain-based features for transparency
+## Deployment
 
-## Recommendations for Immediate Action
+- **Docker** — see [Dockerfile](Dockerfile) and [docker-compose.yml](docker-compose.yml)
+- **Render** — see [render.yaml](render.yaml); the server binds `0.0.0.0` and exposes `/health`
 
-Based on the code review, here are specific recommendations:
+## Documentation
 
-1. **Adjust Symbol Weights**: Review the symbol weights in `useGameState.ts` to ensure proper hit frequency
-2. **Enhance Win Celebrations**: Improve the win animations in `SlotMachine.tsx` with more dramatic effects
-3. **Add Sound Variations**: Create multiple variations of win sounds to prevent player habituation
-4. **Optimize Bundle Size**: Implement dynamic imports for non-critical components
-5. **Improve Error Handling**: Add more robust error boundaries throughout the application
-6. **Enance Accessibility**: Add proper ARIA labels and keyboard navigation support
-7. **Add Haptic Feedback**: Implement vibration API for mobile wins
-8. **Implement A/B Testing**: Set up framework for testing different game mechanics
+- [SECURITY_AUDIT.md](SECURITY_AUDIT.md) — security findings and remediation status
+- [docs/IMPROVEMENT_GUIDE.md](docs/IMPROVEMENT_GUIDE.md) — improvement ideas and priorities
+- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) / [todo.md](todo.md) — delivery history and roadmap
+- [PLAY_STORE_LISTING.md](PLAY_STORE_LISTING.md) — store copy and assets
+
+## License
+
+[MIT](LICENSE) © Daniel Collins
