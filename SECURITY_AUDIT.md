@@ -8,12 +8,21 @@ Method: read-only inspection of `server/`, `client/`, `package.json`.
 
 | # | Finding | Severity | Status |
 |---|---------|----------|--------|
-| 1 | Security middleware imported but never applied | **High** | Documented, remediation blocked |
-| 2 | Naive enablement would 403 all mutations (CSRF) | **High** | Blocker on #1 |
-| 3 | Naive enablement would break design fonts (CSP) | **Medium** | Blocker on #1 |
+| 1 | Security middleware imported but never applied | **High** | **Fixed** (2026-10-09): safe subset wired in `index.ts` |
+| 2 | Naive enablement would 403 all mutations (CSRF) | **High** | Avoided: CSRF now opt-in via `SecurityMiddlewareOptions.csrf` |
+| 3 | Naive enablement would break design fonts (CSP) | **Medium** | Fixed: `styleSrc`/`fontSrc` allow-list Google Fonts; COEP disabled |
 | 4 | `'unsafe-inline'` in script/style CSP | Low | Accepted (noted) |
 | 5 | `sameSite: "none"` cookie without unconditional `secure` | Low–Medium | Noted |
 | 6 | No secrets committed; client reads no `process.env` | — | Pass |
+
+> **Remediation update (2026-10-09):** `applySecurityMiddleware` is now called in
+> `server/_core/index.ts`, enabling helmet (with corrected CSP), request
+> validation, all four rate limiters, and audit logging. CSRF remains opt-in
+> until the client implements the `X-CSRF-Token` round-trip (finding #2).
+> Additional fixes shipped with it: `trust proxy` set for Render/NGINX
+> (express-rate-limit v8 rejects `X-Forwarded-For` otherwise), `ws:`/`wss:`
+> allowed in `connectSrc` in development for Vite HMR, and
+> `Cross-Origin-Embedder-Policy` disabled to avoid blocking cross-origin assets.
 
 ## 1. Security middleware is dead code (High)
 
@@ -90,13 +99,16 @@ but the conditional `secure` should be called out for non-TLS deployments.
 
 ## Recommended remediation (in order)
 
-1. **Do not** enable `applySecurityMiddleware` wholesale — it will break the app.
-2. Enable the **safe subset**: helmet (with corrected `fontSrc` / `styleSrc`),
-   request validation, the four rate limiters, audit logging.
+1. ~~**Do not** enable `applySecurityMiddleware` wholesale — it will break the app.~~
+   Superseded: the middleware is now opt-in for CSRF, so wholesale enablement
+   is safe. Done 2026-10-09.
+2. ~~Enable the **safe subset**: helmet (with corrected `fontSrc` / `styleSrc`),
+   request validation, the four rate limiters, audit logging.~~ Done 2026-10-09.
 3. Implement the CSRF token round-trip client-side **before** enabling
-   `csrfMiddleware`.
+   `csrfMiddleware` (then pass `{ csrf: true }` to `applySecurityMiddleware`).
 4. Self-host the fonts (removes the CSP exception and improves privacy).
 5. Make `secure: true` unconditional in production cookie config.
 
 No code changes were made in this audit — findings only, pending decisions on
-CSRF strategy and font hosting.
+CSRF strategy and font hosting. *(Update 2026-10-09: items 1–2 have since been
+implemented; the audit text above is preserved for context.)*
