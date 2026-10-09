@@ -74,14 +74,25 @@ export const securityHeadersMiddleware = helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      // Google Fonts: index.css imports stylesheets from fonts.googleapis.com
+      // which in turn load font files from fonts.gstatic.com. Both hosts must
+      // be allow-listed or the Playfair/Oswald/Cormorant typography breaks.
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc: ["'self'", "data:", "https:"],
-      fontSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+      // Vite dev server uses a WebSocket for HMR; 'self' does not reliably
+      // cover ws:/wss: across browsers, so allow it in development only.
+      connectSrc:
+        process.env.NODE_ENV === "development"
+          ? ["'self'", "ws:", "wss:"]
+          : ["'self'"],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"],
     },
   },
+  // COEP: require-corp would block cross-origin assets that don't send CORP
+  // headers (e.g. some font/image hosts), breaking the design.
+  crossOriginEmbedderPolicy: false,
   hsts: {
     maxAge: 31536000, // 1 year
     includeSubDomains: true,
@@ -171,9 +182,32 @@ export const auditLoggingMiddleware = (
 };
 
 /**
- * Apply all security middleware to Express app
+ * Options for applySecurityMiddleware.
  */
-export function applySecurityMiddleware(app: any) {
+export interface SecurityMiddlewareOptions {
+  /**
+   * Enable CSRF token validation. Defaults to false.
+   *
+   * WARNING: the client does not yet perform the X-CSRF-Token round-trip
+   * (it never reads the header set on GET responses nor echoes it back on
+   * mutations), so enabling this rejects every tRPC mutation with 403.
+   * Only enable after the client implements the token round-trip.
+   * See SECURITY_AUDIT.md, finding #2.
+   */
+  csrf?: boolean;
+}
+
+/**
+ * Apply the security middleware stack to the Express app.
+ *
+ * Wires up everything EXCEPT CSRF (opt-in, see SecurityMiddlewareOptions):
+ * helmet security headers, request validation, the four rate limiters
+ * (api/login/payment/spin), and audit logging.
+ */
+export function applySecurityMiddleware(
+  app: any,
+  options: SecurityMiddlewareOptions = {}
+) {
   const { apiLimiter, loginLimiter, paymentLimiter, spinLimiter } =
     createRateLimiters();
 
@@ -183,8 +217,10 @@ export function applySecurityMiddleware(app: any) {
   // Apply request validation
   app.use(requestValidationMiddleware);
 
-  // Apply CSRF protection
-  app.use(csrfMiddleware);
+  // Apply CSRF protection (opt-in — client round-trip not implemented yet)
+  if (options.csrf) {
+    app.use(csrfMiddleware);
+  }
 
   // Apply general rate limiting
   app.use("/api/", apiLimiter);

@@ -33,24 +33,36 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
+  // Trust the first proxy hop (Render/NGINX terminate TLS and set
+  // X-Forwarded-For). express-rate-limit v8 throws a validation error when
+  // X-Forwarded-For is present but the proxy is not trusted.
+  app.set("trust proxy", 1);
+
   // ===== HEALTH CHECK MIDDLEWARE - MUST BE FIRST =====
-  console.log("[SETUP] Adding health check middleware");
+  // Registered before security middleware so load-balancer probes are never
+  // rate-limited or blocked. Intentionally no per-request logging here.
   app.use((req, res, next) => {
-    console.log(`[HEALTH-MW] ${req.method} ${req.url}`);
     const url = req.originalUrl || req.url;
     if (url === "/health" || url.startsWith("/health?")) {
-      console.log("[HEALTH-MW] ✓ HEALTH CHECK MATCHED");
       return res.status(200).json({ ok: true, timestamp: Date.now(), url });
     }
-    console.log("[HEALTH-MW] ✗ Not health check, calling next()");
     next();
   });
 
-  // ===== REQUEST LOGGING =====
-  app.use((req, res, next) => {
-    console.log(`[LOG-MW] ${req.method} ${req.path}`);
-    next();
-  });
+  // ===== SECURITY MIDDLEWARE =====
+  // Helmet headers, request validation, rate limiting (api/login/payment/
+  // spin), audit logging. CSRF stays off until the client implements the
+  // X-CSRF-Token round-trip — see SECURITY_AUDIT.md and
+  // SecurityMiddlewareOptions.csrf.
+  applySecurityMiddleware(app);
+
+  // ===== REQUEST LOGGING (development only) =====
+  if (process.env.NODE_ENV === "development") {
+    app.use((req, res, next) => {
+      console.log(`[LOG-MW] ${req.method} ${req.path}`);
+      next();
+    });
+  }
 
   // ===== BODY PARSING =====
   app.use(express.json());
