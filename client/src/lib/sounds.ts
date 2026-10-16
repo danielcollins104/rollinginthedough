@@ -121,8 +121,33 @@ export function playWinSound(winCount: number) {
   }
 }
 
+/**
+ * Per-sound rate limiting. A single spin can legitimately trigger 15+
+ * plays (5 reel stops, 5 sticky-lock events, staggered coin drops, win
+ * sting, cascade levels). Individually tuned, stacked they read as a
+ * harsh wall of sines. Coin drops / wild locks / scatter lands only need
+ * to be *felt* — dropping repeats that arrive right on top of the last
+ * one keeps the mix clean without changing any single sound's timbre.
+ */
+const lastPlayAt: Partial<Record<SoundName, number>> = {};
+const MIN_INTERVAL_MS: Partial<Record<SoundName, number>> = {
+  coin_drop: 120,
+  wild_lock: 200,
+  wild_land: 140,
+  scatter_land: 140,
+  reel_stop: 70,
+  near_miss: 400,
+  ldw: 400,
+  button_click: 30,
+};
+
 export function playSound(name: SoundName) {
   if (isCoreMuted()) return;
+
+  const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const minGap = MIN_INTERVAL_MS[name] ?? 0;
+  if (minGap && now - (lastPlayAt[name] ?? -Infinity) < minGap) return;
+  lastPlayAt[name] = now;
 
   switch (name) {
     case "spin": {

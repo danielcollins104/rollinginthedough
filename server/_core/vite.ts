@@ -80,10 +80,29 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Hashed assets are immutable; HTML must always revalidate so a redeploy
+  // (which wipes old hashed bundles via emptyOutDir) never leaves a cached
+  // index.html pointing at JS that no longer exists.
+  app.use(
+    express.static(distPath, {
+      setHeaders(res, filePath) {
+        if (filePath.endsWith(".html")) {
+          res.setHeader("Cache-Control", "no-cache");
+        }
+      },
+    })
+  );
+
+  // Missing built assets are a real 404. Falling back to index.html here
+  // returns HTML with 200 for a JS request, which the browser executes as a
+  // module, MIME-checks, and blocks — a silent blank page after redeploys.
+  app.use("/assets", (_req, res) => {
+    res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Asset not found" } });
+  });
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

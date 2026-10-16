@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from "react";
+import { useLocation } from "wouter";
 import { SYMBOLS, type SymbolId, type WinLine, type WinType } from "@/hooks/useGameState";
 import { playSound, playWinSound, setSoundEnabled as setLibSoundEnabled, isSoundEnabled } from "@/lib/sounds";
 import { detectNearMisses, playNearMissSound } from "@/lib/nearMiss";
@@ -28,6 +29,7 @@ import { PayTableDrawer } from "./PayTableDrawer";
 import { IdleAmbiance } from "./IdleAmbiance";
 import IdleAnimations from "./IdleAnimations";
 import PaylineHighlight from "./PaylineHighlight";
+import CitySkylineScene from "./CitySkylineScene";
 
 const BET_OPTIONS = [10, 25, 50, 100, 200];
 const PAYLINE_OPTIONS = [1, 5, 10, 15, 20, 25];
@@ -68,6 +70,10 @@ interface Props {
   greenCoins?: number;
   stickyBonus?: { totalWin: number; grandJackpot: boolean; locked: { reelIdx: number; rowIdx: number; type: "greenCoin" | "goldCoin" }[] } | null;
   stickyBonusSpinning?: boolean;
+  onDailyBonus?: () => void;
+  level?: number;
+  xp?: number;
+  xpToNext?: number;
 }
 
 function getSymbol(id: SymbolId) {
@@ -111,125 +117,180 @@ function getRandomSymbolId(): SymbolId {
 
 // ─── Cabinet Frame Components ─────────────────────────────────────────────────
 
-function CabinetTopGlass({ freeSpins, isFullscreen, onToggleFullscreen, goldCoins = 0, greenCoins = 0, selectedCurrency = 'gold' }: {
+/** Dual-currency balance pill: GC = gold, SC = cyan ("Sweeps"). */
+function CurrencyStat({ active, color, dim, glow, label, value, icon }: {
+  active: boolean;
+  color: string;
+  dim: string;
+  glow: string;
+  label: string;
+  value: number;
+  icon: string;
+}) {
+  return (
+    <div
+      className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+      style={{
+        background: "linear-gradient(180deg, rgba(20,10,35,0.9) 0%, rgba(5,3,12,0.95) 100%)",
+        border: `1.5px solid ${active ? color : dim}`,
+        boxShadow: active ? `0 0 12px ${glow}` : "none",
+      }}
+    >
+      <span style={{ fontSize: "0.8rem", lineHeight: 1 }}>{icon}</span>
+      <span className="font-numbers uppercase" style={{ color: dim, fontSize: "0.55rem", letterSpacing: "0.08em" }}>
+        {label}
+      </span>
+      <span className="font-numbers tabular-nums font-bold" style={{ color, fontSize: "0.78rem", textShadow: `0 0 8px ${glow}`, lineHeight: 1 }}>
+        {value.toLocaleString()}
+      </span>
+    </div>
+  );
+}
+
+/** Purple neon gift chip with live countdown to the next daily bonus. */
+function DailyBonusChip({ onClick }: { onClick?: () => void }) {
+  const [remain, setRemain] = useState("…");
+  useEffect(() => {
+    const tick = () => {
+      const last = Number(localStorage.getItem("lastDailyBonus") || 0);
+      const left = last + 24 * 3600 * 1000 - Date.now();
+      if (!last || left <= 0) setRemain("READY");
+      else {
+        const h = Math.floor(left / 3600000);
+        const m = Math.floor((left % 3600000) / 60000);
+        setRemain(`${h}H ${String(m).padStart(2, "0")}M`);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, []);
+  const ready = remain === "READY";
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 transition-transform active:scale-95"
+      aria-label={`Daily bonus, ${ready ? "ready to claim" : `available in ${remain}`}`}
+    >
+      <span
+        className="flex items-center justify-center rounded-full"
+        style={{
+          width: 34,
+          height: 34,
+          fontSize: "1rem",
+          background: "radial-gradient(circle at 32% 28%, #3b1163 0%, #1c0836 70%)",
+          border: "2px solid #b026ff",
+          boxShadow: `0 0 14px rgba(176,38,255,${ready ? 0.9 : 0.5}), inset 0 1px 0 rgba(233,213,255,0.3)`,
+          animation: ready ? "dailyBonusPulse 1.2s ease-in-out infinite" : "none",
+        }}
+      >
+        🎁
+      </span>
+      <span className="flex flex-col items-start leading-none">
+        <span className="font-numbers uppercase" style={{ fontSize: "0.5rem", letterSpacing: "0.1em", color: "rgba(233,213,255,0.85)" }}>
+          DAILY BONUS
+        </span>
+        <span className="font-numbers tabular-nums font-bold" style={{ fontSize: "0.7rem", color: ready ? "#FFD700" : "#c084fc", textShadow: ready ? "0 0 8px rgba(255,215,0,0.7)" : "0 0 8px rgba(192,132,252,0.6)" }}>
+          {remain}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function CabinetTopGlass({ freeSpins, isFullscreen, onToggleFullscreen, goldCoins = 0, greenCoins = 0, selectedCurrency = 'gold', onDailyBonus }: {
   freeSpins: number;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   goldCoins?: number;
   greenCoins?: number;
   selectedCurrency?: 'gold' | 'green';
+  onDailyBonus?: () => void;
 }) {
   return (
     <div className="relative" style={{
-      background: "linear-gradient(180deg, #0d0512 0%, #1a0a25 40%, #2d0e30 100%)",
-      borderBottom: "3px solid #D4AF37",
+      background: "linear-gradient(180deg, #0a0514 0%, #150827 55%, #1d0c33 100%)",
+      borderBottom: "2px solid rgba(168,85,247,0.55)",
       borderRadius: "1rem 1rem 0 0",
-      padding: "clamp(8px, 2vw, 12px) clamp(10px, 3vw, 16px) clamp(6px, 1.5vw, 8px)",
+      padding: "4px 10px 6px",
       position: "relative",
       overflow: "hidden",
     }}>
-      {/* Cabinet edge lighting - top */}
+      {/* Neon purple edge lighting — top of the machine */}
       <div className="absolute top-0 left-0 right-0 h-1" style={{
-        background: "linear-gradient(90deg, #D4AF37, #F5E6C8, #FFD700, #F5E6C8, #D4AF37)",
-        boxShadow: "0 0 20px #FFD700, 0 0 40px #D4AF37",
+        background: "linear-gradient(90deg, #7c3aed, #c084fc, #e9d5ff, #c084fc, #7c3aed)",
+        boxShadow: "0 0 18px #a855f7, 0 0 36px #7c3aed",
         animation: "cabinetGlow 3s ease-in-out infinite",
       }} />
 
-      {/* Game title area */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Left ornament: warrior bow arrow icon (hidden on mobile) */}
-          <div className="hidden sm:flex w-10 h-10 items-center justify-center" style={{
-            background: "radial-gradient(circle, #4A1A5C 0%, #1A0A2A 100%)",
-            borderRadius: "50%",
-            boxShadow: "0 0 15px rgba(255,107,170,0.5), inset 0 0 8px rgba(212,175,55,0.4)",
-            border: "2px solid #D4AF37",
-            animation: "cabinetOrnamentGlow 5s ease-in-out infinite",
-          }}>
-            <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🏹</span>
-          </div>
-          <div className="text-center flex-1">
-            <div className="font-display font-black tracking-widest uppercase"
-                 style={{
-                   fontSize: "clamp(0.95rem, 3.2vw, 1.5rem)",
-                   letterSpacing: "0.1em",
-                   background: "linear-gradient(135deg, #D4AF37 0%, #F5E6C8 30%, #FFD700 50%, #FF6BAA 75%, #D4AF37 100%)",
-                   WebkitBackgroundClip: "text",
-                   WebkitTextFillColor: "transparent",
-                   backgroundClip: "text",
-                   textShadow: "0 0 25px rgba(212,175,55,0.6), 0 0 50px rgba(255,107,170,0.4)",
-                   filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.7))",
-                 }}>
-              PIRATES GOLD
-            </div>
-            <div className="font-numbers tracking-wider uppercase hidden sm:block" style={{ fontSize: "clamp(0.6rem, 1.5vw, 0.8rem)", color: "#FF6BAA" }}>
-              ◆ Plunder the High Seas ◆
-            </div>
-          </div>
-          {/* Right ornament: mirror (hidden on mobile) */}
-          <div className="hidden sm:flex w-10 h-10 items-center justify-center" style={{
-            background: "radial-gradient(circle, #4A1A5C 0%, #1A0A2A 100%)",
-            borderRadius: "50%",
-            boxShadow: "0 0 15px rgba(255,107,170,0.5), inset 0 0 8px rgba(212,175,55,0.4)",
-            border: "2px solid #D4AF37",
-            transform: "scaleX(-1)",
-            animation: "cabinetOrnamentGlow 5s ease-in-out infinite",
-          }}>
-            <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>🏹</span>
-          </div>
-          {/* Fullscreen toggle */}
-          <button
-            onClick={onToggleFullscreen}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            className="flex w-9 h-9 sm:w-10 sm:h-10 items-center justify-center shrink-0 rounded-lg transition-all"
-            style={{
-              background: "linear-gradient(180deg, #2a1a00, #1a1000)",
-              border: "2px solid #D4AF37",
-              color: "#FFD700",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-              fontSize: "1.1rem",
-              lineHeight: 1,
-            }}
-          >
-            {isFullscreen ? "⛶" : "⛗"}
-          </button>
-        </div>
-      </div>
+      {/* Soft light rays fanning down from behind the logo */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background:
+          "conic-gradient(from 180deg at 50% 0%, transparent 0deg, rgba(168,85,247,0.10) 14deg, transparent 30deg, rgba(255,215,0,0.06) 48deg, transparent 62deg, rgba(168,85,247,0.10) 82deg, transparent 100deg)",
+      }} />
 
-      {/* Dual-currency display: gold coins + green sweepstakes coins */}
-      <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
-        <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-          style={{
-            background: "linear-gradient(180deg, rgba(212,175,55,0.18) 0%, rgba(0,0,0,0.55) 100%)",
-            border: `2px solid ${selectedCurrency === 'gold' ? '#FFD700' : 'rgba(212,175,55,0.4)'}`,
-            boxShadow: selectedCurrency === 'gold' ? "0 0 14px rgba(255,215,0,0.55)" : "none",
-          }}
-        >
-          <span style={{ fontSize: "1rem", lineHeight: 1 }}>🪙</span>
-          <span className="font-numbers tabular-nums" style={{ color: "#FFD700", fontSize: "clamp(0.8rem, 2.4vw, 1.05rem)", textShadow: "0 0 8px rgba(255,215,0,0.7)" }}>
-            {goldCoins.toLocaleString()}
-          </span>
-          <span className="font-numbers uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.7)", fontSize: "0.55rem" }}>
-            GOLD
-          </span>
+      {/* Fullscreen toggle — top-left corner */}
+      <button
+        onClick={onToggleFullscreen}
+        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        className="absolute left-2 top-3 z-20 flex w-8 h-8 items-center justify-center rounded-lg transition-all active:scale-95"
+        style={{
+          background: "linear-gradient(180deg, #2b1145, #160827)",
+          border: "1.5px solid rgba(168,85,247,0.6)",
+          color: "#c084fc",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.5)",
+          fontSize: "0.95rem",
+          lineHeight: 1,
+        }}
+      >
+        {isFullscreen ? "⛶" : "⛗"}
+      </button>
+
+      {/* Header art: the real Pirate's Gold reference band (neon skyline +
+          dripping liquid-gold logo + chains), sliced from the owned key art.
+          Desktop: GC chip far-left, SC + daily bonus far-right (glass level).
+          Mobile: chips stacked over the band's baked-in status area (veiled). */}
+      <div className="relative flex justify-center">
+        <div className="relative" style={{ width: "min(100%, 560px)" }}>
+          <img
+            src="/pg/header-band.png"
+            alt="Pirate's Gold"
+            draggable={false}
+            style={{ width: "100%", display: "block", borderRadius: 10, boxShadow: "0 0 24px rgba(124,58,237,0.35), 0 0 10px rgba(212,175,55,0.35)" }}
+          />
+          {/* Veil over the baked-in status chips at the band's right edge —
+              live chips go on top so balances are real */}
+          <div className="absolute right-0 top-0 bottom-0 lg:hidden" style={{ width: "30%", background: "linear-gradient(270deg, rgba(10,5,20,0.95) 25%, rgba(10,5,20,0.55) 70%, transparent)", borderRadius: "0 10px 10px 0" }} />
+          <div className="lg:hidden absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col items-end gap-1">
+            <CurrencyStat
+              active={selectedCurrency === 'gold'}
+              color="#FFD700" dim="rgba(212,175,55,0.45)" glow="rgba(255,215,0,0.6)"
+              label="GC" value={goldCoins} icon="🪙"
+            />
+            <CurrencyStat
+              active={selectedCurrency === 'green'}
+              color="#41E3FF" dim="rgba(65,227,255,0.4)" glow="rgba(65,227,255,0.55)"
+              label="SC" value={greenCoins} icon="💠"
+            />
+            <DailyBonusChip onClick={onDailyBonus} />
+          </div>
         </div>
-        <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-          style={{
-            background: "linear-gradient(180deg, rgba(50,205,50,0.18) 0%, rgba(0,0,0,0.55) 100%)",
-            border: `2px solid ${selectedCurrency === 'green' ? '#90EE90' : 'rgba(50,205,50,0.4)'}`,
-            boxShadow: selectedCurrency === 'green' ? "0 0 14px rgba(144,238,144,0.55)" : "none",
-          }}
-        >
-          <span style={{ fontSize: "1rem", lineHeight: 1 }}>💚</span>
-          <span className="font-numbers tabular-nums" style={{ color: "#90EE90", fontSize: "clamp(0.8rem, 2.4vw, 1.05rem)", textShadow: "0 0 8px rgba(144,238,144,0.7)" }}>
-            {greenCoins.toLocaleString()}
-          </span>
-          <span className="font-numbers uppercase tracking-widest" style={{ color: "rgba(144,238,144,0.7)", fontSize: "0.55rem" }}>
-            SWEEPS
-          </span>
+        {/* Desktop status: pinned to the glass edges, off the band art */}
+        <div className="hidden lg:block absolute left-3 top-1/2 -translate-y-1/2 z-10">
+          <CurrencyStat
+            active={selectedCurrency === 'gold'}
+            color="#FFD700" dim="rgba(212,175,55,0.45)" glow="rgba(255,215,0,0.6)"
+            label="GC" value={goldCoins} icon="🪙"
+          />
+        </div>
+        <div className="hidden lg:flex absolute right-3 top-1/2 -translate-y-1/2 z-10 items-center gap-3">
+          <CurrencyStat
+            active={selectedCurrency === 'green'}
+            color="#41E3FF" dim="rgba(65,227,255,0.4)" glow="rgba(65,227,255,0.55)"
+            label="SC" value={greenCoins} icon="💠"
+          />
+          <DailyBonusChip onClick={onDailyBonus} />
         </div>
       </div>
 
@@ -241,11 +302,11 @@ function CabinetTopGlass({ freeSpins, isFullscreen, onToggleFullscreen, goldCoin
 
       {/* Scrolling marquee - thematic legal disclaimer (hidden on mobile to save ~30px; visible on tablet+; hidden in fullscreen) */}
       <div className="hidden sm:block overflow-hidden sm-top-marquee" style={{
-        background: "linear-gradient(90deg, #0a0500, #1a0825, #0a0500)",
-        border: "1px solid rgba(212,175,55,0.3)",
+        background: "linear-gradient(90deg, #07030f, #1c0b33, #07030f)",
+        border: "1px solid rgba(168,85,247,0.35)",
         borderRadius: "0.5rem",
         padding: "4px 8px",
-        marginTop: "8px",
+        marginTop: "6px",
       }}>
         <div className="marquee-text text-xs font-numbers px-2" style={{ color: "#C8860A", fontSize: "0.6rem" }}>
           ◆ FREE SWEEPSTAKES GAME — NO PURCHASE NECESSARY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🔥 SACRED FIRE WILD SUBSTITUTES ALL ◆ ⚔️ 3 HUNTRESS = BONUS ROUND ◆ 🌟 3 SPIRIT ARROWS = 10 FREE SPINS ◆ 🌟 5 SPIRIT ARROWS = JACKPOT ◆ 🐺 SPIRIT WOLF PAYS UP TO 180X ◆ 🏹 HUNT BY THE LIGHT OF THE FULL MOON ◆
@@ -552,18 +613,17 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
 
   return (
     <div className="sm-reel-frame relative" style={{
-      // Ornate gold frame inspired by Starburst/maxresdefault references.
-      // Triple-layer border: outer dark wood, middle gold bezel, inner purple.
-      background: "linear-gradient(180deg, #030308 0%, #080814 50%, #030308 100%)",
-      border: "4px solid #2A1A0A",
+      // Dark reel vault with gold + neon purple edging (Pirate's Gold theme).
+      background: "linear-gradient(180deg, #07030f 0%, #0c0618 50%, #07030f 100%)",
+      border: "3px solid #241239",
       borderRadius: "10px",
       boxShadow: `
         inset 0 0 60px rgba(0,0,0,0.9),
-        inset 0 0 0 1px rgba(212,175,55,0.4),
-        inset 0 0 0 3px rgba(74,26,92,0.6),
-        inset 0 0 0 4px rgba(212,175,55,0.5),
-        0 0 25px rgba(212,175,55,0.25),
-        0 0 50px rgba(255,107,170,0.1)
+        inset 0 0 0 1px rgba(212,175,55,0.5),
+        inset 0 0 0 4px rgba(124,58,237,0.45),
+        inset 0 0 0 5px rgba(212,175,55,0.4),
+        0 0 22px rgba(168,85,247,0.35),
+        0 0 44px rgba(212,175,55,0.18)
       `,
       padding: "10px",
       position: "relative",
@@ -609,8 +669,8 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
         boxShadow: "inset 0 0 40px rgba(212,175,55,0.05)",
       }} />
 
-      {/* Payline indicator columns — Starburst-style numbered circles flanking the reels */}
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-7 flex flex-col gap-1.5 z-10 py-2 px-1 rounded" style={{
+      {/* Payline indicator columns — Starburst-style numbered circles flanking the reels (desktop only; too tight on phones) */}
+      <div className="hidden sm:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-7 flex-col gap-1.5 z-10 py-2 px-1 rounded" style={{
         background: "linear-gradient(180deg, rgba(20,10,5,0.6), rgba(40,20,10,0.6))",
         border: "1px solid rgba(212,175,55,0.3)",
         boxShadow: "inset 0 0 8px rgba(0,0,0,0.6), 0 0 8px rgba(212,175,55,0.15)",
@@ -633,7 +693,7 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
           </div>
         ))}
       </div>
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-7 flex flex-col gap-1.5 z-10 py-2 px-1 rounded" style={{
+      <div className="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-7 flex-col gap-1.5 z-10 py-2 px-1 rounded" style={{
         background: "linear-gradient(180deg, rgba(20,10,5,0.6), rgba(40,20,10,0.6))",
         border: "1px solid rgba(212,175,55,0.3)",
         boxShadow: "inset 0 0 8px rgba(0,0,0,0.6), 0 0 8px rgba(212,175,55,0.15)",
@@ -814,6 +874,35 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
         ))}
       </div>
 
+      {/* Ambient neon payline rays — one gold, one purple, cutting diagonally
+          across the reels like the Pirate's Gold key art. Subtle screen-blend
+          glow; real win lines still paint over this via WinLineHighlight. */}
+      <svg
+        className="absolute inset-0 pointer-events-none neon-rays"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        style={{ zIndex: 6, mixBlendMode: "screen" }}
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="rayGold" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#FFD700" stopOpacity="0" />
+            <stop offset="50%" stopColor="#FFD700" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="#FFD700" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="rayPurple" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#B026FF" stopOpacity="0" />
+            <stop offset="50%" stopColor="#B026FF" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#B026FF" stopOpacity="0" />
+          </linearGradient>
+          <filter id="rayGlow" x="-10%" y="-60%" width="120%" height="220%">
+            <feGaussianBlur stdDeviation="1" />
+          </filter>
+        </defs>
+        <line x1="-2" y1="24" x2="102" y2="62" stroke="url(#rayGold)" strokeWidth="1.3" filter="url(#rayGlow)" />
+        <line x1="-2" y1="78" x2="102" y2="22" stroke="url(#rayPurple)" strokeWidth="1.1" filter="url(#rayGlow)" />
+      </svg>
+
       {/* Win line highlight overlay */}
       <WinLineHighlight winLines={winLines} show={showWin && !cascadeActive} />
       
@@ -828,123 +917,380 @@ function ReelWindow({ reels, spinning, reelDone, winLines, showWin, cascadeActiv
   );
 }
 
+// ─── Desktop side-panel chrome (Pirate's Gold fullscreen layout) ─────────────
+
+function NeonSwitch({ on, onToggle, disabled = false, ariaLabel }: {
+  on: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={disabled}
+      role="switch"
+      aria-checked={on}
+      aria-label={ariaLabel}
+      className="relative block transition-transform active:scale-95"
+      style={{
+        width: 46, height: 24, borderRadius: 999,
+        background: on ? "linear-gradient(180deg, #7c3aed, #a855f7)" : "#1c1030",
+        border: `2px solid ${on ? "#c084fc" : "rgba(124,58,237,0.55)"}`,
+        boxShadow: on ? "0 0 14px rgba(168,85,247,0.8)" : "inset 0 2px 4px rgba(0,0,0,0.6)",
+        opacity: disabled ? 0.5 : 1,
+        transition: "all 0.2s ease",
+      }}
+    >
+      <span
+        className="absolute rounded-full"
+        style={{
+          width: 16, height: 16, top: 2,
+          left: on ? 24 : 2,
+          background: on ? "#ffffff" : "#a78bfa",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.6)",
+          transition: "left 0.2s ease",
+        }}
+      />
+    </button>
+  );
+}
+
+function PanelCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="w-full rounded-xl px-3 py-3"
+      style={{
+        background: "linear-gradient(180deg, rgba(24,11,44,0.92) 0%, rgba(8,4,18,0.95) 100%)",
+        border: "1.5px solid rgba(168,85,247,0.4)",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.55), inset 0 1px 0 rgba(192,132,252,0.18)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PanelLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="font-numbers uppercase" style={{ fontSize: "0.55rem", letterSpacing: "0.16em", color: "rgba(233,213,255,0.7)", marginBottom: 4 }}>
+      {children}
+    </div>
+  );
+}
+
+function DesktopLeftPanel({ soundMuted, setSoundMuted, level, xp, xpToNext }: any) {
+  const [, setLocation] = useLocation();
+  const openPaytable = () => {
+    const btn = document.querySelector("[data-paytable-toggle]");
+    if (btn) (btn as HTMLButtonElement).click();
+  };
+  const pct = Math.max(0, Math.min(100, Math.round((xp / Math.max(1, xpToNext)) * 100)));
+  return (
+    <aside className="sm-side-panel hidden lg:flex flex-col gap-3 shrink-0 select-none" style={{ width: 208 }}>
+      {/* PAYTABLE */}
+      <PanelCard>
+        <button
+          onClick={() => { playSound("button_click"); openPaytable(); }}
+          className="w-full flex flex-col items-center gap-1.5 transition-transform active:scale-95"
+          aria-label="Open paytable"
+        >
+          <span style={{ fontSize: "1.6rem", lineHeight: 1, filter: "drop-shadow(0 0 8px rgba(255,215,0,0.6))" }}>📜</span>
+          <span className="font-numbers font-bold uppercase" style={{ fontSize: "0.8rem", letterSpacing: "0.18em", color: "#FFD700", textShadow: "0 0 8px rgba(255,215,0,0.5)" }}>
+            PAYTABLE
+          </span>
+        </button>
+      </PanelCard>
+
+      {/* SOUND */}
+      <PanelCard>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: "1.2rem" }}>{soundMuted ? "🔇" : "🔊"}</span>
+            <span className="font-numbers uppercase font-bold" style={{ fontSize: "0.75rem", letterSpacing: "0.12em", color: "#E9D5FF" }}>SOUND</span>
+          </div>
+          <NeonSwitch on={!soundMuted} onToggle={() => setSoundMuted(!soundMuted)} ariaLabel={soundMuted ? "Unmute sound" : "Mute sound"} />
+        </div>
+      </PanelCard>
+
+      {/* RESPONSIBLE PLAY */}
+      <PanelCard>
+        <button
+          onClick={() => setLocation("/terms")}
+          className="w-full flex items-center gap-2 transition-transform active:scale-95"
+        >
+          <span style={{ fontSize: "1.2rem" }}>🛡️</span>
+          <span className="font-numbers uppercase font-bold text-left leading-tight" style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#E9D5FF" }}>
+            RESPONSIBLE<br />PLAY
+          </span>
+        </button>
+      </PanelCard>
+
+      {/* VIP STATUS */}
+      <PanelCard>
+        <div className="flex items-center gap-2 mb-1">
+          <span style={{ fontSize: "1.2rem", filter: "drop-shadow(0 0 6px rgba(255,215,0,0.7))" }}>⭐</span>
+          <span className="font-numbers uppercase font-bold" style={{ fontSize: "0.7rem", letterSpacing: "0.12em", color: "#FFD700" }}>VIP STATUS</span>
+        </div>
+        <div className="font-display font-black uppercase" style={{ fontSize: "0.85rem", color: "#FFD700", textShadow: "0 0 8px rgba(255,215,0,0.5)" }}>
+          GOLD TIER
+        </div>
+        <div className="font-numbers" style={{ fontSize: "0.6rem", color: "rgba(233,213,255,0.6)" }}>LEVEL {level}</div>
+        {/* Gold progress bar */}
+        <div className="w-full rounded-full mt-1.5" style={{ height: 8, background: "rgba(0,0,0,0.6)", border: "1px solid rgba(212,175,55,0.5)", overflow: "hidden" }}>
+          <div
+            style={{
+              width: `${pct}%`,
+              height: "100%",
+              background: "linear-gradient(90deg, #8B5E0A, #FFD700, #FFE9A8)",
+              boxShadow: "0 0 8px rgba(255,215,0,0.7)",
+              transition: "width 0.6s ease",
+            }}
+          />
+        </div>
+        <div className="font-numbers tabular-nums text-right mt-1" style={{ fontSize: "0.65rem", color: "#FFE9A8" }}>
+          {xp.toLocaleString()} / {xpToNext.toLocaleString()}
+        </div>
+      </PanelCard>
+    </aside>
+  );
+}
+
+function DesktopRightPanel({ winAmount, curLabel, autoplay, setAutoplay, spinning, freeSpins }: any) {
+  return (
+    <aside className="sm-side-panel hidden lg:flex flex-col gap-3 shrink-0 select-none" style={{ width: 208 }}>
+      {/* LAST WIN */}
+      <PanelCard>
+        <div className="flex items-center gap-2 mb-1">
+          <span style={{ fontSize: "1.3rem", filter: "drop-shadow(0 0 8px rgba(255,215,0,0.6))" }}>🪙</span>
+          <PanelLabel>LAST WIN</PanelLabel>
+        </div>
+        <div className="font-numbers tabular-nums font-black" style={{ fontSize: "1.5rem", lineHeight: 1.1, color: "#FFD700", textShadow: "0 0 12px rgba(255,215,0,0.6)" }}>
+          {winAmount.toLocaleString()} <span style={{ fontSize: "0.7em" }}>{curLabel}</span>
+        </div>
+      </PanelCard>
+
+      {/* AUTO-SPIN */}
+      <PanelCard>
+        <div className="flex items-center justify-between">
+          <PanelLabel>AUTO-SPIN</PanelLabel>
+          <span className="font-numbers font-bold" style={{ fontSize: "0.7rem", color: autoplay ? "#c084fc" : "rgba(233,213,255,0.5)" }}>
+            {autoplay ? "ON" : "OFF"}
+          </span>
+        </div>
+        <div className="flex justify-center mt-1">
+          <NeonSwitch on={autoplay} onToggle={() => setAutoplay(!autoplay)} disabled={spinning} ariaLabel={autoplay ? "Disable auto spin" : "Enable auto spin"} />
+        </div>
+      </PanelCard>
+
+      {/* FREE SPINS */}
+      <PanelCard>
+        <div className="flex items-center gap-2 mb-1">
+          <span style={{ fontSize: "1.3rem", filter: freeSpins > 0 ? "drop-shadow(0 0 8px rgba(144,238,144,0.8))" : "none" }}>☸️</span>
+          <PanelLabel>FREE SPINS</PanelLabel>
+        </div>
+        <div className="font-numbers tabular-nums font-black" style={{ fontSize: "1.5rem", lineHeight: 1.1, color: freeSpins > 0 ? "#90EE90" : "#E9D5FF", textShadow: freeSpins > 0 ? "0 0 12px rgba(144,238,144,0.6)" : "none" }}>
+          {freeSpins} <span style={{ fontSize: "0.6em", color: "rgba(233,213,255,0.55)" }}>/ 10</span>
+        </div>
+      </PanelCard>
+    </aside>
+  );
+}
+
+/** The big circular SPIN orb — purple neon ring + gold center disc. */
+function SpinOrb({ size = 88, canSpin, freeSpins, spinning, spin, pulse }: any) {
+  const disc = Math.round(size * 0.66);
+  const big = size >= 100;
+  return (
+    <div className="flex flex-col items-center -mt-1 shrink-0">
+      <button
+        onClick={() => { playSound("button_click"); spin(); }}
+        disabled={!canSpin}
+        aria-label={freeSpins > 0 ? "Spin free game" : "Spin reels"}
+        aria-keyshortcuts="Space"
+        className="relative flex items-center justify-center transition-transform active:scale-95"
+        style={{
+          width: size, height: size, borderRadius: "50%",
+          border: `${big ? 4 : 3}px solid ${freeSpins > 0 ? "#90EE90" : "#b026ff"}`,
+          background: "radial-gradient(circle at 35% 28%, #2b1145 0%, #160827 60%, #0a0514 100%)",
+          boxShadow: freeSpins > 0
+            ? "0 0 22px rgba(76,175,80,0.8), 0 0 54px rgba(76,175,80,0.45), inset 0 0 18px rgba(144,238,144,0.25)"
+            : "0 0 22px rgba(176,38,255,0.75), 0 0 54px rgba(124,58,237,0.45), inset 0 0 18px rgba(168,85,247,0.3)",
+          animation: freeSpins > 0
+            ? "freeSpinRingPulse 1s ease-in-out infinite"
+            : pulse ? "spinRingPulse 1.6s ease-in-out infinite" : "none",
+          opacity: canSpin ? 1 : 0.45,
+          transition: "transform 0.1s ease",
+        }}
+      >
+        <span
+          className="flex items-center justify-center rounded-full"
+          style={{
+            width: disc, height: disc,
+            background: "radial-gradient(circle at 35% 28%, #ffe9a8 0%, #FFD700 38%, #C8860A 78%, #7a5800 100%)",
+            boxShadow: "inset 0 2px 4px rgba(255,255,255,0.55), inset 0 -3px 6px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.6)",
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              fontSize: big ? "2.1rem" : "1.7rem",
+              color: "#2a1a00",
+              textShadow: "0 1px 0 rgba(255,255,255,0.4)",
+              display: "inline-block",
+              animation: spinning ? "spinIconRotate 0.8s linear infinite" : "none",
+            }}
+          >
+            ⟳
+          </span>
+        </span>
+      </button>
+      <span
+        className="font-display font-black uppercase"
+        style={{
+          marginTop: 4,
+          fontSize: big ? "1.15rem" : "0.95rem",
+          letterSpacing: "0.22em",
+          color: freeSpins > 0 ? "#90EE90" : "#FFD700",
+          textShadow: freeSpins > 0 ? "0 0 12px rgba(144,238,144,0.7)" : "0 0 10px rgba(255,215,0,0.55)",
+        }}
+      >
+        {freeSpins > 0 ? `FREE ${freeSpins}` : "SPIN"}
+      </span>
+    </div>
+  );
+}
+
 function CabinetButtonPanel({
   bet, setBet, paylines, setPaylines, spin, autoplay, setAutoplay,
   canSpin, totalBet, coins, onCoinShop, soundEnabled, setSoundMuted, soundMuted,
-  spinButtonPulse, shakeIntensity, selectedCurrency, spinning, freeSpins, rescueOffered
+  spinButtonPulse, shakeIntensity, selectedCurrency, spinning, freeSpins, rescueOffered,
+  winAmount = 0,
 }: any) {
+  const curLabel = selectedCurrency === "green" ? "SC" : "GC";
+  // The paytable drawer lives one level up — open it via its toggle.
+  const openPaytable = () => {
+    const btn = document.querySelector("[data-paytable-toggle]");
+    if (btn) (btn as HTMLButtonElement).click();
+  };
   return (
-    <div className="w-full px-2 pb-4" style={{
-      background: "linear-gradient(180deg, #0a0a12 0%, #050510 100%)",
+    <div className="w-full" style={{
+      background: "linear-gradient(180deg, #0d0716 0%, #070310 100%)",
       borderRadius: "0 0 16px 16px",
-      padding: "16px 0 8px",
-      boxShadow: "inset 0 2px 0 rgba(0, 150, 255, 0.2), 0 -4px 20px rgba(0,0,0,0.5)",
-      borderTop: "1px solid rgba(212,175,55,0.1)",
+      padding: "12px 0 10px",
+      borderTop: "1px solid rgba(168,85,247,0.45)",
+      boxShadow: "0 -6px 24px rgba(124,58,237,0.22), inset 0 1px 0 rgba(192,132,252,0.2)",
     }}>
-      {/* Bet / Lines Row — stacks on mobile to avoid 41px horizontal overflow on phones */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 mb-3 px-2" style={{ minWidth: 0 }}>
-        <div className="flex items-center justify-between gap-2">
-          {/* Bet controls */}
-          <div className="flex items-center gap-1.5 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
-            <button
-              onClick={() => { playSound("button_click"); setBet(Math.max(10, bet - 10)); }}
-              disabled={spinning || bet <= 10}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
-              style={{
-                background: "linear-gradient(180deg, #3a2a00, #1a1500)",
-                border: "2px solid #D4AF37",
-                color: "#FFD700",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-              }}
-              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            >
-              −
-            </button>
-            <div className="w-12 sm:w-20 text-center font-numbers tabular-nums" style={{
-              fontSize: "1rem",
-              color: "#FFD700",
-              textShadow: "0 0 10px rgba(212,175,55,0.5)",
-            }}>
-              {bet}
-            </div>
-            <button
-              onClick={() => { playSound("button_click"); setBet(Math.min(200, bet + 10)); }}
-              disabled={spinning || bet >= 200}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
-              style={{
-                background: "linear-gradient(180deg, #3a2a00, #1a1500)",
-                border: "2px solid #D4AF37",
-                color: "#FFD700",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-              }}
-              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            >
-              +
-            </button>
-          </div>
+      {/* Mobile control rows (phones/tablets) */}
+      <div className="lg:hidden">
+      {/* Row A — PAYTABLE | BET stepper | AUTO switch (Pirate's Gold control strip) */}
+      <div className="flex items-center justify-between gap-2 px-3 mb-2">
+        {/* Paytable (open book) */}
+        <button
+          onClick={() => { playSound("button_click"); openPaytable(); }}
+          aria-label="Open paytable"
+          className="flex flex-col items-center gap-0.5 shrink-0 transition-transform active:scale-95"
+        >
+          <span
+            className="flex items-center justify-center rounded-xl"
+            style={{
+              width: 42, height: 42, fontSize: "1.2rem",
+              background: "linear-gradient(180deg, #3a2a00, #1a1200)",
+              border: "2px solid #D4AF37",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)",
+            }}
+          >
+            📖
+          </span>
+          <span className="font-numbers uppercase" style={{ fontSize: "0.48rem", letterSpacing: "0.14em", color: "rgba(255,220,160,0.75)" }}>
+            PAYTABLE
+          </span>
+        </button>
 
-          {/* Paylines controls */}
-          <div className="flex items-center gap-1.5 shrink-0" style={{ background: "rgba(0,0,0,0.4)", padding: "4px 8px", borderRadius: "8px", border: "1px solid rgba(212,175,55,0.2)" }}>
-            <button
-              onClick={() => { playSound("button_click"); setPaylines?.(Math.max(1, (paylines || 1) - 1)); }}
-              disabled={spinning || (paylines || 1) <= 1}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
-              style={{
-                background: "linear-gradient(180deg, #2a1a00, #1a1000)",
-                border: "2px solid #FFA500",
-                color: "#FFD700",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-              }}
-              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            >
-              −
-            </button>
-            <div className="w-14 sm:w-16 text-center font-numbers tabular-nums" style={{
-              fontSize: "0.95rem",
-              color: "#FFD700",
-              textShadow: "0 0 10px rgba(212,175,55,0.5)",
-            }}>
-              {paylines || 1} L
+        {/* Bet stepper */}
+        <div
+          className="flex items-center gap-1 rounded-full px-1.5 py-1"
+          style={{ background: "rgba(0,0,0,0.5)", border: "1.5px solid rgba(212,175,55,0.4)" }}
+        >
+          <button
+            onClick={() => { playSound("button_click"); setBet(Math.max(10, bet - 10)); }}
+            disabled={spinning || bet <= 10}
+            aria-label="Decrease bet"
+            className="rounded-full font-bold transition-transform active:scale-95"
+            style={{
+              width: 34, height: 34, fontSize: "1.1rem", lineHeight: 1,
+              background: "linear-gradient(180deg, #D4AF37, #8B5E0A)",
+              color: "#1a1000",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35)",
+              opacity: spinning || bet <= 10 ? 0.45 : 1,
+            }}
+          >
+            −
+          </button>
+          <div className="text-center px-1" style={{ minWidth: 62 }}>
+            <div className="font-numbers uppercase" style={{ fontSize: "0.48rem", letterSpacing: "0.16em", color: "rgba(212,175,55,0.65)" }}>
+              BET
             </div>
-            <button
-              onClick={() => { playSound("button_click"); setPaylines?.(Math.min(25, (paylines || 1) + 1)); }}
-              disabled={spinning || (paylines || 1) >= 25}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full font-bold text-lg transition-all"
-              style={{
-                background: "linear-gradient(180deg, #2a1a00, #1a1000)",
-                border: "2px solid #FFA500",
-                color: "#FFD700",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
-              }}
-              onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-              onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            >
-              +
-            </button>
+            <div className="font-numbers tabular-nums font-bold" style={{ fontSize: "0.95rem", lineHeight: 1.1, color: "#FFD700", textShadow: "0 0 8px rgba(255,215,0,0.6)" }}>
+              {bet} <span style={{ fontSize: "0.62em", color: selectedCurrency === 'green' ? "#41E3FF" : "#C9A227" }}>{curLabel}</span>
+            </div>
           </div>
+          <button
+            onClick={() => { playSound("button_click"); setBet(Math.min(200, bet + 10)); }}
+            disabled={spinning || bet >= 200}
+            aria-label="Increase bet"
+            className="rounded-full font-bold transition-transform active:scale-95"
+            style={{
+              width: 34, height: 34, fontSize: "1.1rem", lineHeight: 1,
+              background: "linear-gradient(180deg, #D4AF37, #8B5E0A)",
+              color: "#1a1000",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.35)",
+              opacity: spinning || bet >= 200 ? 0.45 : 1,
+            }}
+          >
+            +
+          </button>
         </div>
 
-        {/* Total Bet Display — right-aligned on sm+, full-width on mobile so it sits on its own row */}
-        <div className="w-full sm:w-auto sm:flex-1 sm:min-w-0 flex sm:block items-center justify-between gap-2" style={{ marginLeft: "auto" }}>
-          <div className="text-[0.55rem] font-numbers uppercase tracking-widest" style={{ color: "rgba(212,175,55,0.5)" }}>
-            TOTAL BET
-          </div>
-          <div className="font-numbers tabular-nums sm:text-right" style={{
-            fontSize: "clamp(1rem, 3vw, 1.4rem)",
-            color: selectedCurrency === 'gold' ? "#FFD700" : "#90EE90",
-            textShadow: selectedCurrency === 'gold' ? "0 0 10px rgba(255,215,0,0.8)" : "0 0 10px rgba(144,238,144,0.8)",
-            fontFamily: '"Orbitron", monospace',
-          }}>
-            {totalBet.toLocaleString()}
-          </div>
-        </div>
+        {/* Auto-spin switch (purple) */}
+        <button
+          onClick={() => setAutoplay(!autoplay)}
+          disabled={spinning}
+          role="switch"
+          aria-checked={autoplay}
+          aria-label={autoplay ? "Disable auto spin" : "Enable auto spin"}
+          className="flex flex-col items-center gap-1 shrink-0 transition-transform active:scale-95"
+          style={{ opacity: spinning ? 0.5 : 1 }}
+        >
+          <span className="font-numbers uppercase" style={{ fontSize: "0.48rem", letterSpacing: "0.14em", color: "rgba(192,132,252,0.85)" }}>
+            AUTO
+          </span>
+          <span
+            className="relative block"
+            style={{
+              width: 46, height: 24, borderRadius: 999,
+              background: autoplay ? "linear-gradient(180deg, #7c3aed, #a855f7)" : "#1c1030",
+              border: `2px solid ${autoplay ? "#c084fc" : "rgba(124,58,237,0.5)"}`,
+              boxShadow: autoplay ? "0 0 14px rgba(168,85,247,0.8)" : "inset 0 2px 4px rgba(0,0,0,0.6)",
+              transition: "all 0.2s ease",
+            }}
+          >
+            <span
+              className="absolute rounded-full"
+              style={{
+                width: 16, height: 16, top: 2,
+                left: autoplay ? 24 : 2,
+                background: autoplay ? "#ffffff" : "#a78bfa",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.6)",
+                transition: "left 0.2s ease",
+              }}
+            />
+          </span>
+          <span className="font-numbers" style={{ fontSize: "0.5rem", color: autoplay ? "#c084fc" : "rgba(192,132,252,0.4)" }}>
+            {autoplay ? "ON" : "OFF"}
+          </span>
+        </button>
+      </div>
       </div>
 
       {/* Rescue spin indicator (Vegas "save the player" mechanic).
@@ -980,13 +1326,174 @@ function CabinetButtonPanel({
         </div>
       )}
 
-      {/* Main Button Row */}
-      <div className="flex items-center justify-between gap-2 sm:gap-3 px-2">
-        {/* Coin Shop — icon-only on mobile, full pill on sm+ */}
+      <div className="lg:hidden">
+      {/* Row B — LAST WIN chip | big circular SPIN | TOTAL BET + paylines */}
+      <div className="flex items-center justify-between gap-2 px-3">
+        {/* Last win (stacked coins) */}
+        <div className="flex items-center gap-1.5 shrink-0" style={{ minWidth: 88 }} role="status" aria-live="polite">
+          <span aria-hidden="true" style={{ fontSize: "1.35rem", filter: "drop-shadow(0 0 6px rgba(255,215,0,0.6))" }}>🪙</span>
+          <span>
+            <span className="block font-numbers uppercase" style={{ fontSize: "0.48rem", letterSpacing: "0.14em", color: "rgba(212,175,55,0.65)" }}>
+              LAST WIN
+            </span>
+            <span className="block font-numbers tabular-nums font-bold" style={{ fontSize: "0.95rem", lineHeight: 1.15, color: "#FFD700", textShadow: "0 0 8px rgba(255,215,0,0.5)" }}>
+              {winAmount.toLocaleString()} <span style={{ fontSize: "0.62em" }}>{curLabel}</span>
+            </span>
+          </span>
+        </div>
+
+        {/* Big circular SPIN: purple neon ring + gold center disc, label below */}
+        <SpinOrb size={88} canSpin={canSpin} freeSpins={freeSpins} spinning={spinning} spin={spin} pulse={spinButtonPulse} />
+
+        {/* Total bet + paylines stepper */}
+        <div className="text-right shrink-0" style={{ minWidth: 88 }}>
+          <div className="font-numbers uppercase" style={{ fontSize: "0.48rem", letterSpacing: "0.14em", color: "rgba(212,175,55,0.65)" }}>
+            TOTAL BET
+          </div>
+          <div className="font-numbers tabular-nums font-bold" style={{
+            fontSize: "1.05rem", lineHeight: 1.15,
+            color: selectedCurrency === 'gold' ? "#FFD700" : "#41E3FF",
+            textShadow: "0 0 10px rgba(255,215,0,0.5)",
+          }}>
+            {totalBet.toLocaleString()}
+          </div>
+          <div className="flex items-center justify-end gap-1 mt-1">
+            <button
+              onClick={() => { playSound("button_click"); setPaylines?.(Math.max(1, (paylines || 1) - 1)); }}
+              disabled={spinning || (paylines || 1) <= 1}
+              aria-label="Fewer paylines"
+              className="rounded-full font-bold transition-transform active:scale-95"
+              style={{
+                width: 24, height: 24, fontSize: "0.8rem", lineHeight: 1,
+                border: "1.5px solid rgba(168,85,247,0.55)",
+                color: "#c084fc",
+                background: "rgba(0,0,0,0.5)",
+                opacity: spinning || (paylines || 1) <= 1 ? 0.4 : 1,
+              }}
+            >
+              −
+            </button>
+            <span className="font-numbers tabular-nums" style={{ fontSize: "0.72rem", color: "#c084fc", minWidth: 24, textAlign: "center" }}>
+              {paylines || 1}L
+            </span>
+            <button
+              onClick={() => { playSound("button_click"); setPaylines?.(Math.min(25, (paylines || 1) + 1)); }}
+              disabled={spinning || (paylines || 1) >= 25}
+              aria-label="More paylines"
+              className="rounded-full font-bold transition-transform active:scale-95"
+              style={{
+                width: 24, height: 24, fontSize: "0.8rem", lineHeight: 1,
+                border: "1.5px solid rgba(168,85,247,0.55)",
+                color: "#c084fc",
+                background: "rgba(0,0,0,0.5)",
+                opacity: spinning || (paylines || 1) >= 25 ? 0.4 : 1,
+              }}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {/* Desktop control strip (lg+): BET stepper | big SPIN orb | AUTO-SPIN + LAST WIN */}
+      <div className="hidden lg:flex items-center justify-between px-6 py-1" style={{ gap: 24 }}>
+        {/* Bet stepper — large, mouse-friendly */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => { playSound("button_click"); setBet(Math.max(10, bet - 10)); }}
+            disabled={spinning || bet <= 10}
+            aria-label="Decrease bet"
+            className="rounded-full font-bold transition-transform active:scale-95"
+            style={{
+              width: 44, height: 44, fontSize: "1.35rem", lineHeight: 1,
+              background: "linear-gradient(180deg, #D4AF37, #8B5E0A)",
+              color: "#1a1000",
+              boxShadow: "0 3px 8px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
+              opacity: spinning || bet <= 10 ? 0.45 : 1,
+            }}
+          >
+            −
+          </button>
+          <div className="text-center" style={{ minWidth: 118 }}>
+            <div className="font-numbers uppercase" style={{ fontSize: "0.55rem", letterSpacing: "0.2em", color: "rgba(212,175,55,0.7)" }}>
+              BET
+            </div>
+            <div className="font-numbers tabular-nums font-bold" style={{ fontSize: "1.3rem", lineHeight: 1.15, color: "#FFD700", textShadow: "0 0 10px rgba(255,215,0,0.6)" }}>
+              {bet} <span style={{ fontSize: "0.6em", color: selectedCurrency === 'green' ? "#41E3FF" : "#C9A227" }}>{curLabel}</span>
+            </div>
+            <div className="flex items-center justify-center gap-1 mt-0.5">
+              <button
+                onClick={() => { playSound("button_click"); setPaylines?.(Math.max(1, (paylines || 1) - 1)); }}
+                disabled={spinning || (paylines || 1) <= 1}
+                aria-label="Fewer paylines"
+                className="rounded-full font-bold"
+                style={{ width: 20, height: 20, fontSize: "0.7rem", lineHeight: 1, border: "1.5px solid rgba(168,85,247,0.55)", color: "#c084fc", background: "rgba(0,0,0,0.5)", opacity: spinning || (paylines || 1) <= 1 ? 0.4 : 1 }}
+              >
+                −
+              </button>
+              <span className="font-numbers tabular-nums" style={{ fontSize: "0.7rem", color: "#c084fc", minWidth: 26, textAlign: "center" }}>
+                {paylines || 1}L
+              </span>
+              <button
+                onClick={() => { playSound("button_click"); setPaylines?.(Math.min(25, (paylines || 1) + 1)); }}
+                disabled={spinning || (paylines || 1) >= 25}
+                aria-label="More paylines"
+                className="rounded-full font-bold"
+                style={{ width: 20, height: 20, fontSize: "0.7rem", lineHeight: 1, border: "1.5px solid rgba(168,85,247,0.55)", color: "#c084fc", background: "rgba(0,0,0,0.5)", opacity: spinning || (paylines || 1) >= 25 ? 0.4 : 1 }}
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={() => { playSound("button_click"); setBet(Math.min(200, bet + 10)); }}
+            disabled={spinning || bet >= 200}
+            aria-label="Increase bet"
+            className="rounded-full font-bold transition-transform active:scale-95"
+            style={{
+              width: 44, height: 44, fontSize: "1.35rem", lineHeight: 1,
+              background: "linear-gradient(180deg, #D4AF37, #8B5E0A)",
+              color: "#1a1000",
+              boxShadow: "0 3px 8px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
+              opacity: spinning || bet >= 200 ? 0.45 : 1,
+            }}
+          >
+            +
+          </button>
+        </div>
+
+        {/* Big SPIN orb */}
+        <SpinOrb size={112} canSpin={canSpin} freeSpins={freeSpins} spinning={spinning} spin={spin} pulse={spinButtonPulse} />
+
+        {/* AUTO-SPIN + LAST WIN */}
+        <div className="flex items-center" style={{ gap: 28 }}>
+          <div className="flex flex-col items-center gap-1.5">
+            <span className="font-numbers uppercase" style={{ fontSize: "0.55rem", letterSpacing: "0.18em", color: "rgba(233,213,255,0.75)" }}>
+              AUTO-SPIN
+            </span>
+            <NeonSwitch on={autoplay} onToggle={() => setAutoplay(!autoplay)} disabled={spinning} ariaLabel={autoplay ? "Disable auto spin" : "Enable auto spin"} />
+            <span className="font-numbers font-bold" style={{ fontSize: "0.6rem", color: autoplay ? "#c084fc" : "rgba(233,213,255,0.45)" }}>
+              {autoplay ? "ON" : "OFF"}
+            </span>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center justify-end gap-1.5 font-numbers uppercase" style={{ fontSize: "0.55rem", letterSpacing: "0.16em", color: "rgba(212,175,55,0.7)" }}>
+              <span aria-hidden="true" style={{ fontSize: "0.9rem" }}>🪙</span> LAST WIN
+            </div>
+            <div className="font-numbers tabular-nums font-black" style={{ fontSize: "1.5rem", lineHeight: 1.1, color: "#FFD700", textShadow: "0 0 12px rgba(255,215,0,0.6)" }}>
+              {winAmount.toLocaleString()} <span style={{ fontSize: "0.6em" }}>{curLabel}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop extras — coin shop + sound (mobile uses the bottom icon row) */}
+      <div className="hidden sm:flex items-center justify-center gap-3 mt-3 px-2">
         <button
           onClick={onCoinShop}
           aria-label="Open coin shop"
-          className="flex items-center justify-center gap-2 w-12 h-12 sm:w-auto sm:h-auto sm:px-4 sm:py-3 rounded-lg shrink-0 transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all"
           style={{
             background: "linear-gradient(180deg, #3a2a00, #2a1a00)",
             border: "2px solid #D4AF37",
@@ -995,106 +1502,22 @@ function CabinetButtonPanel({
             fontWeight: 600,
             fontSize: "0.85rem",
           }}
-          onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.97)"; }}
-          onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         >
-          <span style={{ fontSize: "1.2rem" }}>💰</span>
-          <span className="font-numbers hidden sm:inline">COINS</span>
+          <span style={{ fontSize: "1.1rem" }}>💰</span>
+          <span className="font-numbers">COINS</span>
         </button>
-
-        {/* AUTOSPIN — icon-only on mobile */}
-        <button
-          onClick={() => setAutoplay(!autoplay)}
-          disabled={spinning}
-          aria-label={autoplay ? "Stop autoplay" : "Start autoplay"}
-          className={`flex items-center justify-center gap-2 w-12 h-12 sm:w-auto sm:h-auto sm:px-4 sm:py-3 rounded-lg shrink-0 transition-all ${autoplay ? 'ring-2' : ''}`}
-          style={{
-            background: autoplay
-              ? "linear-gradient(180deg, #3a002a, #2a001a)"
-              : "linear-gradient(180deg, #1a2a1a, #0d1a0d)",
-            border: `2px solid ${autoplay ? "#FF6B6B" : "#4CAF50"}`,
-            color: autoplay ? "#FF6B6B" : "#90EE90",
-            boxShadow: `0 4px 15px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), ${autoplay ? "0 0 20px rgba(255,107,107,0.5)" : "0 0 20px rgba(76,175,80,0.3)"}`,
-            fontWeight: 600,
-            fontSize: "0.85rem",
-            opacity: spinning ? 0.5 : 1,
-          }}
-          onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.97)"; }}
-          onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-        >
-          <span style={{ fontSize: "1.2rem" }}>{autoplay ? "⏹" : "▶"}</span>
-          <span className="font-numbers hidden sm:inline">AUTO</span>
-        </button>
-
-        {/* SPIN BUTTON - MASSIVE, DOMINANT */}
-        <button
-          onClick={() => { playSound("button_click"); spin(); }}
-          disabled={!canSpin}
-          aria-label={freeSpins > 0 ? "Spin free game" : "Spin reels"}
-          aria-keyshortcuts="Space"
-          className="flex-1 flex items-center justify-center gap-3 py-5 px-8 rounded-xl transition-all min-h-[80px]"
-          style={{
-            background: freeSpins > 0
-              ? "linear-gradient(180deg, #2E7D32 0%, #4CAF50 30%, #90EE90 50%, #4CAF50 70%, #2E7D32 100%)"
-              : canSpin
-                ? "linear-gradient(180deg, #8B5E0A 0%, #D4AF37 30%, #FFD700 50%, #D4AF37 70%, #8B5E0A 100%)"
-                : "linear-gradient(180deg, #3a2a00, #2a1a00)",
-            border: freeSpins > 0 ? "3px solid #90EE90" : "3px solid #FFD700",
-            borderRadius: "20px",
-            color: "#1a1000",
-            boxShadow: freeSpins > 0
-              ? `
-                0 8px 30px rgba(0,0,0,0.6),
-                0 0 40px rgba(76,175,80,0.7),
-                0 0 80px rgba(76,175,80,0.4),
-                inset 0 2px 4px rgba(255,255,255,0.3),
-                inset 0 -2px 4px rgba(0,0,0,0.3)
-              `
-              : `
-                0 8px 30px rgba(0,0,0,0.6),
-                0 0 40px rgba(212,175,55,0.6),
-                0 0 80px rgba(212,175,55,0.3),
-                inset 0 2px 4px rgba(255,255,255,0.3),
-                inset 0 -2px 4px rgba(0,0,0,0.3)
-              `,
-            fontWeight: 900,
-            fontSize: "clamp(1.5rem, 5vw, 2.5rem)",
-            letterSpacing: "0.1em",
-            textShadow: "0 2px 4px rgba(0,0,0,0.3), 0 0 20px rgba(255,255,255,0.2)",
-            opacity: canSpin ? 1 : 0.4,
-            transform: spinButtonPulse ? "scale(1.02)" : "scale(1)",
-            animation: freeSpins > 0
-              ? "freeSpinButtonPulse 1s ease-in-out infinite"
-              : spinButtonPulse ? "spinPulse 1.5s ease-in-out infinite" : "none",
-          }}
-          onMouseDown={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(0.96)"; }}
-          onMouseUp={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(1)"; }}
-          onMouseLeave={(e) => { if (canSpin) e.currentTarget.style.transform = "scale(1)"; }}
-        >
-          <span style={{ fontSize: "2rem", animation: "spinIconRotate 0.8s linear infinite", display: spinning ? "inline-block" : "none" }}>⟳</span>
-          <span className="font-display font-black" style={{ display: spinning ? "none" : "inline" }}>
-            {freeSpins > 0 ? `FREE ${freeSpins}` : "SPIN"}
-          </span>
-          <span style={{ fontSize: "2rem", display: spinning ? "none" : "inline-block" }}>⟳</span>
-        </button>
-
-        {/* Sound Toggle */}
         <button
           onClick={() => setSoundMuted(!soundMuted)}
-          className="w-14 h-14 rounded-xl shrink-0 transition-all flex items-center justify-center"
+          aria-label={soundMuted ? "Unmute sound" : "Mute sound"}
+          className="w-12 h-12 rounded-xl transition-all flex items-center justify-center"
           style={{
-            background: soundMuted ? "linear-gradient(180deg, #2a0000, #1a0000)" : "linear-gradient(180deg, #1a1a2a, #0d0d1a)",
-            border: `2px solid ${soundMuted ? "#FF6B6B" : "#D4AF37"}`,
-            color: soundMuted ? "#FF6B6B" : "#FFD700",
-            boxShadow: `0 4px 15px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
+            background: soundMuted ? "linear-gradient(180deg, #2a0000, #1a0000)" : "linear-gradient(180deg, #1c1030, #0d0716)",
+            border: `2px solid ${soundMuted ? "#FF6B6B" : "#a855f7"}`,
+            color: soundMuted ? "#FF6B6B" : "#c084fc",
+            boxShadow: "0 4px 15px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
           }}
-          onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
-          onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         >
-          <span style={{ fontSize: "1.5rem" }}>{soundMuted ? "🔇" : "🔊"}</span>
+          <span style={{ fontSize: "1.3rem" }}>{soundMuted ? "🔇" : "🔊"}</span>
         </button>
       </div>
 
@@ -1152,6 +1575,10 @@ export default function SlotMachine({
   stickyBonusSpinning = false,
   goldCoins = 0,
   greenCoins = 0,
+  onDailyBonus,
+  level = 1,
+  xp = 0,
+  xpToNext = 100,
 }: Props) {
   const [reelDone, setReelDone] = useState<boolean[]>([true, true, true, true, true]);
   const [showWin, setShowWin] = useState(false);
@@ -1275,12 +1702,11 @@ export default function SlotMachine({
     const handleStickyLock = (event: CustomEvent<{ reelIndex: number }>) => {
       const { reelIndex } = event.detail;
       if (!soundEnabled) return;
-      // Heavier shake for the lock moment
-      setShakeIntensity('medium');
-      setTimeout(() => setShakeIntensity('none'), 200);
-      playSound("wild_lock"); // repurpose for "symbol locks in"
 
-      // Find winning/bonus symbols on this reel and trigger lock animation
+      // Find winning/bonus symbols on this reel BEFORE making any noise —
+      // on a dead spin every reel fires this event, which stacked 5 heavy
+      // wild_lock stacks per spin (the "horrible" churn). Silent unless
+      // there is an actual winning/scatter/wild cell to lock.
       const winningKeys: string[] = [];
       // Winning payline symbols
       if (showWin && winLines.length > 0) {
@@ -1301,6 +1727,12 @@ export default function SlotMachine({
           }
         }
       }
+      if (winningKeys.length === 0) return;
+
+      // Heavier shake for the lock moment
+      setShakeIntensity('medium');
+      setTimeout(() => setShakeIntensity('none'), 200);
+      playSound("wild_lock"); // repurpose for "symbol locks in"
       // Trigger lock animation for each
       winningKeys.forEach((key, i) => {
         setTimeout(() => {
@@ -1632,10 +2064,12 @@ export default function SlotMachine({
             setNearMissCells(new Set(misses.map(m => `${m.reelIdx}-${m.rowIdx}`)));
             setNearMissAnimating(true);
             // Fire the abstract near-miss sound (in sounds.ts) + a
-            // detectNearMisses event for the typed handler.
+            // detectNearMisses event for the typed handler. Only the FIRST
+            // typed event makes a sound — one gentle "almost" sweep instead
+            // of a cluster of overlapping sweeps on a losing spin.
             const events = detectNearMisses(reels);
-            events.forEach((ev, i) => {
-              setTimeout(() => playNearMissSound(ev), i * 200);
+            events.slice(0, 1).forEach((ev) => {
+              setTimeout(() => playNearMissSound(ev), 0);
             });
             if (events.length > 0) { haptics.nearMiss(); track("near_miss"); }
             // LDW only when player lost coins — gate on net loss.
@@ -1673,11 +2107,16 @@ export default function SlotMachine({
   return (
     <div
       ref={rootRef}
-      className={`sm-root w-full max-w-3xl mx-auto flex flex-col items-center gap-0 pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''} ${isFullscreen ? 'sm-fullscreen' : ''}`}
+      className={`sm-root w-full max-w-3xl lg:max-w-5xl mx-auto flex flex-col items-center gap-0 pb-0 ${shakeIntensity !== 'none' ? `screen-shake-${shakeIntensity}` : ''} ${isFullscreen ? 'sm-fullscreen' : ''}`}
       style={isFullscreen
         ? { width: "100%", height: "100dvh", overflow: "hidden", background: "#050510", position: "relative" }
         : { minHeight: "450px", position: "relative" }}
     >
+      {/* In fullscreen the page background is gone — paint the neon city
+          skyline inside the fullscreen element so it frames the cabinet. */}
+      {isFullscreen && (
+        <CitySkylineScene opacity={1} className="absolute inset-0" />
+      )}
       {/* Ocean hue drift backdrop — slow color cycle so the cabinet feels alive */}
       <div className="sm-ocean-drift" aria-hidden style={{
         position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
@@ -1769,9 +2208,19 @@ export default function SlotMachine({
         </Suspense>
       )}
 
+      {/* ── Desktop stage: side panels flanking the cabinet (lg+ / fullscreen) ── */}
+      <div className="sm-stage w-full lg:flex lg:items-stretch lg:gap-4">
+        <DesktopLeftPanel
+          soundMuted={soundMuted}
+          setSoundMuted={setSoundMuted}
+          level={level}
+          xp={xp}
+          xpToNext={xpToNext}
+        />
+
       {/* ── Physical Cabinet Structure ── */}
       <div
-        className={`w-full relative ${scatterFanfareActive ? 'bonus-alert bonus-alert-shake' : ''}`}
+        className={`w-full min-w-0 flex-1 relative sm-cabinet-col ${scatterFanfareActive ? 'bonus-alert bonus-alert-shake' : ''}`}
         style={{
           background: "linear-gradient(180deg, #0a0a12 0%, #050510 50%, #030308 100%)",
           borderRadius: "16px 16px 0 0",
@@ -1809,6 +2258,7 @@ export default function SlotMachine({
           goldCoins={goldCoins}
           greenCoins={greenCoins}
           selectedCurrency={selectedCurrency}
+          onDailyBonus={onDailyBonus}
         />
 
         {/* ── Jackpot Meters (hidden on mobile; hidden in fullscreen so reels fill the view) ── */}
@@ -1976,8 +2426,19 @@ export default function SlotMachine({
           spinning={spinning}
           freeSpins={freeSpins}
           rescueOffered={rescueOffered}
+          winAmount={winAmount}
         />
         </div>
+      </div>
+
+        <DesktopRightPanel
+          winAmount={winAmount}
+          curLabel={selectedCurrency === "green" ? "SC" : "GC"}
+          autoplay={autoplay}
+          setAutoplay={setAutoplay}
+          spinning={spinning}
+          freeSpins={freeSpins}
+        />
       </div>
 
       {/* Global styles */}
@@ -2060,6 +2521,11 @@ export default function SlotMachine({
           box-shadow: 0 4px 18px rgba(0,0,0,0.6), 0 0 16px rgba(255,215,0,0.35);
           cursor: pointer;
         }
+        /* Stage becomes a 3-column row in fullscreen; side panels show even
+           if the window was narrow when fullscreen was entered. */
+        .sm-root.sm-fullscreen > .sm-stage { flex-direction: row; align-items: stretch; gap: 14px; padding: 4px 14px; }
+        .sm-root.sm-fullscreen .sm-cabinet-col { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; height: 100%; }
+        .sm-root.sm-fullscreen .sm-side-panel { display: flex !important; align-self: center; }
         .sm-fullscreen .sm-cabinet-inner {
           max-width: none;
         }
@@ -2219,6 +2685,34 @@ export default function SlotMachine({
           80%      { transform: translate(3px, 1px); }
         }
         .bonus-alert-shake { animation: bonusAlertShake 0.7s ease-in-out 2; }
+        /* Neon payline rays + new control-strip pulses (Pirate's Gold) */
+        .neon-rays { animation: neonRayPulse 4.5s ease-in-out infinite; }
+        @keyframes neonRayPulse {
+          0%, 100% { opacity: 0.22; }
+          50%      { opacity: 0.5; }
+        }
+        @keyframes spinRingPulse {
+          0%, 100% { box-shadow: 0 0 22px rgba(176,38,255,0.75), 0 0 54px rgba(124,58,237,0.45), inset 0 0 18px rgba(168,85,247,0.3); }
+          50%      { box-shadow: 0 0 34px rgba(192,132,252,0.95), 0 0 90px rgba(168,85,247,0.65), inset 0 0 26px rgba(192,132,252,0.45); }
+        }
+        @keyframes freeSpinRingPulse {
+          0%, 100% { box-shadow: 0 0 22px rgba(76,175,80,0.8), 0 0 54px rgba(76,175,80,0.45), inset 0 0 18px rgba(144,238,144,0.25); }
+          50%      { box-shadow: 0 0 34px rgba(144,238,144,1), 0 0 90px rgba(76,175,80,0.7), inset 0 0 26px rgba(144,238,144,0.4); }
+        }
+        @keyframes dailyBonusPulse {
+          0%, 100% { transform: scale(1); }
+          50%      { transform: scale(1.12); }
+        }
+        /* Desktop: bigger cabinet — taller reel window (mobile stays 280px).
+           !important on the grid because it sets inline minHeight. */
+        @media (min-width: 640px) {
+          .sm-reel-grid { min-height: 380px !important; }
+          .reel-container { min-height: 380px; }
+        }
+        @media (min-width: 1024px) {
+          .sm-reel-grid { min-height: 460px !important; }
+          .reel-container { min-height: 460px; }
+        }
         @keyframes toastSlideIn {
           0%   { opacity: 0; transform: translateY(40px) scale(0.85); }
           70%  { opacity: 1; transform: translateY(-4px) scale(1.04); }

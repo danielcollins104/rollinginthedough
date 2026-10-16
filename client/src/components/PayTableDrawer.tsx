@@ -32,6 +32,7 @@ export function PayTableDrawer() {
     <div className="w-full px-4 mb-2">
       <button
         onClick={() => setOpen((p) => !p)}
+        data-paytable-toggle
         className="w-full flex items-center justify-center gap-2 py-1.5 rounded-lg transition-all"
         style={{
           background: "linear-gradient(180deg, #1a1000, #0a0500)",

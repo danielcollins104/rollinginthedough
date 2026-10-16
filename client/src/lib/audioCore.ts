@@ -26,6 +26,12 @@ let masterLowpass: BiquadFilterNode | null = null;
 let masterHighShelf: BiquadFilterNode | null = null;
 let muted = false; // the single source of truth for the mute toggle
 
+/** Global loudness ceiling. With 10+ sounds able to stack inside a single
+ *  spin (5 reel stops + wild locks + coin drops + win sting), 1.0 pushed
+ *  the limiter constantly and read as harsh distortion. 0.7 keeps the mix
+ *  comfortably loud while leaving the compressor genuine headroom. */
+export const MASTER_VOLUME = 0.7;
+
 /**
  * Get the shared AudioContext. Creates one on first call. Also creates
  * the master limiter and master gain if they don't exist. Both feed the
@@ -40,7 +46,7 @@ export function getAudioContext(): AudioContext | null {
       if (!Ctx) return null;
       audioCtx = new Ctx();
       masterGain = audioCtx.createGain();
-      masterGain.gain.value = muted ? 0 : 1;
+      masterGain.gain.value = muted ? 0 : MASTER_VOLUME;
       // Tame the harsh ultra-highs (4-6kHz band) that read as "blown
       // speaker" on small drivers and clippy earbuds. The shelf cut
       // starts rolling off at 3kHz with -9dB at 6kHz+ — keeps the
@@ -89,12 +95,12 @@ export function getMixBus(ctx: AudioContext): AudioNode {
   return masterGain ?? ctx.destination;
 }
 
-/** Toggle the master mute. 0 = silent, 1 = full. Idempotent. */
+/** Toggle the master mute. 0 = silent, MASTER_VOLUME = unmuted. Idempotent. */
 export function setMuted(shouldMute: boolean): void {
   muted = shouldMute;
   if (masterGain && audioCtx) {
     // Use setTargetAtTime to avoid clicks when toggling.
-    masterGain.gain.setTargetAtTime(muted ? 0 : 1, audioCtx.currentTime, 0.01);
+    masterGain.gain.setTargetAtTime(muted ? 0 : MASTER_VOLUME, audioCtx.currentTime, 0.01);
   }
 }
 
