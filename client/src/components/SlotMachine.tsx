@@ -326,7 +326,7 @@ function CabinetTopGlass({ freeSpins, isFullscreen, onToggleFullscreen, goldCoin
         marginTop: "6px",
       }}>
         <div className="marquee-text text-xs font-numbers px-2" style={{ color: "#C8860A", fontSize: "0.6rem" }}>
-          ◆ FREE SWEEPSTAKES GAME — NO PURCHASE NECESSARY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 🔥 SACRED FIRE WILD SUBSTITUTES ALL ◆ ⚔️ 3 HUNTRESS = BONUS ROUND ◆ 🌟 3 SPIRIT ARROWS = 10 FREE SPINS ◆ 🌟 5 SPIRIT ARROWS = JACKPOT ◆ 🐺 SPIRIT WOLF PAYS UP TO 180X ◆ 🏹 HUNT BY THE LIGHT OF THE FULL MOON ◆
+          ◆ FREE SWEEPSTAKES GAME — NO PURCHASE NECESSARY ◆ MATCH 3+ SYMBOLS TO WIN ◆ 👑 CROWN P WILD SUBSTITUTES ALL ◆ 🏴‍☠️ 3 TREASURE CHESTS = BONUS ROUND ◆ 💎 3 DIAMOND CROWNS = 10 FREE SPINS ◆ 💎 5 DIAMOND CROWNS = JACKPOT ◆ 🌃 TOP OF THE GAME PAYS UP TO 606X ◆ 🎤 THE CITY NEVER SLEEPS — NEITHER DO THE REELS ◆
         </div>
       </div>
     </div>
@@ -428,10 +428,10 @@ function CabinetJackpotMeters({ jackpotPool = 5000 }: { jackpotPool?: number }) 
 
 function GameInfoPanel({ freeSpins }: { freeSpins: number }) {
   const infoLines = [
-    "🍀 WILD substitutes all except scatter",
-    "⭐ 3 SCATTERS = 10 FREE SPINS",
-    "⭐ 5 SCATTERS = JACKPOT",
-    "🗡️ 3+ HUNTRESS = BONUS ROUND",
+    "👑 CROWN P WILD substitutes all except scatters",
+    "💎 3 DIAMOND CROWNS = 10 FREE SPINS",
+    "💎 5 DIAMOND CROWNS = JACKPOT",
+    "🏴‍☠️ 3+ TREASURE CHESTS = BONUS ROUND",
     "🔥 CASCADING WINS multiply up to 5x!",
   ];
 

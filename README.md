@@ -6,7 +6,7 @@ A full-stack social casino slot machine — pirate-themed ("Pirates Gold"), with
 
 ## Features
 
-- **Slot machine core** — 5-reel cabinet with 25 paylines, wilds, scatters, cascading wins, and near-miss mechanics; RTP tuned to ~93% (verified by 2M-spin simulation)
+- **Slot machine core** — 5-reel cabinet with 25 paylines, wilds, scatters, cascading wins, and near-miss mechanics; base-game RTP tuned to ~70% (exact enumeration + Monte Carlo regression test in `client/src/lib/paytable.sim.test.ts`)
 - **Dual currency** — Gold Coins (free play, generous daily bonuses) and Green Coins (sweepstakes, cash-out eligible)
 - **Bonus games** — Vegas-style sticky coin Hold & Win, scratch cards, bonus wheel, coin flip
 - **Progressive jackpots** — MINI / MINOR / MAJOR / GRAND tiers with 2% contribution

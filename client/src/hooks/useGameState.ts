@@ -9,17 +9,17 @@ import { runCoinBonus, isCoinSymbol, computeLdw, detectNearMisses, findCoinCells
 
 // ─── Symbol definitions ───────────────────────────────────────────────────────
 export type SymbolId =
-  | "bread"      // 🍞 Fresh Bread — low value
-  | "rolling"    // 🥖 Baguette — low value
-  | "pretzel"    // 🥨 Soft Pretzel — medium value
-  | "croissant"  // 🥐 Butter Croissant — medium value
-  | "cookie"     // 🍪 Chocolate Chip Cookie — medium-high value
-  | "cupcake"    // 🧁 Pink Cupcake — high value
-  | "cake"       // 🎂 Celebration Cake — high value
-  | "muffin"     // 🧁 Blueberry Muffin — medium-high value
-  | "bun"        // 🫓 Sweet Bun — high value (wild)
-  | "huntress"   // 👑 Bakery Queen — bonus trigger (scatter)
-  | "dough"      // 🍞 Rolling in the Dough — JACKPOT (scatter)
+  | "bread"      // 💀 Skull Coin — low value
+  | "rolling"    // 📻 Boombox — low value
+  | "pretzel"    // 🌹 Purple Rose — medium value
+  | "croissant"  // 🎩 Captain's Hat — medium value
+  | "cookie"     // 🌃 Loyalty 24/7 neon — medium-high value
+  | "cupcake"    // 🎤 Gold Mic — high value
+  | "cake"       // 🏙️ Top of the Game neon — high value
+  | "muffin"     // 🎶 R&B Nights neon — medium-high value
+  | "bun"        // 👑 Crown P — high value (wild)
+  | "huntress"   // 🏴‍☠️ Treasure Chest — bonus trigger (scatter)
+  | "dough"      // 💎 Diamond Crown — JACKPOT (scatter)
   | "greenCoin"  // 🟢 Sticky green coin (Hold & Win bonus symbol)
   | "goldCoin"   // 🟡 Sticky gold coin (Hold & Win bonus symbol)
   | "empty"      // Empty cell for cascade system
@@ -40,102 +40,102 @@ export const SYMBOLS: Symbol[] = [
   {
     id: "bread",
     emoji: "🌾",
-    name: "Sacred Sage",
+    name: "Skull Coin",
     color: "#88CC88",
     bgColor: "#0a1a0a",
-    payouts: [5, 14, 32],
+    payouts: [4, 10, 24],
     weight: 30,
   },
   {
     id: "rolling",
     emoji: "🏹",
-    name: "Warrior Bow",
+    name: "Boombox",
     color: "#C8860A",
     bgColor: "#1a0e00",
-    payouts: [8, 22, 59],
+    payouts: [6, 16, 44],
     weight: 26,
   },
   {
     id: "pretzel",
     emoji: "🕸️",
-    name: "Dream Catcher",
+    name: "Purple Rose",
     color: "#9C7CF4",
     bgColor: "#150a2a",
-    payouts: [16, 49, 122],
+    payouts: [12, 37, 91],
     weight: 24,
   },
   {
     id: "croissant",
     emoji: "🪶",
-    name: "Eagle Feathers",
+    name: "Captain's Hat",
     color: "#D4AF37",
     bgColor: "#1a1200",
-    payouts: [27, 68, 162],
+    payouts: [20, 51, 121],
     weight: 20,
   },
   {
     id: "cookie",
     emoji: "🎯",
-    name: "Spirit Arrows",
+    name: "Loyalty 24/7",
     color: "#FF6B6B",
     bgColor: "#1a0808",
-    payouts: [41, 108, 243],
+    payouts: [31, 81, 182],
     weight: 16,
   },
   {
     id: "cupcake",
     emoji: "🐺",
-    name: "Spirit Wolf",
+    name: "Gold Mic",
     color: "#88AACC",
     bgColor: "#0a1525",
-    payouts: [68, 203, 486],
+    payouts: [51, 152, 364],
     weight: 14,
   },
   {
     id: "cake",
     emoji: "🥁",
-    name: "War Drum",
+    name: "Top of the Game",
     color: "#A8482A",
     bgColor: "#1a0808",
-    payouts: [108, 338, 810],
+    payouts: [81, 253, 606],
     weight: 9,
   },
   {
     id: "muffin",
     emoji: "💎",
-    name: "Sunstones",
+    name: "R&B Nights",
     color: "#FF6BAA",
     bgColor: "#250a1a",
-    payouts: [54, 135, 324],
+    payouts: [40, 101, 242],
     weight: 14,
   },
   {
     id: "bun",
     emoji: "🔥",
-    name: "Sacred Fire",
+    name: "Crown P",
     color: "#FF6B1A",
     bgColor: "#1a0500",
-    payouts: [162, 486, 1215],
+    payouts: [121, 364, 909],
     weight: 8,
     isWild: true,
   },
   {
     id: "huntress",
     emoji: "⚔️",
-    name: "Huntress Warrior",
+    name: "Treasure Chest",
     color: "#FF6BAA",
     bgColor: "#250a1a",
-    payouts: [270, 945, 4050],
+    payouts: [202, 707, 3029],
     weight: 6,
     isScatter: true,
   },
   {
     id: "dough",
     emoji: "🌟",
-    name: "Spirit Arrow",
+    name: "Diamond Crown",
     color: "#FFD700",
     bgColor: "#1a1500",
-    payouts: [405, 2025, 8100],
+    payouts: [303, 1515, 6059],
     weight: 4,
     isScatter: true,
   },
@@ -145,7 +145,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Green Coin",
     color: "#32CD32",
     bgColor: "#051a05",
-    payouts: [3, 5, 14],
+    payouts: [2, 4, 10],
     weight: 10,
   },
   {
@@ -154,7 +154,7 @@ export const SYMBOLS: Symbol[] = [
     name: "Gold Coin",
     color: "#FFD700",
     bgColor: "#1a1500",
-    payouts: [5, 14, 27],
+    payouts: [4, 10, 20],
     weight: 6,
   },
 ];

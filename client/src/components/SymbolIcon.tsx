@@ -1,22 +1,22 @@
 /**
- * SymbolIcon — Rich inline SVG icons for slot machine symbols
+ * SymbolIcon — rich symbol tiles for the slot machine reels
  *
- * Theme: NATIVE AMERICAN HUNTRESS (warrior / shaman / spirit world)
- *  - bread    → Sacred Sage       (dried sage bundle with smoldering tip)
- *  - rolling  → Warrior Bow       (recurve bow with eagle feathers)
- *  - pretzel  → Dream Catcher     (web hoop with feathers hanging down)
- *  - croissant→ Eagle Feathers    (3 eagle feathers fanned out)
- *  - cookie   → Spirit Arrows     (flint arrowhead trio)
- *  - cupcake  → Spirit Wolf       (howling wolf with spirit glow)
- *  - cake     → War Drum          (ceremonial drum on stand)
- *  - muffin   → Sunstones         (3 crystal/gem stones)
- *  - bun      → Sacred Fire       (WILD — tribal fire on stone)
- *  - huntress → Huntress Warrior  (SCATTER — silhouette + bow)
- *  - dough    → Spirit Arrow      (SCATTER — energy/lightning arrow)
+ * Theme: PIRATE'S GOLD × urban R&B night (art sliced from the owned key art)
+ *  - bread     → Skull Coin       (gold skull medallion)
+ *  - rolling   → Boombox          (purple/gold boombox)
+ *  - pretzel   → Purple Rose      (magenta rose, gold thorns)
+ *  - croissant → Captain's Hat    (tricorne, skull-and-crossbones)
+ *  - cookie    → Loyalty 24/7     (blue/purple neon sign)
+ *  - cupcake   → Gold Mic         (vintage gold microphone)
+ *  - cake      → Top of the Game  (pink/purple neon sign)
+ *  - muffin    → R&B Nights       (hot pink neon sign)
+ *  - bun       → Crown P          (WILD — crowned gold P)
+ *  - huntress  → Treasure Chest   (SCATTER — chest + purple diamonds)
+ *  - dough     → Diamond Crown    (SCATTER — jackpot crown)
  *
- * Every icon is a custom SVG so the design is owned by us. Each uses the
- * project's "Gilded Sunset" palette: deep purple backgrounds, gold/copper
- * linework, accent reds/ambers.
+ * Tiles render the sliced PNG art from client/public/pg/*.png via SYMBOL_ART.
+ * Coin symbols keep their crisp SVG faces so the Hold & Win values stay
+ * legible at small sizes.
  */
 
 import { SYMBOLS, type SymbolId } from "@/hooks/useGameState";
