@@ -28,14 +28,16 @@ interface CoinShopProps {
   currency?: "gold" | "green";
 }
 
-// Premium coin packages as specified
+// Coin packages. These MUST match the seeded DB rows (coinPackages ids 1-5):
+// createCheckout looks up the package SERVER-side and Square charges the DB
+// price, so any mismatch here would charge a different amount than displayed.
+// priceUsd is in DOLLARS for display; converted to cents at checkout time.
 const PREMIUM_PACKAGES: Omit<CoinPackage, "id">[] = [
-  { displayName: "Pocket Change", coins: 80, bonus: 0, priceUsd: 0.99 },
-  { displayName: "Getting Started", coins: 500, bonus: 50, priceUsd: 4.99 },
-  { displayName: "Starter Pack", coins: 1200, bonus: 120, priceUsd: 9.99 },
-  { displayName: "Best Value", coins: 3000, bonus: 300, priceUsd: 19.99, },
-  { displayName: "High Roller", coins: 8000, bonus: 800, priceUsd: 49.99 },
-  { displayName: "Whale Pack", coins: 20000, bonus: 2000, priceUsd: 99.99 },
+  { displayName: "Starter Pack", coins: 500, bonus: 50, priceUsd: 4.99 },
+  { displayName: "Value Pack", coins: 2000, bonus: 200, priceUsd: 14.99 },
+  { displayName: "Popular Pack", coins: 5000, bonus: 750, priceUsd: 34.99 },
+  { displayName: "Premium Pack", coins: 15000, bonus: 3000, priceUsd: 99.99 },
+  { displayName: "VIP Mega Pack", coins: 50000, bonus: 10000, priceUsd: 999.99 },
 ];
 
 // Dynamic daily deal - in production this would come from server
@@ -65,6 +67,8 @@ export default function CoinShop({ onClose, currency = "gold" }: CoinShopProps) 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showFirstPurchaseConfetti, setShowFirstPurchaseConfetti] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  // Custom amount ("Other") — dollars as a string while typing; validated on buy.
+  const [customUsd, setCustomUsd] = useState("10");
   
   const carouselRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -120,8 +124,8 @@ export default function CoinShop({ onClose, currency = "gold" }: CoinShopProps) 
   const createCheckout = trpc.shop.createCheckout.useMutation();
   const createCustomCheckout = trpc.shop.createCustomCheckout.useMutation();
 
-  // Find best value package (the 3000 coins one)
-  const bestValueId = PREMIUM_PACKAGES.findIndex(p => p.displayName === "Best Value") + 1;
+  // Find best value package (Popular Pack)
+  const bestValueId = PREMIUM_PACKAGES.findIndex(p => p.displayName === "Popular Pack") + 1;
 
   // Handle package selection
   const handleSelectPackage = (id: number) => {
@@ -132,16 +136,27 @@ export default function CoinShop({ onClose, currency = "gold" }: CoinShopProps) 
   // Handle purchase confirmation
   const handleConfirmPurchase = async () => {
     if (!user) return;
-
-    const selectedPkg = PREMIUM_PACKAGES[selectedPackageId! - 1];
-    if (!selectedPkg) return;
+    if (selectedPackageId == null) return;
+    // Daily deal (-1) and custom "Other" amount (-2) have no preset row —
+    // their details live outside PREMIUM_PACKAGES. Only preset packages
+    // need a row lookup; bail if a preset id somehow misses.
+    if (selectedPackageId > 0 && !PREMIUM_PACKAGES[selectedPackageId - 1]) return;
 
     setIsProcessing(true);
     setError(null);
 
     try {
+      // Custom "Other" amount entered by the player
+      if (selectedPackageId === -2) {
+        const cents = Math.round(parseFloat(customUsd || "0") * 100);
+        if (!Number.isFinite(cents) || cents < 100 || cents > 1_000_000) {
+          throw new Error("Enter an amount between $1 and $10,000");
+        }
+        const result = await createCustomCheckout.mutateAsync({ amountUsd: cents });
+        window.location.href = result.checkoutUrl;
+      }
       // For custom amounts (daily deal), use custom checkout
-      if (selectedPackageId === -1) {
+      else if (selectedPackageId === -1) {
         const result = await createCustomCheckout.mutateAsync({
           amountUsd: Math.round(dailyDeal.priceUsd * 100),
         });
@@ -168,6 +183,15 @@ export default function CoinShop({ onClose, currency = "gold" }: CoinShopProps) 
 
   // Get selected package for modal
   const getSelectedPackage = () => {
+    if (selectedPackageId === -2) {
+      const dollars = Math.max(0, parseFloat(customUsd || "0"));
+      return {
+        name: "Custom Amount",
+        coins: Math.floor(dollars * 100), // server: 100 coins per $1
+        bonus: 0,
+        price: dollars,
+      };
+    }
     if (selectedPackageId === -1) {
       return {
         name: dailyDeal.displayName,
@@ -181,7 +205,7 @@ export default function CoinShop({ onClose, currency = "gold" }: CoinShopProps) 
       name: pkg?.displayName || "",
       coins: pkg?.coins || 0,
       bonus: isFirstPurchase ? (pkg?.bonus || 0) * 2 : (pkg?.bonus || 0),
-      price: (pkg?.priceUsd || 0) / 100,
+      price: pkg?.priceUsd || 0,
     };
   };
 
@@ -534,7 +558,7 @@ export default function CoinShop({ onClose, currency = "gold" }: CoinShopProps) 
                       id={index + 1}
                       coins={pkg.coins}
                       bonus={pkg.bonus}
-                      priceUsd={pkg.priceUsd / 100}
+                      priceUsd={pkg.priceUsd}
                       isBestValue={index + 1 === bestValueId}
                       isSelected={isSelected}
                       onSelect={handleSelectPackage}
@@ -544,6 +568,71 @@ export default function CoinShop({ onClose, currency = "gold" }: CoinShopProps) 
                   </div>
                 );
               })}
+
+              {/* "Other" — custom amount card at the end of the carousel */}
+              <div
+                className="flex-shrink-0"
+                style={{ width: isMobile ? "75%" : "180px", scrollSnapAlign: "center" }}
+              >
+                <div
+                  className="h-full flex flex-col items-stretch justify-between rounded-2xl p-4"
+                  style={{
+                    background: "linear-gradient(160deg, rgba(168,85,247,0.18) 0%, rgba(20,10,35,0.9) 60%)",
+                    border: selectedPackageId === -2
+                      ? "2px solid #A855F7"
+                      : "1.5px solid rgba(168,85,247,0.5)",
+                    boxShadow: selectedPackageId === -2
+                      ? "0 0 22px rgba(168,85,247,0.45)"
+                      : "0 0 14px rgba(168,85,247,0.12)",
+                    minHeight: 210,
+                  }}
+                >
+                  <div className="text-center">
+                    <div className="text-xs font-bold uppercase tracking-widest" style={{ color: "#C084FC" }}>
+                      Other
+                    </div>
+                    <div className="text-xs text-gray-400 mb-2">custom amount</div>
+                    <div
+                      className="flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 mb-2"
+                      style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(168,85,247,0.4)" }}
+                    >
+                      <span className="font-bold" style={{ color: "#C084FC" }}>$</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={10000}
+                        step="0.01"
+                        value={customUsd}
+                        onChange={(e) => setCustomUsd(e.target.value)}
+                        aria-label="Custom amount in dollars"
+                        className="w-20 bg-transparent text-white font-bold text-lg outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                    <div className="text-xs text-gray-300">
+                      = <span className="font-bold" style={{ color: accentColor }}>
+                        {Math.floor(Math.max(0, parseFloat(customUsd || "0")) * 100).toLocaleString()} coins
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-1">100 coins per $1</div>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      const dollars = parseFloat(customUsd || "0");
+                      if (!Number.isFinite(dollars) || dollars < 1 || dollars > 10000) {
+                        setError("Enter an amount between $1 and $10,000");
+                        return;
+                      }
+                      setError(null);
+                      setSelectedPackageId(-2);
+                      setShowConfirmModal(true);
+                    }}
+                    className="w-full mt-3 bg-purple-700 hover:bg-purple-600 text-white font-bold"
+                    size="sm"
+                  >
+                    Buy Custom
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 
