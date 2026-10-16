@@ -247,27 +247,60 @@ function CabinetTopGlass({ freeSpins, isFullscreen, onToggleFullscreen, goldCoin
         {isFullscreen ? "⛶" : "⛗"}
       </button>
 
-      {/* Header art: the real Pirate's Gold reference band (neon skyline +
-          dripping liquid-gold logo + chains), sliced from the owned key art.
-          Desktop: GC chip far-left, SC + daily bonus far-right (glass level).
-          Mobile: chips stacked over the band's baked-in status area (veiled). */}
-      <div className="relative flex justify-center">
-        <div className="relative" style={{ width: "min(100%, 560px)" }}>
+      {/* Header art: real key art sliced from the owned mockups.
+          Mobile: portrait band (logo + skyline) with stacked live chips
+          veiled over the band's baked-in static chips.
+          Desktop: the wide desktop band (GC top-left, logo center, SC +
+          daily bonus top-right) full-width; live chips overlay the baked
+          zones via edge veils so balances stay real. */}
+      <div className="relative">
+        {/* ── Mobile header band ── */}
+        <div className="lg:hidden flex justify-center">
+          <div className="relative" style={{ width: "min(100%, 560px)" }}>
+            <img
+              src="/pg/header-band.png"
+              alt="Pirate's Gold"
+              draggable={false}
+              style={{ width: "100%", display: "block", borderRadius: 10, boxShadow: "0 0 24px rgba(124,58,237,0.35), 0 0 10px rgba(212,175,55,0.35)" }}
+            />
+            {/* Veil over the baked-in status chips at the band's right edge —
+                live chips go on top so balances are real */}
+            <div className="absolute right-0 top-0 bottom-0" style={{ width: "30%", background: "linear-gradient(270deg, rgba(10,5,20,0.95) 25%, rgba(10,5,20,0.55) 70%, transparent)", borderRadius: "0 10px 10px 0" }} />
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col items-end gap-1">
+              <CurrencyStat
+                active={selectedCurrency === 'gold'}
+                color="#FFD700" dim="rgba(212,175,55,0.45)" glow="rgba(255,215,0,0.6)"
+                label="GC" value={goldCoins} icon="🪙"
+              />
+              <CurrencyStat
+                active={selectedCurrency === 'green'}
+                color="#41E3FF" dim="rgba(65,227,255,0.4)" glow="rgba(65,227,255,0.55)"
+                label="SC" value={greenCoins} icon="💠"
+              />
+              <DailyBonusChip onClick={onDailyBonus} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Desktop header band (wide key art) ── */}
+        <div className="hidden lg:block relative w-full">
           <img
-            src="/pg/header-band.png"
+            src="/pg/header-band-desktop.png"
             alt="Pirate's Gold"
             draggable={false}
-            style={{ width: "100%", display: "block", borderRadius: 10, boxShadow: "0 0 24px rgba(124,58,237,0.35), 0 0 10px rgba(212,175,55,0.35)" }}
+            style={{ width: "100%", display: "block", borderRadius: 10, boxShadow: "0 0 28px rgba(124,58,237,0.4), 0 0 12px rgba(212,175,55,0.35)" }}
           />
-          {/* Veil over the baked-in status chips at the band's right edge —
-              live chips go on top so balances are real */}
-          <div className="absolute right-0 top-0 bottom-0 lg:hidden" style={{ width: "30%", background: "linear-gradient(270deg, rgba(10,5,20,0.95) 25%, rgba(10,5,20,0.55) 70%, transparent)", borderRadius: "0 10px 10px 0" }} />
-          <div className="lg:hidden absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col items-end gap-1">
+          {/* Veils over the baked-in GC (left) and SC/bonus (right) zones */}
+          <div className="absolute left-0 top-0 bottom-0" style={{ width: "21%", background: "linear-gradient(90deg, rgba(10,5,20,0.9) 15%, rgba(10,5,20,0.45) 65%, transparent)", borderRadius: "10px 0 0 10px" }} />
+          <div className="absolute right-0 top-0 bottom-0" style={{ width: "21%", background: "linear-gradient(270deg, rgba(10,5,20,0.9) 15%, rgba(10,5,20,0.45) 65%, transparent)", borderRadius: "0 10px 10px 0" }} />
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
             <CurrencyStat
               active={selectedCurrency === 'gold'}
               color="#FFD700" dim="rgba(212,175,55,0.45)" glow="rgba(255,215,0,0.6)"
               label="GC" value={goldCoins} icon="🪙"
             />
+          </div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex items-center gap-3">
             <CurrencyStat
               active={selectedCurrency === 'green'}
               color="#41E3FF" dim="rgba(65,227,255,0.4)" glow="rgba(65,227,255,0.55)"
@@ -275,22 +308,6 @@ function CabinetTopGlass({ freeSpins, isFullscreen, onToggleFullscreen, goldCoin
             />
             <DailyBonusChip onClick={onDailyBonus} />
           </div>
-        </div>
-        {/* Desktop status: pinned to the glass edges, off the band art */}
-        <div className="hidden lg:block absolute left-3 top-1/2 -translate-y-1/2 z-10">
-          <CurrencyStat
-            active={selectedCurrency === 'gold'}
-            color="#FFD700" dim="rgba(212,175,55,0.45)" glow="rgba(255,215,0,0.6)"
-            label="GC" value={goldCoins} icon="🪙"
-          />
-        </div>
-        <div className="hidden lg:flex absolute right-3 top-1/2 -translate-y-1/2 z-10 items-center gap-3">
-          <CurrencyStat
-            active={selectedCurrency === 'green'}
-            color="#41E3FF" dim="rgba(65,227,255,0.4)" glow="rgba(65,227,255,0.55)"
-            label="SC" value={greenCoins} icon="💠"
-          />
-          <DailyBonusChip onClick={onDailyBonus} />
         </div>
       </div>
 
