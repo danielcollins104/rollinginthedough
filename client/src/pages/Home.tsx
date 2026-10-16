@@ -29,6 +29,9 @@ import CitySkylineScene from "@/components/CitySkylineScene";
 import { Missions } from "@/components/Missions";
 import { SessionTimeReward } from "@/components/SessionTimeReward";
 import ReferralScreen, { FloatingReferralBadge } from "@/components/ReferralScreen";
+import CashOutModal from "@/components/CashOutModal";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import { Toasts } from "@/components/Toasts";
 import PracticeBoard from "@/components/PracticeBoard";
 import DebugOverlay from "@/components/DebugOverlay";
@@ -112,6 +115,8 @@ export default function Home() {
   const [showSessionReward, setShowSessionReward] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
   const [showBoard, setShowBoard] = useState(false);
+  const [showCashOut, setShowCashOut] = useState(false);
+  const cashoutRequest = trpc.cashout.createRequest.useMutation();
 
   const handleCurrencyChange = (currency: CurrencyType) => {
     // If switching to green (Sweeps), check if user is authenticated
@@ -295,6 +300,7 @@ export default function Home() {
           stickyBonus={stickyBonus}
           stickyBonusSpinning={stickyBonusSpinning}
           onDailyBonus={() => setShowDailyBonus(true)}
+          onCashOut={() => setShowCashOut(true)}
           level={level}
           xp={xp}
           xpToNext={xpToNext}
@@ -371,6 +377,24 @@ export default function Home() {
       )}
       
       <ReferralScreen isOpen={showReferral} onClose={() => setShowReferral(false)} />
+      {showCashOut && (
+        <CashOutModal
+          playerCoins={greenCoins}
+          currentStreak={currentStreak}
+          level={retentionLevel}
+          xp={retentionXp}
+          xpToNext={retentionXpToNext}
+          onClose={() => setShowCashOut(false)}
+          onSubmit={async (coins, method) => {
+            await cashoutRequest.mutateAsync({
+              greenCoins: coins,
+              paymentMethod: method as "square" | "bitcoin" | "ethereum" | "litecoin" | "usdc",
+            });
+            setGreenCoins((c) => Math.max(0, c - coins));
+            toast.success(`Cash-out requested: $${(coins / 100).toFixed(2)} — pending review`);
+          }}
+        />
+      )}
       {showBoard && <PracticeBoard onClose={() => setShowBoard(false)} />}
       <LoginPromptModal isOpen={showLoginPrompt} onClose={() => setShowLoginPrompt(false)} />
       {showIntro && <OnboardingTutorial onClose={() => setShowIntro(false)} />}
@@ -412,6 +436,7 @@ export default function Home() {
         onMissions={() => setShowMissions(true)}
         onReferrals={() => setShowReferral(true)}
         onBoard={() => setShowBoard(true)}
+        onCashOut={() => setShowCashOut(true)}
         soundEnabled={soundEnabled}
         onToggleSound={() => setSoundEnabled(!soundEnabled)}
       />

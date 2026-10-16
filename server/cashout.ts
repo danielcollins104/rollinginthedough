@@ -93,9 +93,10 @@ export async function createCashOutRequest(
 
     const player = playerRecord[0];
 
-    // Validate request
+    // Cash-out spends GREEN (sweeps) coins only — the legacy `coins` column
+    // is the old gold-era balance and must not be touched.
     const validation = validateCashOutRequest(
-      player.coins,
+      player.greenCoins,
       coinsRequested,
       amountUsd
     );
@@ -113,10 +114,10 @@ export async function createCashOutRequest(
       status: "pending",
     });
 
-    // Deduct coins from player immediately
+    // Deduct green coins from player immediately
     await db
       .update(playerStats)
-      .set({ coins: player.coins - coinsRequested })
+      .set({ greenCoins: player.greenCoins - coinsRequested })
       .where(eq(playerStats.userId, userId));
 
     // Fetch and return the created request (get most recent)

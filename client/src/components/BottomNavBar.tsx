@@ -21,6 +21,7 @@ interface Props {
   soundEnabled: boolean;
   onToggleSound: () => void;
   onBoard?: () => void;
+  onCashOut?: () => void;
 }
 
 export default function BottomNavBar({
@@ -33,6 +34,7 @@ export default function BottomNavBar({
   onBoard,
   soundEnabled,
   onToggleSound,
+  onCashOut,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [, setLocation] = useLocation();
@@ -46,6 +48,7 @@ export default function BottomNavBar({
     { icon: "📖", label: "Pays", onClick: onRules },
     { icon: "👥", label: "Refer", onClick: onReferrals },
     { icon: "🏆", label: "Board", onClick: onBoard ?? (() => {}) },
+    ...(onCashOut ? [{ icon: "💸", label: "Cash Out", onClick: onCashOut, highlight: true }] : []),
     ...(!isAuthenticated
       ? [{ icon: "👤", label: "Sign in", onClick: () => { window.location.href = getLoginUrl(); }, highlight: true }]
       : []),

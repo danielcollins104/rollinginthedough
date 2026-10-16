@@ -490,7 +490,7 @@ export const appRouter = router({
   cashout: router({
     createRequest: protectedProcedure
       .input(z.object({
-        greenCoins: z.number().min(1000),
+        greenCoins: z.number().min(500), // $5 minimum (100 coins = $1)
         paymentMethod: z.enum(["square", "bitcoin", "ethereum", "litecoin", "usdc"]),
       }))
       .output(z.object({
@@ -498,16 +498,17 @@ export const appRouter = router({
         message: z.string(),
       }))
       .mutation(async ({ input, ctx }) => {
+        // 100 coins = $1, so coins == cents exactly. createCashOutRequest
+        // throws a descriptive Error on validation failure (surfaces to the
+        // player via tRPC), or returns null only if DB/player is missing.
         const result = await createCashOutRequest(
           ctx.user.id,
           input.greenCoins,
-          Math.floor(input.greenCoins / 100),
+          input.greenCoins, // cents
           input.paymentMethod
         );
-        return {
-          success: !!result,
-          message: result ? "Cashout request created" : "Failed to create cashout request",
-        };
+        if (!result) throw new Error("Cash-out unavailable right now");
+        return { success: true, message: "Cash-out request created" };
       }),
 
     getRequests: protectedProcedure.query(async ({ ctx }) => {

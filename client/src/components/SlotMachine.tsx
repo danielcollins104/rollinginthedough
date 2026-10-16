@@ -71,6 +71,7 @@ interface Props {
   stickyBonus?: { totalWin: number; grandJackpot: boolean; locked: { reelIdx: number; rowIdx: number; type: "greenCoin" | "goldCoin" }[] } | null;
   stickyBonusSpinning?: boolean;
   onDailyBonus?: () => void;
+  onCashOut?: () => void;
   level?: number;
   xp?: number;
   xpToNext?: number;
@@ -996,7 +997,7 @@ function PanelLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function DesktopLeftPanel({ soundMuted, setSoundMuted, level, xp, xpToNext }: any) {
+function DesktopLeftPanel({ soundMuted, setSoundMuted, level, xp, xpToNext, onCashOut }: any) {
   const [, setLocation] = useLocation();
   const openPaytable = () => {
     const btn = document.querySelector("[data-paytable-toggle]");
@@ -1069,6 +1070,21 @@ function DesktopLeftPanel({ soundMuted, setSoundMuted, level, xp, xpToNext }: an
           {xp.toLocaleString()} / {xpToNext.toLocaleString()}
         </div>
       </PanelCard>
+
+      {/* CASH OUT (desktop entry point — mobile uses the bottom MENU tray) */}
+      {onCashOut && (
+        <PanelCard>
+          <button
+            onClick={() => { playSound("button_click"); onCashOut(); }}
+            className="w-full flex items-center gap-2 transition-transform active:scale-95"
+          >
+            <span style={{ fontSize: "1.2rem", filter: "drop-shadow(0 0 6px rgba(65,227,255,0.6))" }}>💸</span>
+            <span className="font-numbers uppercase font-bold" style={{ fontSize: "0.75rem", letterSpacing: "0.12em", color: "#41E3FF" }}>
+              CASH OUT
+            </span>
+          </button>
+        </PanelCard>
+      )}
     </aside>
   );
 }
@@ -1593,6 +1609,7 @@ export default function SlotMachine({
   goldCoins = 0,
   greenCoins = 0,
   onDailyBonus,
+  onCashOut,
   level = 1,
   xp = 0,
   xpToNext = 100,
@@ -2233,6 +2250,7 @@ export default function SlotMachine({
           level={level}
           xp={xp}
           xpToNext={xpToNext}
+          onCashOut={onCashOut}
         />
 
       {/* ── Physical Cabinet Structure ── */}
