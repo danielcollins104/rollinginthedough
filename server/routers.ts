@@ -27,15 +27,25 @@ import {
 import { checkAndAwardReferralMilestones } from "./referral";
 import { achievementsRouter } from "./routers/achievements";
 
-// Square production environment configuration
+// Square environment configuration — auto-detect sandbox from the app ID
+// (sandbox IDs are prefixed "sandbox-"/"sandboxx-"), overridable explicitly.
+// Using sandbox credentials against the Production API was the silent 401
+// that made every checkout fail.
+const squareEnv = (process.env.SQUARE_ENVIRONMENT || "").toLowerCase();
+const isSquareSandbox =
+  squareEnv === "sandbox" ||
+  (squareEnv !== "production" && /^sandboxx?-/i.test(ENV.squareAppId));
 const squareClient = ENV.squareAccessToken
   ? new SquareClient({
       token: ENV.squareAccessToken,
-      environment: SquareEnvironment.Production, // Production environment
+      environment: isSquareSandbox ? SquareEnvironment.Sandbox : SquareEnvironment.Production,
     })
   : null;
+if (squareClient) {
+  console.log(`[Payments] Square configured (${isSquareSandbox ? "SANDBOX" : "PRODUCTION"})`);
+}
 
-const SQUARE_LOCATION_ID = ENV.squareLocationId || "L2N0S3FA7EX8B"; // Production location ID
+const SQUARE_LOCATION_ID = ENV.squareLocationId || "L2N0S3FA7EX8B";
 
 export const appRouter = router({
   system: systemRouter,
@@ -137,6 +147,13 @@ export const appRouter = router({
           throw new Error(verification.reason || "Payment verification failed");
         }
 
+        // Fail fast without a database: we cannot record or later fulfill a
+        // purchase, so do not create a real payment link we can't track.
+        const db0 = await getDb();
+        if (!db0) {
+          throw new Error("Store temporarily unavailable");
+        }
+
         // Record the purchase with pending status
         const purchase = await createCoinPurchase({
           userId: ctx.user.id,
@@ -172,6 +189,13 @@ export const appRouter = router({
         if (!purchase) {
           throw new Error("Failed to create purchase record");
         }
+        // Attach the Square order ID so fulfillment can confirm payment server-side.
+        if (response.paymentLink.orderId) {
+          await db0
+            .update(coinPurchases)
+            .set({ paymentId: response.paymentLink.orderId })
+            .where(eq(coinPurchases.id, purchase.id));
+        }
         return {
           checkoutUrl: response.paymentLink.url,
           purchaseId: purchase.id,
@@ -191,6 +215,12 @@ export const appRouter = router({
         // Calculate coins: 100 coins per $1
         const coinsToAdd = Math.floor((input.amountUsd / 100) * 100);
         const idempotencyKey = randomUUID();
+
+        // Fail fast without a database (see createCheckout).
+        const db0 = await getDb();
+        if (!db0) {
+          throw new Error("Store temporarily unavailable");
+        }
 
         // Record the purchase with pending status
         const purchase = await createCoinPurchase({
@@ -225,6 +255,12 @@ export const appRouter = router({
         if (!purchase) {
           throw new Error("Failed to create purchase record");
         }
+        if (response.paymentLink.orderId) {
+          await db0
+            .update(coinPurchases)
+            .set({ paymentId: response.paymentLink.orderId })
+            .where(eq(coinPurchases.id, purchase.id));
+        }
         return {
           checkoutUrl: response.paymentLink.url,
           purchaseId: purchase.id,
@@ -257,6 +293,32 @@ export const appRouter = router({
             success: true,
             coinsAdded: purchase.coinsAdded,
           };
+        }
+
+        // Confirm with Square that the order was actually PAID before
+        // crediting coins. The redirect alone proves nothing — previously
+        // anyone could visit /checkout-success?purchaseId=N and get free
+        // coins. The Square order ID is attached at checkout creation.
+        if (!squareClient) {
+          throw new Error("Square payment system not configured");
+        }
+        if (!purchase.paymentId || purchase.paymentId.startsWith("checkout-")) {
+          throw new Error("Payment is still processing — please try again in a moment");
+        }
+        let orderState: string | undefined;
+        try {
+          const orderResp = await squareClient.orders.get({ orderId: purchase.paymentId });
+          orderState = orderResp.order?.state;
+        } catch (e) {
+          console.error("[Payments] Square order lookup failed:", e);
+          throw new Error("Could not verify payment with Square");
+        }
+        if (orderState === "CANCELED") {
+          await updateCoinPurchaseStatus(purchase.paymentId, "failed");
+          throw new Error("Payment was canceled");
+        }
+        if (orderState !== "COMPLETED") {
+          throw new Error("Payment is still processing — please try again in a moment");
         }
 
         // Mark as completed and credit coins
@@ -314,16 +376,47 @@ export const appRouter = router({
           throw new Error("Failed to create cryptocurrency charge");
         }
 
+        // Record the purchase so fulfillment can credit coins exactly once
+        // when Coinbase reports the charge as paid.
+        const db = await getDb();
+        if (db) {
+          await createCoinPurchase({
+            userId: ctx.user.id,
+            packageId: 0,
+            paymentId: charge.chargeId,
+            coinsAdded: input.coins,
+            amountUsd: input.priceUsd,
+            status: "pending",
+          });
+        }
+
         return charge;
       }),
 
-    // Get cryptocurrency charge status
+    // Get cryptocurrency charge status — and fulfill paid charges.
+    // (There is no Coinbase webhook route mounted; this poll is the
+    // fulfillment path, previously it only *read* status and never paid out.)
     getCryptoChargeStatus: protectedProcedure
       .input(z.object({
         chargeId: z.string(),
       }))
       .query(async ({ input, ctx }) => {
         const status = await getCryptoChargeStatus(input.chargeId);
+        const paid = status && ["completed", "resolved"].includes(status.status?.toLowerCase?.() ?? "");
+        if (paid && status) {
+          const db = await getDb();
+          if (db) {
+            const rows = await db
+              .select()
+              .from(coinPurchases)
+              .where(eq(coinPurchases.paymentId, input.chargeId))
+              .limit(1);
+            const purchase = rows[0];
+            if (purchase && purchase.userId === ctx.user.id && purchase.status !== "completed") {
+              await updateCoinPurchaseStatus(purchase.paymentId, "completed", purchase.coinsAdded);
+            }
+          }
+        }
         return status;
       }),
   }),
